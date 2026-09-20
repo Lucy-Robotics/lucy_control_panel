@@ -357,28 +357,30 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                                         </Tooltip>,
                                         ...(showRowDelete
                                             ? [
-                                                <Popconfirm
-                                                    key="del-preset"
-                                                    title="DELETE ?"
-                                                    okText="DELETE"
-                                                    cancelText="CANCEL"
-                                                    okButtonProps={{ danger: true }}
-                                                    onConfirm={() => void deleteConfigByName(name)}
-                                                >
-                                                    <Button
-                                                        type="text"
-                                                        size="small"
-                                                        danger
-                                                        icon={<DeleteOutlined />}
-                                                        aria-label={`Delete configuration ${name}`}
-                                                        disabled={
-                                                            !canDeletePresetFile(name) ||
-                                                            workflowLocked ||
-                                                            loadingConfig
-                                                        }
-                                                    />
-                                                </Popconfirm>,
-                                            ]
+                                                  <Popconfirm
+                                                      key="del-preset"
+                                                      title="DELETE ?"
+                                                      okText="DELETE"
+                                                      cancelText="CANCEL"
+                                                      okButtonProps={{ danger: true }}
+                                                      onConfirm={() => void deleteConfigByName(name)}
+                                                      getPopupContainer={() => document.body}
+                                                      zIndex={1200}
+                                                  >
+                                                      <Button
+                                                          type="text"
+                                                          size="small"
+                                                          danger
+                                                          icon={<DeleteOutlined />}
+                                                          aria-label={`Delete configuration ${name}`}
+                                                          disabled={
+                                                              !canDeletePresetFile(name) ||
+                                                              workflowLocked ||
+                                                              loadingConfig
+                                                          }
+                                                      />
+                                                  </Popconfirm>,
+                                              ]
                                             : []),
                                     ]}
                                 >

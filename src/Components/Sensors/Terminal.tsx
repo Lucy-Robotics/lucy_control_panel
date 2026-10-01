@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -9,13 +9,13 @@ import { UI_ACCENT_GREEN, UI_BG_BLACK, UI_BORDER_SOFT } from '../../Constants/ui
 
 // Simple Lorem Ipsum generator to avoid adding a new dependency
 const simpleLoremIpsum = () => {
-    const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
-    const sentenceLength = Math.floor(Math.random() * 10) + 5;
-    let sentence = '';
-    for (let i = 0; i < sentenceLength; i++) {
-        sentence += words[Math.floor(Math.random() * words.length)] + ' ';
-    }
-    return sentence.charAt(0).toUpperCase() + sentence.slice(1).trim() + '.';
+  const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
+  const sentenceLength = Math.floor(Math.random() * 10) + 5;
+  let sentence = '';
+  for (let i = 0; i < sentenceLength; i++) {
+    sentence += words[Math.floor(Math.random() * words.length)] + ' ';
+  }
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1).trim() + '.';
 };
 
 interface TerminalProps {
@@ -55,22 +55,22 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
   return (
     <div className="tui-container">
       <div style={{ marginBottom: '8px', borderBottom: `1px solid ${UI_BORDER_SOFT}`, paddingBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="tui-text-success" style={{ fontWeight: 'bold' }}>{sourceName}</span>
-          <div>
-            <span className="tui-text-muted" style={{ marginRight: '10px' }}>{isPaused ? '[PAUSED]' : '[ACTIVE]'}</span>
-            <Button size="small" onClick={() => setIsPaused(!isPaused)}>{isPaused ? 'Resume' : 'Pause'}</Button>
-          </div>
+        <span className="tui-text-success" style={{ fontWeight: 'bold' }}>{sourceName}</span>
+        <div>
+          <span className="tui-text-muted" style={{ marginRight: '10px' }}>{isPaused ? '[PAUSED]' : '[ACTIVE]'}</span>
+          <Button size="small" onClick={() => setIsPaused(!isPaused)}>{isPaused ? 'Resume' : 'Pause'}</Button>
+        </div>
       </div>
       <div
         ref={terminalRef}
         style={{
-        height: '300px',
-        overflowY: 'auto',
-        padding: '10px 0',
-        fontFamily: 'monospace',
-        backgroundColor: UI_BG_BLACK,
-        color: UI_ACCENT_GREEN,
-      }}>
+          height: '300px',
+          overflowY: 'auto',
+          padding: '10px 0',
+          fontFamily: 'monospace',
+          backgroundColor: UI_BG_BLACK,
+          color: UI_ACCENT_GREEN,
+        }}>
         {displayData.map((line, index) => (
           <div key={index} className="tui-text" style={{ color: UI_ACCENT_GREEN, fontSize: '12px' }}>{`> ${line}`}</div>
         ))}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -114,15 +114,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             setAutoConnect(false);
             disconnect();
         } else {
-            connect(rosUrl).catch(() => {});
+            connect(rosUrl).catch(() => { });
         }
     };
 
     const jointsLoaded = controllerConfigsFromActive
         ? controllerConfigsFromActive.reduce(
-              (acc, config) => acc + config.joints.length,
-              0
-          )
+            (acc, config) => acc + config.joints.length,
+            0
+        )
         : 0;
 
     return (
@@ -156,14 +156,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {connectionStatus === 'connecting'
                             ? 'Connecting...'
                             : isConnected
-                              ? 'Disconnect'
-                              : 'Connect'}
+                                ? 'Disconnect'
+                                : 'Connect'}
                     </Button>
 
                     <Button
                         key="submit"
                         type="primary"
-                        onClick={() => {onClose();}}
+                        onClick={() => { onClose(); }}
                         loading={
                             connectionStatus === 'connecting'
                         }

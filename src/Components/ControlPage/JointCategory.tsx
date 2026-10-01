@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -78,48 +78,48 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2
                 }}
             >
-            <Space>
-                <Title
-                    level={5}
-                    style={{
-                        margin: 0,
-                        color: UI_ACCENT_GREEN,
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    {category}
-                </Title>
-                <Badge
-                    count={joints.length}
-                    style={{
-                        backgroundColor: UI_ACCENT_GREEN,
-                        color: UI_TEXT_ON_ACCENT,
-                        fontWeight: 'bold'
-                    }}
-                />
-            </Space>
+                <Space>
+                    <Title
+                        level={5}
+                        style={{
+                            margin: 0,
+                            color: UI_ACCENT_GREEN,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        {category}
+                    </Title>
+                    <Badge
+                        count={joints.length}
+                        style={{
+                            backgroundColor: UI_ACCENT_GREEN,
+                            color: UI_TEXT_ON_ACCENT,
+                            fontWeight: 'bold'
+                        }}
+                    />
+                </Space>
 
-            <Button
-                size="small"
-                icon={<ReloadOutlined />}
-                disabled={disabled}
-                onClick={(e) => {
-                e.stopPropagation();
-                handleResetCategory();
-                }}
-                style={{
-                backgroundColor: UI_COLOR_TRANSPARENT,
-                borderColor: UI_BORDER_SOFT,
-                color: UI_TEXT_PRIMARY_ON_DARK
-                }}
-                title={`Reset all ${category} joints to their rest value`}
-            >
-                Reset
-            </Button>
-          </div>
+                <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    disabled={disabled}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleResetCategory();
+                    }}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK
+                    }}
+                    title={`Reset all ${category} joints to their rest value`}
+                >
+                    Reset
+                </Button>
+            </div>
 
             <div style={{
                 flex: 1,
@@ -131,14 +131,14 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             }}>
                 <Space direction="vertical" style={{ width: '100%', position: 'relative' }} size="small">
                     {joints.map((joint) => (
-                    <JointControl
-                        key={joint.name}
-                        joint={joint}
-                        onValueChange={onJointValueChange}
-                        onReset={onResetJoint}
-                        showDegrees={showDegrees}
-                        disabled={disabled}
-                    />
+                        <JointControl
+                            key={joint.name}
+                            joint={joint}
+                            onValueChange={onJointValueChange}
+                            onReset={onResetJoint}
+                            showDegrees={showDegrees}
+                            disabled={disabled}
+                        />
                     ))}
                 </Space>
             </div>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -806,76 +806,76 @@ export const RobotControlPanel: React.FC = () => {
                             }}
                         >
                             {(!isMobile || showHeaderActions) && (
-                            <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                                <Button
-                                    icon={<ReloadOutlined />}
-                                    onClick={handleResetAll}
-                                    disabled={!isSending}
-                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                >
-                                    RESET ALL
-                                </Button>
-                                <Button
-                                    icon={<ExperimentOutlined />}
-                                    onClick={handleRandomPose}
-                                    disabled={!isSending}
-                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                >
-                                    RANDOM POSE
-                                </Button>
-                                <Button
-                                    icon={<SettingOutlined />}
-                                    onClick={() => setIsManagePosesVisible(true)}
-                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                >
-                                    MANAGE POSES
-                                </Button>
-                                {isAnimating && (
-                                    <Button danger icon={<StopOutlined />} onClick={handleStopAnimation}>
-                                        STOP
-                                    </Button>
-                                )}
-                                <Dropdown
-                                    menu={{ items }}
-                                    trigger={['click']}
-                                    dropdownRender={menu => (
-                                        <div style={dropdownOverlayStyle}>{menu}</div>
-                                    )}
-                                >
+                                <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                                     <Button
-                                        icon={<MenuOutlined />}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
+                                        icon={<ReloadOutlined />}
+                                        onClick={handleResetAll}
+                                        disabled={!isSending}
+                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
                                     >
-                                        VIEWS
+                                        RESET ALL
                                     </Button>
-                                </Dropdown>
-                                {isMobile && (
-                                    <Select
-                                        value={currentDock}
-                                        onChange={setCurrentDock}
-                                        options={availableDock.map((dock) => ({
-                                            label: dock === 'NONE'
-                                                ? 'No dock'
-                                                : dock === 'SENSOR_DISPLAY'
-                                                    ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
-                                                    : dock === 'STREAM'
-                                                        ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
-                                                        : dock.replace('_', ' '),
-                                            value: dock,
-                                            disabled: (dock === 'STREAM' && !hasLiveCamera)
-                                                || (dock === 'SENSOR_DISPLAY' && !hasSensors),
-                                        }))}
-                                        aria-label="Select dock"
-                                        style={{ minWidth: 150 }}
-                                        popupMatchSelectWidth={false}
-                                        getPopupContainer={() => document.body}
-                                    />
-                                )}
-                            </Space>
+                                    <Button
+                                        icon={<ExperimentOutlined />}
+                                        onClick={handleRandomPose}
+                                        disabled={!isSending}
+                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                    >
+                                        RANDOM POSE
+                                    </Button>
+                                    <Button
+                                        icon={<SettingOutlined />}
+                                        onClick={() => setIsManagePosesVisible(true)}
+                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                    >
+                                        MANAGE POSES
+                                    </Button>
+                                    {isAnimating && (
+                                        <Button danger icon={<StopOutlined />} onClick={handleStopAnimation}>
+                                            STOP
+                                        </Button>
+                                    )}
+                                    <Dropdown
+                                        menu={{ items }}
+                                        trigger={['click']}
+                                        dropdownRender={menu => (
+                                            <div style={dropdownOverlayStyle}>{menu}</div>
+                                        )}
+                                    >
+                                        <Button
+                                            icon={<MenuOutlined />}
+                                            style={{
+                                                backgroundColor: UI_COLOR_TRANSPARENT,
+                                                borderColor: UI_BORDER_SOFT,
+                                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                            }}
+                                        >
+                                            VIEWS
+                                        </Button>
+                                    </Dropdown>
+                                    {isMobile && (
+                                        <Select
+                                            value={currentDock}
+                                            onChange={setCurrentDock}
+                                            options={availableDock.map((dock) => ({
+                                                label: dock === 'NONE'
+                                                    ? 'No dock'
+                                                    : dock === 'SENSOR_DISPLAY'
+                                                        ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
+                                                        : dock === 'STREAM'
+                                                            ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
+                                                            : dock.replace('_', ' '),
+                                                value: dock,
+                                                disabled: (dock === 'STREAM' && !hasLiveCamera)
+                                                    || (dock === 'SENSOR_DISPLAY' && !hasSensors),
+                                            }))}
+                                            aria-label="Select dock"
+                                            style={{ minWidth: 150 }}
+                                            popupMatchSelectWidth={false}
+                                            getPopupContainer={() => document.body}
+                                        />
+                                    )}
+                                </Space>
                             )}
 
                             {!isMobile && <Space wrap>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -55,12 +55,12 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
         const mapX = (time: number) =>
             paddingLeft +
             ((time - minTime) / Math.max(maxTime - minTime, 1)) *
-                (width - paddingLeft - paddingRight);
+            (width - paddingLeft - paddingRight);
         const mapY = (val: number) =>
             height -
             paddingY -
             ((val - minValue) / Math.max(maxValue - minValue, 1)) *
-                (height - paddingY * 2);
+            (height - paddingY * 2);
 
         const midValue = (minValue + maxValue) / 2;
         const latest = displaySamples[displaySamples.length - 1];
@@ -68,12 +68,12 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
         const pathData =
             displaySamples.length >= 2
                 ? displaySamples
-                      .map((sample, index) => {
-                          const x = mapX(sample.time);
-                          const y = mapY(sample.value);
-                          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                      })
-                      .join(' ')
+                    .map((sample, index) => {
+                        const x = mapX(sample.time);
+                        const y = mapY(sample.value);
+                        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+                    })
+                    .join(' ')
                 : '';
 
         return (

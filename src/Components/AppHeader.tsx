@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -186,7 +186,7 @@ export const AppHeader: React.FC = () => {
             <Tooltip title="Documentation">
                 <Button
                     icon={isMobile ? <ReadOutlined /> : undefined}
-                    onClick={() => window.open('https://docs.sentience-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
+                    onClick={() => window.open('https://docs.lucy-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
                 >
                     {!isMobile && 'Documentation'}
                 </Button>

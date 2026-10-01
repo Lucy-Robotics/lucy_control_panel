@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -14,18 +14,18 @@ interface StreamMetricsProps {
     showLabels?: boolean;
 }
 
-export const StreamMetrics: React.FC<StreamMetricsProps> = ({ 
-    fps, 
-    frameDelay, 
+export const StreamMetrics: React.FC<StreamMetricsProps> = ({
+    fps,
+    frameDelay,
     fontSize = 11,
-    showLabels = true 
+    showLabels = true
 }) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Tooltip title="Frames Per Second: How many frames are displayed each second. Higher is smoother.">
-                <span style={{ 
-                    color: UI_TEXT_SECONDARY_MUTED, 
-                    fontFamily: 'monospace', 
+                <span style={{
+                    color: UI_TEXT_SECONDARY_MUTED,
+                    fontFamily: 'monospace',
                     fontSize,
                     fontWeight: 'bold',
                     cursor: 'help'
@@ -35,9 +35,9 @@ export const StreamMetrics: React.FC<StreamMetricsProps> = ({
             </Tooltip>
             <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: fontSize - 1 }}>|</span>
             <Tooltip title="Frame Delay (ms): The time from frame capture to display. Lower is better.">
-                <span style={{ 
-                    color: UI_TEXT_SECONDARY_MUTED, 
-                    fontFamily: 'monospace', 
+                <span style={{
+                    color: UI_TEXT_SECONDARY_MUTED,
+                    fontFamily: 'monospace',
                     fontSize,
                     fontWeight: 'bold',
                     cursor: 'help'

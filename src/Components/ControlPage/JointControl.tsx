@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -11,15 +11,15 @@ import { storageService } from '../../Services/storage.service.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
-    UI_ACCENT_BLUE,
-    UI_ACCENT_GREEN,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_COLOR_TRANSPARENT,
-    UI_INPUT_SURFACE,
-    UI_LIST_ROW_BG,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
+  UI_ACCENT_BLUE,
+  UI_ACCENT_GREEN,
+  UI_BORDER_MUTED,
+  UI_BORDER_SOFT,
+  UI_COLOR_TRANSPARENT,
+  UI_INPUT_SURFACE,
+  UI_LIST_ROW_BG,
+  UI_TEXT_PRIMARY_ON_DARK,
+  UI_TEXT_SECONDARY_MUTED,
 } from '../../Constants/uiTheme.ts';
 
 const { Text } = Typography;

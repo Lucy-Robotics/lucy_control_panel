@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import ROSLIB from 'roslib';
 import { ROS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
 import type { JointControlState } from '../../../Constants/robotTypes.ts';
@@ -139,12 +144,19 @@ export class JointStateHandler {
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
     });
+    let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {
       const js = msg as unknown as { name: string[]; position: number[] };
       if (!js.name?.length || !js.position?.length) return;
       const positions = js.name.map((name, i) => ({ name, value: js.position[i] }));
-      Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`, true);
-      Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`, true);
+      if (positions.length !== lastJointCount) {
+        lastJointCount = positions.length;
+        Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`);
+        Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`);
+      } else {
+        Diagnostics.touch('connection', 'jointstates');
+        Diagnostics.touch('command', 'echoed');
+      }
       callback(positions);
     });
     return () => sub.unsubscribe();
@@ -229,7 +241,7 @@ export class JointStateHandler {
         points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
       });
       topic.publish(message);
-      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`, true);
+      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);
     }
   }
 }

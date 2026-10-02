@@ -274,10 +274,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         return Math.PI - Math.acos(cosTheta);
     };
 
-    // Feed MediaPipe from the stream <Webcam> already owns. @mediapipe/camera_utils
-    // opens a second getUserMedia stream and overwrites video.srcObject with it, so
-    // react-webcam only ever releases its own stream on unmount and the camera stays
-    // held by the orphaned one.
+    // Feed MediaPipe from the stream <Webcam> already owns.
     useEffect(() => {
         let cancelled = false;
         let frameRequest = 0;

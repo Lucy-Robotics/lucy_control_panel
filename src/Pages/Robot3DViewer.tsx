@@ -14,12 +14,10 @@ import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import {
-    UI_ACCENT_GREEN,
-    UI_BG_BLACK,
-    UI_BORDER_MUTED,
-    UI_MODAL_MASK_BG,
+    UI_ACCENT_GREEN_HEX,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
+    TEXT_PRIMARY,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -38,15 +36,13 @@ const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center',
-    gap: 8, background: UI_BG_BLACK,
+    gap: 8, background: 'var(--color-main)',
 };
 
 /** Shared chrome for the floating overlay panels (each adds its own position). */
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
     left: 10,
-    backgroundColor: UI_MODAL_MASK_BG,
-    border: `1px solid ${UI_BORDER_MUTED}`,
     padding: '8px 12px',
     fontFamily: 'monospace',
     fontSize: 10,
@@ -75,15 +71,14 @@ const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     return (
         <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-            background: UI_BORDER_MUTED, overflow: 'hidden', zIndex: 3,
+            background: 'var(--color-secondary)', overflow: 'hidden', zIndex: 3,
         }}>
             <div
                 style={{
                     position: 'absolute',
                     top: 0,
                     bottom: 0,
-                    background: UI_ACCENT_GREEN,
-                    boxShadow: `0 0 8px ${UI_ACCENT_GREEN}`,
+                    background: 'var(--color-highlight)',
                     ...(indeterminate
                         ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
                         : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
@@ -131,25 +126,25 @@ const Robot3DViewer: React.FC = () => {
     }
 
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative', border: `1px solid ${UI_BORDER_MUTED}` }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-secondary)' }}>
             {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
-                style={{ width: '100%', height: '100%', background: UI_BG_BLACK, flex: 1 }}
+                style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
             >
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN_HEX} />
 
                 {showGrid && (
                     <Grid
                         args={[30, 30]}
                         cellSize={1}
                         cellThickness={1}
-                        cellColor={UI_ACCENT_GREEN}
+                        cellColor={UI_ACCENT_GREEN_HEX}
                         sectionSize={2}
                         sectionThickness={1}
-                        sectionColor={UI_TEXT_PRIMARY_ON_DARK}
+                        sectionColor={TEXT_PRIMARY}
                         fadeDistance={20}
                         fadeStrength={1}
                     />
@@ -179,20 +174,20 @@ const Robot3DViewer: React.FC = () => {
             </Canvas>
 
             {/* Controls hint — top-left */}
-            <div style={{ ...OVERLAY_BOX, top: 10, gap: 4, pointerEvents: 'none', userSelect: 'none' }}>
-                <span style={{ color: UI_ACCENT_GREEN, fontWeight: 'bold', letterSpacing: 1 }}>CONTROLS:</span>
+            <div className="chamfer-box viewer-overlay-box" style={{ ...OVERLAY_BOX, top: 10, gap: 4, pointerEvents: 'none', userSelect: 'none' }}>
+                <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold', letterSpacing: 1 }}>CONTROLS:</span>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </div>
 
             {/* Settings */}
-            <div style={{ ...OVERLAY_BOX, top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
+            <div className="chamfer-box viewer-overlay-box" style={{ ...OVERLAY_BOX, top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
                 {/* Opacity & wireframe only affect the green override */}
                 {!useOriginalTexture && (
                     <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
+                            <span style={{ color: 'var(--color-highlight)' }}>OPACITY {Math.round(opacity * 100)}%</span>
                             <input
                                 type="range" min="0.1" max="1" step="0.1" value={opacity}
                                 onChange={e => setOpacity(parseFloat(e.target.value))}

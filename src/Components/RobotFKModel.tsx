@@ -21,7 +21,7 @@ import React, { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { UI_ACCENT_GREEN } from '../Constants/uiTheme';
+import { UI_ACCENT_GREEN_HEX } from '../Constants/uiTheme';
 
 // Pristine DAE/mesh materials, captured per robot instance and kept at module
 // level so they survive remounts (the robot itself is module-cached in
@@ -78,7 +78,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 mesh.material = originals!.get(mesh)!;
             } else {
                 const mat = new THREE.MeshStandardMaterial({
-                    color: UI_ACCENT_GREEN,
+                    color: UI_ACCENT_GREEN_HEX,
                     transparent: true,
                     opacity,
                     wireframe,

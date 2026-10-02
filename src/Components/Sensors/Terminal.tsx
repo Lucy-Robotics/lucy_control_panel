@@ -5,17 +5,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from 'antd';
-import { UI_ACCENT_GREEN, UI_BG_BLACK, UI_BORDER_SOFT } from '../../Constants/uiTheme';
+import {
+  fonts,
+} from '../../Constants/theme';
 
-// Simple Lorem Ipsum generator to avoid adding a new dependency
 const simpleLoremIpsum = () => {
-  const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
-  const sentenceLength = Math.floor(Math.random() * 10) + 5;
+  const words = ["telemetry", "packet", "stream", "sensor", "controller", "status", "ack", "latency", "calibrated", "joint", "actuator", "bus", "sync", "frequency", "payload"];
+  const sentenceLength = Math.floor(Math.random() * 8) + 4;
   let sentence = '';
   for (let i = 0; i < sentenceLength; i++) {
     sentence += words[Math.floor(Math.random() * words.length)] + ' ';
   }
-  return sentence.charAt(0).toUpperCase() + sentence.slice(1).trim() + '.';
+  return sentence.trim().toUpperCase();
 };
 
 interface TerminalProps {
@@ -29,7 +30,6 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
   const [isPaused, setIsPaused] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Data source always runs in the background
   useEffect(() => {
     const interval = setInterval(() => {
       setSourceData(prevData => [...prevData, simpleLoremIpsum()].slice(-100));
@@ -38,14 +38,12 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
     return () => clearInterval(interval);
   }, [dataSourceId]);
 
-  // Sync display with source only when not paused
   useEffect(() => {
     if (!isPaused) {
       setDisplayData(sourceData);
     }
   }, [sourceData, isPaused]);
 
-  // Auto-scroll effect on display data change
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
@@ -53,28 +51,78 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
   }, [displayData]);
 
   return (
-    <div className="tui-container">
-      <div style={{ marginBottom: '8px', borderBottom: `1px solid ${UI_BORDER_SOFT}`, paddingBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="tui-text-success" style={{ fontWeight: 'bold' }}>{sourceName}</span>
+    <div
+      className="tui-container"
+      style={{
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          marginBottom: '12px',
+          borderBottom: '1px solid var(--color-secondary)',
+          paddingBottom: '8px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold' }}>&gt;</span>
+          <span style={{ color: 'var(--color-text-primary)', fontFamily: fonts.title, fontWeight: 'bold', fontSize: 13 }}>
+            {sourceName.toUpperCase()}
+          </span>
+          <span style={{ color: 'var(--color-text-secondary)', fontFamily: fonts.mono, fontSize: 11, marginLeft: 4 }}>
+            CONSOLE LOG
+          </span>
+        </div>
         <div>
-          <span className="tui-text-muted" style={{ marginRight: '10px' }}>{isPaused ? '[PAUSED]' : '[ACTIVE]'}</span>
-          <Button size="small" onClick={() => setIsPaused(!isPaused)}>{isPaused ? 'Resume' : 'Pause'}</Button>
+          <span
+            style={{
+              marginRight: '10px',
+              color: isPaused ? 'var(--color-text-secondary)' : 'var(--color-highlight)',
+              fontFamily: fonts.mono,
+              fontSize: 11,
+              fontWeight: 'bold',
+            }}
+          >
+            {isPaused ? '[PAUSED]' : '[STREAMING]'}
+          </span>
+          <Button
+            size="small"
+            onClick={() => setIsPaused(!isPaused)}
+            style={{
+              borderColor: 'var(--color-secondary)',
+              color: 'var(--color-text-primary)',
+              borderRadius: 0,
+            }}
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </Button>
         </div>
       </div>
       <div
         ref={terminalRef}
+        className="chamfer-box-sm"
         style={{
-          height: '300px',
+          height: '280px',
           overflowY: 'auto',
-          padding: '10px 0',
-          fontFamily: 'monospace',
-          backgroundColor: UI_BG_BLACK,
-          color: UI_ACCENT_GREEN,
-        }}>
+          padding: '12px',
+          fontFamily: fonts.mono,
+          lineHeight: 1.6,
+          '--box-bg': 'var(--color-main)',
+        } as React.CSSProperties}
+      >
         {displayData.map((line, index) => (
-          <div key={index} className="tui-text" style={{ color: UI_ACCENT_GREEN, fontSize: '12px' }}>{`> ${line}`}</div>
+          <div key={index} style={{ fontSize: '12px', display: 'flex', gap: 8 }}>
+            <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold', userSelect: 'none' }}>&gt;</span>
+            <span style={{ color: 'var(--color-text-primary)' }}>{line}</span>
+          </div>
         ))}
       </div>
     </div>
   );
 };
+
+export default Terminal;
+

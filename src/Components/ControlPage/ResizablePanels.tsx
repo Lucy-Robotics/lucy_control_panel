@@ -222,8 +222,9 @@ const ResizablePanels = ({
                       background: isEngaged
                         ? UI_ACCENT_GREEN
                         : UI_BORDER_STRONG,
+                      boxShadow: isEngaged ? `0 0 8px ${UI_ACCENT_GREEN}` : 'none',
                       transition:
-                        'background 0.15s ease, width 0.15s ease, height 0.15s ease',
+                        'background 0.15s ease, width 0.15s ease, height 0.15s ease, box-shadow 0.15s ease',
                       pointerEvents: 'none',
                     }}
                   />

@@ -5,30 +5,20 @@
 
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Layout, Typography, Grid } from 'antd';
+import { Layout, Grid } from 'antd';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import {
-  UI_ACCENT_GREEN,
-  UI_ACCENT_TEXT_SHADOW,
-  UI_BG_BLACK,
-  UI_BORDER_MUTED,
-  UI_BORDER_SOFT,
-  UI_ERROR,
-  UI_INPUT_SURFACE,
-  UI_PANEL_BG,
-  UI_PAGE_HEADER_BORDER_BOTTOM,
+  SPACING_SCREEN_BORDER,
+  SPACING_SMALL,
   PAGE_CONTENT_STYLE,
-  UI_TEXT_ON_ACCENT,
-  UI_TEXT_PRIMARY_ON_DARK,
-  UI_TEXT_SECONDARY_MUTED,
-  uiAccentRgba,
-} from '../Constants/uiTheme.ts';
+  fonts,
+} from '../Constants/theme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import { DockProvider } from '../contexts/DockContext.tsx';
+import { TerminalTitle } from './TerminalTitle.tsx';
 
 const { Header, Content } = Layout;
-const { Title } = Typography;
 const { useBreakpoint } = Grid;
 
 interface PageProps {
@@ -53,10 +43,13 @@ export const Page: React.FC<PageProps> = ({
 
   const [headerRef, headerHeight] = useMeasuredHeight<HTMLElement>();
 
+  const screenPadding = isMobile ? SPACING_SMALL : SPACING_SCREEN_BORDER; // 30px screen border desktop, 12px mobile
+
   const defaultContentStyle: React.CSSProperties = {
-    backgroundColor: UI_BG_BLACK,
+    backgroundColor: 'var(--color-main)',
     minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
     ...PAGE_CONTENT_STYLE,
+    padding: screenPadding,
     ...contentStyle,
   };
 
@@ -74,146 +67,6 @@ export const Page: React.FC<PageProps> = ({
           overflow: hidden !important;
         }
         ` : ''}
-
-        .ant-btn,
-        .ant-btn-primary,
-        .ant-btn-default,
-        .ant-switch,
-        .ant-slider,
-        .ant-slider-rail,
-        .ant-slider-track,
-        .ant-slider-handle,
-        .ant-input-number,
-        .ant-card,
-        .ant-alert,
-        .ant-spin-container,
-        .ant-layout-header,
-        .ant-layout-content,
-        .ant-col,
-        .ant-row {
-          border-radius: 0 !important;
-        }
-
-        .ant-btn {
-          transition: all 0.3s ease !important;
-          position: relative !important;
-        }
-
-        .ant-btn-primary {
-          background-color: ${UI_ACCENT_GREEN} !important;
-          border-color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 8px ${uiAccentRgba(0.3)} !important;
-        }
-
-        .ant-btn-primary:hover {
-          background-color: ${UI_ACCENT_GREEN} !important;
-          border-color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 15px ${uiAccentRgba(0.6)} !important;
-          transform: translateY(-1px) !important;
-        }
-
-        .ant-btn-primary:active {
-          transform: translateY(0) !important;
-          box-shadow: 0 0 8px ${uiAccentRgba(0.4)} !important;
-        }
-
-        .ant-btn-default {
-          background-color: transparent !important;
-          border-color: ${UI_BORDER_SOFT} !important;
-          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
-        }
-
-        .ant-btn-default:hover {
-          background-color: ${uiAccentRgba(0.1)} !important;
-          border-color: ${UI_ACCENT_GREEN} !important;
-          color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 12px ${uiAccentRgba(0.3)} !important;
-          transform: translateY(-1px) !important;
-        }
-
-        .ant-btn-default:active {
-          transform: translateY(0) !important;
-        }
-
-        .ant-slider-track {
-          background-color: ${UI_ACCENT_GREEN} !important;
-        }
-
-        .ant-slider-handle {
-          border-color: ${UI_ACCENT_GREEN} !important;
-        }
-
-        .ant-slider-handle:focus {
-          border-color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 0 5px ${uiAccentRgba(0.2)} !important;
-        }
-
-        .ant-input-number {
-          background-color: ${UI_INPUT_SURFACE} !important;
-          border-color: ${UI_BORDER_SOFT} !important;
-          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
-          transition: all 0.3s ease !important;
-        }
-
-        .ant-input-number:hover {
-          border-color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 15px ${uiAccentRgba(0.3)} !important;
-        }
-
-        .ant-input-number:focus-within {
-          border-color: ${UI_ACCENT_GREEN} !important;
-          box-shadow: 0 0 20px ${uiAccentRgba(0.5)} !important;
-        }
-
-        .ant-input-number-input {
-          background-color: transparent !important;
-          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
-        }
-
-        .ant-input-number-handler-wrap {
-          background-color: ${UI_BORDER_MUTED} !important;
-          transition: all 0.3s ease !important;
-        }
-
-        .ant-input-number-handler {
-          border-color: ${UI_BORDER_SOFT} !important;
-          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
-          transition: all 0.2s ease !important;
-        }
-
-        .ant-input-number-handler:hover {
-          color: ${UI_ACCENT_GREEN} !important;
-          background-color: ${uiAccentRgba(0.1)} !import;
-          box-shadow: inset 0 0 10px ${uiAccentRgba(0.2)} !important;
-        }
-
-        input[type="range"] {
-          -webkit-appearance: none;
-          appearance: none;
-          background: ${UI_BORDER_MUTED};
-          cursor: pointer;
-          border-radius: 0;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 16px;
-          width: 16px;
-          background: ${UI_ACCENT_GREEN};
-          cursor: pointer;
-          border: none;
-          border-radius: 0;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-          height: 16px;
-          width: 16px;
-          background: ${UI_ACCENT_GREEN};
-          cursor: pointer;
-          border: none;
-          border-radius: 0;
-        }
 
         @keyframes pulse {
           0% { opacity: 1; }
@@ -236,96 +89,6 @@ export const Page: React.FC<PageProps> = ({
 
         .glitch-effect {
           animation: glitch 0.3s infinite;
-        }
-
-        .tui-title {
-          color: ${UI_ACCENT_GREEN};
-          font-family: monospace;
-          text-shadow: ${UI_ACCENT_TEXT_SHADOW};
-          font-weight: bold;
-        }
-
-        .tui-text {
-          color: ${UI_TEXT_PRIMARY_ON_DARK};
-          font-family: monospace;
-        }
-
-        .tui-text-muted {
-          color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: monospace;
-        }
-
-        .tui-text-danger {
-          color: ${UI_ERROR};
-          font-family: monospace;
-        }
-
-        .tui-text-success {
-          color: ${UI_ACCENT_GREEN};
-          font-family: monospace;
-        }
-
-        .tui-container {
-          background-color: ${UI_INPUT_SURFACE};
-          border: 1px solid ${UI_BORDER_SOFT};
-          padding: 16px;
-        }
-
-        .tui-container-dark {
-          background-color: ${UI_PANEL_BG};
-          border: 2px solid ${UI_BORDER_MUTED};
-          padding: 20px;
-        }
-
-        .tui-toggle {
-          display: inline-flex;
-          border: 1px solid ${UI_BORDER_SOFT};
-          background-color: ${UI_INPUT_SURFACE};
-          font-family: monospace;
-          font-size: 12px;
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .tui-toggle:hover {
-          border-color: ${UI_ACCENT_GREEN};
-          box-shadow: 0 0 15px ${uiAccentRgba(0.3)};
-        }
-
-        .tui-toggle-button {
-          padding: 4px 12px;
-          border: none;
-          background-color: transparent;
-          color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: monospace;
-          font-size: 12px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          position: relative;
-          z-index: 2;
-        }
-
-        .tui-toggle-button:hover {
-          color: ${UI_ACCENT_GREEN};
-          text-shadow: 0 0 8px ${uiAccentRgba(0.6)};
-        }
-
-        .tui-toggle-button.off {
-          background-color: ${UI_ERROR};
-          color: ${UI_TEXT_ON_ACCENT};
-        }
-
-        .tui-toggle-button.on {
-          background-color: ${UI_ACCENT_GREEN};
-          color: ${UI_TEXT_ON_ACCENT};
-          box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
-        }
-
-        .tui-toggle-divider {
-          width: 1px;
-          background-color: ${UI_BORDER_SOFT};
         }
 
         @keyframes robotPulse {
@@ -355,20 +118,6 @@ export const Page: React.FC<PageProps> = ({
           }
         }
 
-        @keyframes dataFlow {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-
-        @keyframes buttonPulse {
-          0%, 100% {
-            box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
-          }
-          50% {
-            box-shadow: 0 0 25px ${uiAccentRgba(0.9)}, 0 0 35px ${uiAccentRgba(0.5)};
-          }
-        }
-
         .robot-status-connected {
           animation: connectionPulse 2s infinite ease-in-out;
         }
@@ -389,16 +138,16 @@ export const Page: React.FC<PageProps> = ({
     `;
 
   return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
+    <Layout style={{ minHeight: '100vh', backgroundColor: 'var(--color-main)' }} className={className}>
       <DockProvider>
         {showHeader && (
           <Header
             ref={headerRef}
             className="lucy-page-header"
             style={{
-              backgroundColor: UI_PANEL_BG,
-              borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-              padding: isMobile ? '8px 12px' : '8px 24px',
+              backgroundColor: 'var(--color-main)',
+              borderBottom: '1px solid var(--color-secondary)',
+              padding: isMobile ? '8px 12px' : '8px 30px',
               height: 'auto',
               lineHeight: 'normal',
               minHeight: isMobile ? 0 : 48,
@@ -419,22 +168,46 @@ export const Page: React.FC<PageProps> = ({
               minHeight: isMobile ? 0 : 32,
             }}>
               {title && (
-                <Title
-                  level={2}
-                  style={{
-                    margin: 0,
-                    color: UI_ACCENT_GREEN,
-                    fontFamily: 'monospace',
-                    textShadow: UI_ACCENT_TEXT_SHADOW,
-                    fontSize: isMobile ? '16px' : '18px',
-                    whiteSpace: isMobile ? 'normal' : 'nowrap',
-                    textAlign: isMobile ? 'center' : 'left',
-                  }}
-                >
-                  ▲ LUCY CONTROL PANEL
-                </Title>
+                <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <img
+                    src="/logo.png"
+                    alt="Lucy"
+                    style={{
+                      height: isMobile ? 22 : 28,
+                      width: 'auto',
+                      objectFit: 'contain',
+                      display: 'block',
+                      userSelect: 'none',
+                    }}
+                  />
+                  <TerminalTitle
+                    title="LUCY"
+                    prefix=""
+                    separator="//"
+                    subtitle="CONTROL PANEL"
+                    level={isMobile ? 3 : 2}
+                    underlineSubtitle={false}
+                    style={{
+                      whiteSpace: 'nowrap',
+                      flexWrap: 'nowrap',
+                      fontFamily: fonts.graphical,
+                      fontWeight: 700,
+                    }}
+                    titleStyle={{
+                      fontFamily: fonts.graphical,
+                      fontWeight: 700,
+                    }}
+                    subtitleStyle={{
+                      fontFamily: fonts.graphical,
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                    }}
+                  />
+                </div>
               )}
-              <div style={{ width: '100%', minWidth: 0 }}><AppHeader /></div>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                <AppHeader />
+              </div>
             </div>
           </Header>
         )}
@@ -450,3 +223,5 @@ export const Page: React.FC<PageProps> = ({
     </Layout>
   );
 };
+
+export default Page;

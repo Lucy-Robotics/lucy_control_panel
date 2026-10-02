@@ -274,7 +274,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         return Math.PI - Math.acos(cosTheta);
     };
 
-    // Feed MediaPipe from the stream <Webcam> already owns.
     useEffect(() => {
         let cancelled = false;
         let frameRequest = 0;

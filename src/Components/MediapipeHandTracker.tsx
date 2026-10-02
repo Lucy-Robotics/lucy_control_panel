@@ -6,7 +6,6 @@
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
 import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
-import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
 import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
@@ -80,6 +79,11 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
     ]
+
+    const videoConstraints = useMemo(
+        () => (width || height ? { width, height } : undefined),
+        [width, height]
+    );
 
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -271,6 +275,11 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     };
 
     useEffect(() => {
+        let cancelled = false;
+        let frameRequest = 0;
+        let lastFrameTime = -1;
+        let pendingSend: Promise<void> = Promise.resolve();
+
         const hands = new Hands({
             locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
@@ -281,29 +290,36 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         });
         hands.onResults(onResults);
 
-        const initCamera = () => {
-            if (!webcamRef.current?.video) { return; }
-            const camera = new Camera(webcamRef.current.video, {
-                onFrame: async () => {
-                    if (!webcamRef.current?.video) { return; }
-                    await hands.send({ image: webcamRef.current.video });
-                },
-                width,
-                height,
+        const pump = () => {
+            if (cancelled) { return; }
+
+            const video = webcamRef.current?.video;
+            const hasNewFrame =
+                video &&
+                video.readyState === 4 &&
+                !video.paused &&
+                video.currentTime !== lastFrameTime;
+
+            if (!hasNewFrame) {
+                frameRequest = requestAnimationFrame(pump);
+                return;
+            }
+
+            lastFrameTime = video.currentTime;
+            pendingSend = hands.send({ image: video }).catch(() => undefined);
+            pendingSend.then(() => {
+                if (!cancelled) { frameRequest = requestAnimationFrame(pump); }
             });
-            camera.start();
         };
 
-        const interval = setInterval(() => {
-            if (webcamRef.current?.video?.readyState === 4) {
-                clearInterval(interval);
-                initCamera();
-            }
-        }, 100);
+        frameRequest = requestAnimationFrame(pump);
 
         return () => {
-            clearInterval(interval);
+            cancelled = true;
+            cancelAnimationFrame(frameRequest);
             handsRef.current = null;
+            // Let any in-flight send() settle before tearing down the WASM module.
+            pendingSend.then(() => hands.close()).catch(() => undefined);
         };
 
     }, []);
@@ -320,7 +336,9 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
             <Webcam
                 ref={webcamRef}
+                audio={false}
                 mirrored={true}
+                videoConstraints={videoConstraints}
                 onUserMedia={(m) => { console.log(m) }}
                 onUserMediaError={(e) => { console.error(e) }}
                 style={{

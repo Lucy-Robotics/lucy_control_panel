@@ -10,7 +10,7 @@ import {
     fontWeights,
 } from '../Constants/theme';
 
-export interface TerminalTitleProps {
+export interface CustomTitleProps {
     /** The main title text */
     title: string;
     /** Optional prefix (defaults to '>') */
@@ -36,7 +36,7 @@ export interface TerminalTitleProps {
 }
 
 /**
- * TerminalTitle Component
+ * CustomTitle Component
  * Enforces the Lucy brand title specifications:
  * - Always prefix titles with '>' in #00ff41 (var(--color-highlight))
  * - Separators are '//' in #00ff41 (var(--color-highlight))
@@ -44,7 +44,7 @@ export interface TerminalTitleProps {
  * - Subtitles: ALL CAPS, underline
  * - Fonts: Orbitron for graphical display, IBM Plex Mono for standard titles
  */
-export const TerminalTitle: React.FC<TerminalTitleProps> = ({
+export const CustomTitle: React.FC<CustomTitleProps> = ({
     title,
     prefix = '>',
     separator = '',
@@ -136,4 +136,4 @@ export const TerminalTitle: React.FC<TerminalTitleProps> = ({
     );
 };
 
-export default TerminalTitle;
+export default CustomTitle;

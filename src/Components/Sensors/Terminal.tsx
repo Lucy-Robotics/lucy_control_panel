@@ -9,40 +9,30 @@ import {
   fonts,
 } from '../../Constants/theme';
 
-const simpleLoremIpsum = () => {
-  const words = ["telemetry", "packet", "stream", "sensor", "controller", "status", "ack", "latency", "calibrated", "joint", "actuator", "bus", "sync", "frequency", "payload"];
-  const sentenceLength = Math.floor(Math.random() * 8) + 4;
-  let sentence = '';
-  for (let i = 0; i < sentenceLength; i++) {
-    sentence += words[Math.floor(Math.random() * words.length)] + ' ';
-  }
-  return sentence.trim().toUpperCase();
-};
-
-interface TerminalProps {
-  dataSourceId: string;
-  sourceName: string;
+export interface TerminalProps {
+  dataSourceId?: string;
+  sourceName?: string;
+  data?: string[];
+  lines?: string[];
+  logs?: string[];
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) => {
-  const [sourceData, setSourceData] = useState<string[]>([]);
+export const Terminal: React.FC<TerminalProps> = ({
+  sourceName = 'Terminal',
+  data,
+  lines,
+  logs,
+}) => {
+  const activeLogs = logs ?? lines ?? data ?? [];
   const [displayData, setDisplayData] = useState<string[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSourceData(prevData => [...prevData, simpleLoremIpsum()].slice(-100));
-    }, Math.random() * 1000 + 500);
-
-    return () => clearInterval(interval);
-  }, [dataSourceId]);
-
-  useEffect(() => {
     if (!isPaused) {
-      setDisplayData(sourceData);
+      setDisplayData(activeLogs);
     }
-  }, [sourceData, isPaused]);
+  }, [activeLogs, isPaused]);
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -86,7 +76,7 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
               fontWeight: 'bold',
             }}
           >
-            {isPaused ? '[PAUSED]' : '[STREAMING]'}
+            {isPaused ? '[PAUSED]' : displayData.length > 0 ? '[STREAMING]' : '[IDLE]'}
           </span>
           <Button
             size="small"
@@ -113,16 +103,21 @@ export const Terminal: React.FC<TerminalProps> = ({ dataSourceId, sourceName }) 
           '--box-bg': 'var(--color-main)',
         } as React.CSSProperties}
       >
-        {displayData.map((line, index) => (
-          <div key={index} style={{ fontSize: '12px', display: 'flex', gap: 8 }}>
-            <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold', userSelect: 'none' }}>&gt;</span>
-            <span style={{ color: 'var(--color-text-primary)' }}>{line}</span>
+        {displayData.length > 0 ? (
+          displayData.map((line, index) => (
+            <div key={index} style={{ fontSize: '12px', display: 'flex', gap: 8 }}>
+              <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold', userSelect: 'none' }}>&gt;</span>
+              <span style={{ color: 'var(--color-text-primary)' }}>{line}</span>
+            </div>
+          ))
+        ) : (
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px', fontStyle: 'italic', padding: '4px 0' }}>
+            No terminal output available.
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
 };
 
 export default Terminal;
-

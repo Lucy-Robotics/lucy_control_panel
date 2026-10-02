@@ -54,7 +54,7 @@ import {
 } from '../Services/storage.service.ts';
 import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
-import { TerminalTitle } from './TerminalTitle';
+import { CustomTitle } from './CustomTitle';
 
 const { Text } = Typography;
 
@@ -342,7 +342,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <section>
-                        <TerminalTitle title="SAVE POSE" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle title="SAVE POSE" level={4} style={{ marginBottom: 12 }} />
                         <Space.Compact style={{ width: '100%' }}>
                             <Input
                                 value={poseName}
@@ -369,7 +369,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <TerminalTitle title="LOAD POSE" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle title="LOAD POSE" level={4} style={{ marginBottom: 12 }} />
                         {poses.length === 0 ? <Empty description="No saved poses yet" /> : (
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                                 <Input.Search
@@ -436,7 +436,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <TerminalTitle title="ANIMATIONS" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle title="ANIMATIONS" level={4} style={{ marginBottom: 12 }} />
                         {poses.length < 2 ? (
                             <Card style={{ backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
                                 <Text style={{ color: UI_TEXT_SUBTLE }}>Save at least two poses to create an animation.</Text>

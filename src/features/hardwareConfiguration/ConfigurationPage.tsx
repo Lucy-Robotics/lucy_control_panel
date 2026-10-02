@@ -9,7 +9,7 @@ import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/i
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
-import { TerminalTitle } from '../../Components/TerminalTitle.tsx';
+import { CustomTitle } from '../../Components/CustomTitle.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../../contexts/HeaderHeightContext.ts';
@@ -254,7 +254,7 @@ const ConfigurationPage = () => {
                     }
                 >
                     <Card
-                        title={<TerminalTitle title="BOARDS" subtitle="READ-ONLY" level={4} />}
+                        title={<CustomTitle title="BOARDS" subtitle="READ-ONLY" level={4} />}
                         size="small"
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
                     >
@@ -262,7 +262,7 @@ const ConfigurationPage = () => {
                     </Card>
 
                     <Card
-                        title={<TerminalTitle title="ACTUATORS" subtitle="CALIBRATION" level={4} />}
+                        title={<CustomTitle title="ACTUATORS" subtitle="CALIBRATION" level={4} />}
                         size="small"
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
                         extra={
@@ -317,7 +317,7 @@ const ConfigurationPage = () => {
                     </Card>
 
                     <Card
-                        title={<TerminalTitle title="FINGER PRESSURE SENSORS" subtitle="PIN MAPPING" level={4} />}
+                        title={<CustomTitle title="FINGER PRESSURE SENSORS" subtitle="PIN MAPPING" level={4} />}
                         size="small"
                         style={UI_CARD_SURFACE_STYLE}
                         extra={

@@ -8,7 +8,7 @@ import { Card, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { JointControl } from './JointControl.tsx';
-import { TerminalTitle } from '../TerminalTitle.tsx';
+import { CustomTitle } from '../CustomTitle.tsx';
 import {
     SECONDARY_COLOR,
     TEXT_PRIMARY,
@@ -71,7 +71,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2,
                 }}
             >
-                <TerminalTitle
+                <CustomTitle
                     title={category.toUpperCase()}
                     subtitle={`${joints.length} JOINTS`}
                     level={4}

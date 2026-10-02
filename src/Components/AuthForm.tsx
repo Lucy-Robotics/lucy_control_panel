@@ -15,7 +15,7 @@ import {
     fonts,
     rgba,
 } from '../Constants/theme.ts';
-import { TerminalTitle } from './TerminalTitle.tsx';
+import { CustomTitle } from './CustomTitle.tsx';
 
 const { Text } = Typography;
 
@@ -89,7 +89,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
             >
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-                        <TerminalTitle
+                        <CustomTitle
                             title="LUCY"
                             separator="//"
                             subtitle="CONTROL PANEL"

@@ -30,7 +30,7 @@ import {
 import { MovableModal } from './MovableModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { ToggleSwitch } from './ToggleSwitch';
-import { TerminalTitle } from './TerminalTitle';
+import { CustomTitle } from './CustomTitle';
 import {
     MAIN_COLOR,
     HIGHLIGHT_COLOR,
@@ -210,7 +210,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                     }}
                 >
                     <div>
-                        <TerminalTitle title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
+                        <CustomTitle title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
                         <Text style={{ color: TEXT_SECONDARY, display: 'block', fontSize: 12, marginTop: 4 }}>
                             Customize colors with intuitive pickers, choose curated presets, or load full CSS themes.
                         </Text>

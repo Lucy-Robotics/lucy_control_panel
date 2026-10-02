@@ -16,7 +16,7 @@ import {
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import { DockProvider } from '../contexts/DockContext.tsx';
-import { TerminalTitle } from './TerminalTitle.tsx';
+import { CustomTitle } from './CustomTitle.tsx';
 
 const { Header, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -180,7 +180,7 @@ export const Page: React.FC<PageProps> = ({
                       userSelect: 'none',
                     }}
                   />
-                  <TerminalTitle
+                  <CustomTitle
                     title="LUCY"
                     prefix=""
                     separator="//"

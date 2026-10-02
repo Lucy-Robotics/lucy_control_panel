@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Divider, Space, Typography } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { MovableModal } from './MovableModal.tsx';
-import { TerminalTitle } from './TerminalTitle.tsx';
+import { CustomTitle } from './CustomTitle.tsx';
 import gettingStartedMarkdown from '../../docs/getting_started.md?raw';
 
 const { Paragraph, Text, Title } = Typography;
@@ -204,7 +204,7 @@ export const GettingStartedModal: React.FC = () => {
                     onWheel={(event) => event.stopPropagation()}
                 >
                     <div style={{ marginBottom: 24 }}>
-                        <TerminalTitle
+                        <CustomTitle
                             title={section.name.toUpperCase()}
                             level={2}
                         />

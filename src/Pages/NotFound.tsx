@@ -17,7 +17,7 @@ import {
     fonts,
 } from '../Constants/theme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import { TerminalTitle } from '../Components/TerminalTitle.tsx';
+import { CustomTitle } from '../Components/CustomTitle.tsx';
 
 const { Text } = Typography;
 
@@ -57,7 +57,7 @@ export const NotFound: React.FC = () => {
                         alignItems: 'center',
                     }}
                 >
-                    <TerminalTitle title="LUCY" subtitle="NAVIGATION" level={5} />
+                    <CustomTitle title="LUCY" subtitle="NAVIGATION" level={5} />
                     <span style={{ color: STATUS_ERROR, fontFamily: fonts.mono, fontWeight: 'bold', fontSize: 12 }}>
                         ERR: 404
                     </span>
@@ -79,7 +79,7 @@ export const NotFound: React.FC = () => {
                     </Text>
 
                     <div style={{ margin: '24px 0 12px' }}>
-                        <TerminalTitle
+                        <CustomTitle
                             title="ROUTE NOT FOUND"
                             subtitle="SYSTEM ERROR"
                             level={2}

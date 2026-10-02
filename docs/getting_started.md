@@ -91,39 +91,14 @@ Using the drop-down menu, you can select every sensors you want to watch.
 
 Lucy Control Panel comes with a built-in theme engine designed to let both casual users and developers personalize the interface.
 
-> Access the theme customizer anytime from **Settings -> Themes & Custom Styling** or the palette icon in the navigation bar.
-
----
-
-### How Themes Work
-
-Lucy is built around a high-contrast **75% - 10% - 15%** visual hierarchy:
-- **75% Dominant Main Surface**: Canvas, panels, windows, and backdrops (`--color-main`).
-- **10% Secondary Framing**: Borders, dividers, and chamfered container edges (`--color-secondary`).
-- **15% Highlight Accent**: Active sliders, brand indicators, toggles, and status cues (`--color-highlight`).
-- **Parchment Typography**: Warm, eye-friendly text (`--color-text-primary`) rather than harsh white.
+> Access the theme customizer anytime from Settings -> Themes & Custom Styling or the palette icon in the navigation bar.
 
 ---
 
 ### Built-in Presets & Quick Colors
 
-- **Presets Tab**: Switch between curated themes like *Obsidian Green*, *Deep Matrix*, *Neon Cyber*, and *Void Amber* with a single click.
+- **Presets Tab**: Switch between curated themes like Obsidian Green, Deep Matrix, Neon Cyber, and Void Amber with a single click.
 - **Quick Colors Tab**: For non-technical users, simple color pickers allow you to instantly tweak the background, borders, highlight accent, and text with a real-time live preview.
-
----
-
-### Advanced: Creating Custom CSS Themes
-
-For technical users and developers who want total control over the UI:
-
-- **Theme Template**: In the **CSS Theme** tab, click **Download Theme Template (.css)** to get an annotated stylesheet containing every token and class name.
-- **Root Variables Override**: Create a standard `.css` file and override `:root` variables:
-  - `--color-main`: Primary surface color.
-  - `--color-secondary`: Framing borders and dividers.
-  - `--color-highlight`: Active cues and brand elements.
-  - `--color-text-primary`: Primary text color.
-  - `--chamfer-md`: Corner chamfer cut size.
-- **Load Anywhere**: Drop your `.css` file directly into the upload area or enter a direct GitHub Raw / CDN URL. Your theme is saved locally and persists across browser refreshes!
 
 <-- Configuration -->
 

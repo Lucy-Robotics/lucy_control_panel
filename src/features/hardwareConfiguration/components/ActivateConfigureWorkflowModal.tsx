@@ -424,7 +424,7 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
                         {diff.actuatorsModified.map((a) => (
                             <div key={`a~${a.actuatorId}`}>
                                 <Text type="warning">~ actuator {a.label}</Text>
-                                <span style={{ color: '#999' }}>
+                                <span style={{ color: 'var(--color-text-secondary)' }}>
                                     {' '}
                                     {a.changes
                                         .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)

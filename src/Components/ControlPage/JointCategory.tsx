@@ -4,21 +4,15 @@
  */
 
 import React, { useCallback } from 'react';
-import { Card, Typography, Space, Button, Badge } from 'antd';
+import { Card, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { JointControl } from './JointControl.tsx';
+import { TerminalTitle } from '../TerminalTitle.tsx';
 import {
-    UI_ACCENT_GREEN,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_COLOR_TRANSPARENT,
-    UI_PANEL_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-} from '../../Constants/uiTheme.ts';
-
-const { Title } = Typography;
+    SECONDARY_COLOR,
+    TEXT_PRIMARY,
+} from '../../Constants/theme.ts';
 
 interface JointCategoryProps {
     category: string;
@@ -49,23 +43,22 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
     return (
         <Card
+            className="joint-category-card"
             style={{
-                backgroundColor: UI_PANEL_BG,
-                borderColor: UI_BORDER_MUTED,
-                borderLeft: `2px solid ${UI_ACCENT_GREEN}`,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'relative'
             }}
-            bodyStyle={{
-                padding: 16,
-                flex: 1,
-                minHeight: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative'
+            styles={{
+                body: {
+                    padding: 16,
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                }
             }}
         >
             <div
@@ -75,32 +68,14 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     alignItems: 'center',
                     marginBottom: 12,
                     position: 'relative',
-                    zIndex: 2
+                    zIndex: 2,
                 }}
             >
-                <Space>
-                    <Title
-                        level={5}
-                        style={{
-                            margin: 0,
-                            color: UI_ACCENT_GREEN,
-                            textTransform: 'uppercase',
-                            letterSpacing: '1px',
-                            fontSize: '14px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        {category}
-                    </Title>
-                    <Badge
-                        count={joints.length}
-                        style={{
-                            backgroundColor: UI_ACCENT_GREEN,
-                            color: UI_TEXT_ON_ACCENT,
-                            fontWeight: 'bold'
-                        }}
-                    />
-                </Space>
+                <TerminalTitle
+                    title={category.toUpperCase()}
+                    subtitle={`${joints.length} JOINTS`}
+                    level={4}
+                />
 
                 <Button
                     size="small"
@@ -111,9 +86,9 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         handleResetCategory();
                     }}
                     style={{
-                        backgroundColor: UI_COLOR_TRANSPARENT,
-                        borderColor: UI_BORDER_SOFT,
-                        color: UI_TEXT_PRIMARY_ON_DARK
+                        backgroundColor: 'transparent',
+                        borderColor: SECONDARY_COLOR,
+                        color: TEXT_PRIMARY,
                     }}
                     title={`Reset all ${category} joints to their rest value`}
                 >
@@ -121,15 +96,19 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 </Button>
             </div>
 
-            <div style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                position: 'relative',
-                zIndex: 2
-            }}>
-                <Space direction="vertical" style={{ width: '100%', position: 'relative' }} size="small">
+            <div
+                className="joint-category-scroll"
+                style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    position: 'relative',
+                    zIndex: 2,
+                    paddingRight: 10,
+                }}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                     {joints.map((joint) => (
                         <JointControl
                             key={joint.name}
@@ -140,8 +119,10 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                             disabled={disabled}
                         />
                     ))}
-                </Space>
+                </div>
             </div>
         </Card>
     );
 });
+
+export default JointCategory;

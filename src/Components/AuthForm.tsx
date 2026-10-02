@@ -8,23 +8,16 @@ import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import CryptoJS from 'crypto-js';
 import {
-    UI_ACCENT_GREEN,
-    UI_ACCENT_TEXT_SHADOW,
-    UI_AUTH_ALERT_SURFACE,
-    UI_BORDER_DIM,
-    UI_BORDER_MUTED,
-    UI_CHROME_SURFACE,
-    UI_ERROR,
-    UI_GRADIENT_AUTH_PAGE,
-    UI_PANEL_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
-    UI_TEXT_SUBTLE,
-    uiAccentRgba,
-} from '../Constants/uiTheme.ts';
+    MAIN_COLOR,
+    SECONDARY_COLOR,
+    TEXT_SECONDARY,
+    STATUS_ERROR,
+    fonts,
+    rgba,
+} from '../Constants/theme.ts';
+import { TerminalTitle } from './TerminalTitle.tsx';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface AuthFormProps {
     onLogin: (username: string) => void;
@@ -80,33 +73,38 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '100vh',
-            background: UI_GRADIENT_AUTH_PAGE,
-            padding: '20px'
+            background: MAIN_COLOR,
+            padding: '30px'
         }}>
             <Card
                 style={{
                     width: '100%',
-                    maxWidth: 400,
-                    backgroundColor: UI_PANEL_BG,
-                    border: `1px solid ${UI_BORDER_MUTED}`,
-                    borderRadius: 12,
-                    boxShadow: `0 8px 32px ${uiAccentRgba(0.1)}`
+                    maxWidth: 440,
+                    backgroundColor: MAIN_COLOR,
+                    border: `1px solid ${SECONDARY_COLOR}`,
+                    borderRadius: 0,
+                    boxShadow: `0 16px 48px rgba(0, 0, 0, 0.8), 0 0 1px ${SECONDARY_COLOR}`
                 }}
-                bodyStyle={{ padding: '40px 32px' }}
+                styles={{ body: { padding: '40px 32px' } }}
             >
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <Title
-                        level={2}
-                        style={{
-                            color: UI_ACCENT_GREEN,
-                            fontFamily: 'monospace',
-                            textShadow: UI_ACCENT_TEXT_SHADOW,
-                            margin: 0
-                        }}
-                    >
-                        ▲ LUCY CONTROL PANEL
-                    </Title>
-                    <Text style={{ color: UI_TEXT_SUBTLE, fontFamily: 'monospace', fontSize: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+                        <TerminalTitle
+                            title="LUCY"
+                            separator="//"
+                            subtitle="CONTROL PANEL"
+                            level="graphical"
+                            align="center"
+                            style={{ fontSize: '28px' }}
+                        />
+                    </div>
+                    <Text style={{
+                        color: TEXT_SECONDARY,
+                        fontFamily: fonts.mono,
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                    }}>
                         Authentication Required
                     </Text>
                 </div>
@@ -115,7 +113,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     <Alert
                         message={error}
                         type="error"
-                        style={{ marginBottom: 24, backgroundColor: UI_AUTH_ALERT_SURFACE, borderColor: UI_ERROR }}
+                        style={{
+                            marginBottom: 24,
+                            backgroundColor: rgba(STATUS_ERROR, 0.15),
+                            borderColor: STATUS_ERROR,
+                            borderRadius: 0,
+                        }}
                     />
                 )}
 
@@ -134,13 +137,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         ]}
                     >
                         <Input
-                            prefix={<UserOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                            prefix={<UserOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Username"
                             style={{
-                                backgroundColor: UI_CHROME_SURFACE,
-                                borderColor: UI_BORDER_MUTED,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                fontFamily: 'monospace'
+                                backgroundColor: 'var(--color-main)',
+                                borderColor: 'var(--color-secondary)',
+                                color: 'var(--color-text-primary)',
+                                fontFamily: fonts.mono,
+                                borderRadius: 0,
                             }}
                         />
                     </Form.Item>
@@ -153,13 +157,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         ]}
                     >
                         <Input.Password
-                            prefix={<LockOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                            prefix={<LockOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Password"
                             style={{
-                                backgroundColor: UI_CHROME_SURFACE,
-                                borderColor: UI_BORDER_MUTED,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                fontFamily: 'monospace'
+                                backgroundColor: 'var(--color-main)',
+                                borderColor: 'var(--color-secondary)',
+                                color: 'var(--color-text-primary)',
+                                fontFamily: fonts.mono,
+                                borderRadius: 0,
                             }}
                         />
                     </Form.Item>
@@ -172,22 +177,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                             block
                             style={{
                                 height: 48,
-                                backgroundColor: UI_ACCENT_GREEN,
-                                borderColor: UI_ACCENT_GREEN,
-                                color: UI_TEXT_ON_ACCENT,
-                                fontFamily: 'monospace',
+                                backgroundColor: 'var(--color-highlight)',
+                                borderColor: 'var(--color-highlight)',
+                                color: 'var(--color-text-on-highlight)',
+                                fontFamily: fonts.mono,
                                 fontSize: 16,
                                 fontWeight: 'bold',
-                                boxShadow: `0 0 20px ${uiAccentRgba(0.3)}`,
-                                transition: 'all 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.boxShadow = `0 0 30px ${uiAccentRgba(0.5)}`;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.boxShadow = `0 0 20px ${uiAccentRgba(0.3)}`;
-                                e.currentTarget.style.transform = 'translateY(0)';
+                                borderRadius: 0,
+                                boxShadow: 'none',
+                                transition: 'all 0.25s ease'
                             }}
                         >
                             {loading ? 'AUTHENTICATING...' : 'LOGIN'}
@@ -198,16 +196,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                 <div style={{
                     textAlign: 'center',
                     marginTop: 24,
-                    padding: '16px',
-                    backgroundColor: UI_CHROME_SURFACE,
-                    borderRadius: 8,
-                    border: `1px solid ${UI_BORDER_DIM}`
+                    padding: '12px',
+                    backgroundColor: 'var(--color-main)',
+                    border: '1px solid var(--color-secondary)',
+                    borderRadius: 0,
                 }}>
-                    <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontFamily: 'monospace', fontSize: 12 }}>
-                        Secure access to Lucy's control systems
+                    <Text style={{ color: TEXT_SECONDARY, fontFamily: fonts.mono, fontSize: 11, letterSpacing: '0.5px' }}>
+                        Secure access to Lucy robot control system
                     </Text>
                 </div>
             </Card>
         </div>
     );
 };
+
+export default AuthForm;

@@ -15,7 +15,9 @@ import {
 import {
     InfoCircleOutlined,
     SettingOutlined,
+    BgColorsOutlined,
 } from '@ant-design/icons';
+import { ThemeModal } from './ThemeModal';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { getOriginRosUrl } from '../Services/ros/ros.service';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
@@ -81,6 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [showDegrees, setShowDegrees] = useState(
         isShowDegreesEnabled
     );
+    const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
     const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
 
     useEffect(() => {
@@ -335,6 +338,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 fontWeight: 'bold',
                             }}
                         >
+                            Visual Themes & Custom CSS
+                        </Text>
+                    }
+                    tooltip={{
+                        title: 'Select preset themes, load custom CSS stylesheets, or write live Quick CSS overrides.',
+                        icon: <InfoCircleOutlined />,
+                        zIndex: 1100,
+                    }}
+                >
+                    <Button
+                        icon={<BgColorsOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                        onClick={() => setIsThemeModalOpen(true)}
+                        style={{
+                            width: '100%',
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Configure Themes & Custom CSS
+                    </Button>
+                </Form.Item>
+
+                <Form.Item
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                fontWeight: 'bold',
+                            }}
+                        >
                             Diagnostics
                         </Text>
                     }
@@ -349,6 +383,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <PipelineDiagnostics pipeline="command" title="Command" />
                 </Form.Item>
             </Form>
+
+            <ThemeModal
+                visible={isThemeModalOpen}
+                onClose={() => setIsThemeModalOpen(false)}
+            />
         </MovableModal>
     );
 };

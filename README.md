@@ -157,7 +157,7 @@ VITE_ENABLE_LOGS=true
 
 ## 📖 Documentation
 
-For more details on creation processes, troubleshooting, and other guidance, visit the [Lucy Robotics documentation](https://docs.lucy-robotics.fr).
+For more details on creation processes, troubleshooting, and other guidance, visit the [Lucy Robotics documentation](https://docs.lucy-robotics.com).
 
 ---
 
@@ -167,7 +167,7 @@ We value the participation of each member of our community and are committed to 
 
 By participating in this project, you agree to uphold this code in all your interactions, both online and offline. Let's work together to maintain a welcoming and inclusive community for everyone.
 
-If you encounter any issues or have questions regarding the Code of Conduct, please contact us at [contact@lucy-robotics.fr](mailto:contact@lucy-robotics.fr).
+If you encounter any issues or have questions regarding the Code of Conduct, please contact us at [contact@lucy-robotics.com](mailto:contact@lucy-robotics.com).
 
 Thank you for being a part of our community!
 
@@ -210,7 +210,7 @@ Parts of this project that are derived from InMoov files (including Blender mode
 
 ## 📬 Contact
 
-- 📧 Email: [contact@lucy-robotics.fr](mailto:contact@lucy-robotics.fr)<br>
+- 📧 Email: [contact@lucy-robotics.com](mailto:contact@lucy-robotics.com)<br>
 - 🌍 GitHub Organization: [Lucy Robotics](https://github.com/lucy-robotics)<br>
 
 ---

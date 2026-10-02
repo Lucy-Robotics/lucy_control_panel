@@ -76,9 +76,6 @@ import {
     UI_BORDER_MUTED,
     UI_BORDER_DIM,
     UI_GRADIENT_MODAL_HEADER,
-    UI_MODAL_SURFACE,
-    UI_SHADOW_ELEVATED,
-    UI_BG_BLACK,
     PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
@@ -731,7 +728,7 @@ export const RobotControlPanel: React.FC = () => {
     const dropdownOverlayStyle = {
         backgroundColor: UI_PANEL_BG,
         border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: 4,
+        borderRadius: 0,
     };
 
     return (
@@ -789,10 +786,10 @@ export const RobotControlPanel: React.FC = () => {
                             position: 'sticky',
                             top: headerHeight,
                             zIndex: 5,
-                            backgroundColor: UI_BG_BLACK,
-                            borderBottom: `1px solid ${UI_BORDER_MUTED}`,
-                            margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 12px`,
-                            padding: PAGE_CONTENT_STYLE.padding,
+                            backgroundColor: 'var(--color-main)',
+                            borderBottom: '1px solid var(--color-secondary)',
+                            margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 8px`,
+                            padding: isMobile ? '6px 12px' : '6px 30px',
                             flexShrink: 0,
                         }}
                     >
@@ -929,18 +926,15 @@ export const RobotControlPanel: React.FC = () => {
 
                     {isMobile && isWebcamActive && (
                         <div
+                            className="chamfer-box"
                             style={{
                                 position: 'relative',
                                 width: '100%',
                                 height: '33.333vh',
                                 marginBottom: 12,
-                                backgroundColor: UI_MODAL_SURFACE,
-                                border: `1px solid ${UI_BORDER_MUTED}`,
-                                borderRadius: 8,
-                                boxShadow: UI_SHADOW_ELEVATED,
-                                overflow: 'hidden',
                                 flexShrink: 0,
-                            }}
+                                '--chamfer': '12px',
+                            } as React.CSSProperties}
                         >
                             <div
                                 style={{
@@ -975,7 +969,7 @@ export const RobotControlPanel: React.FC = () => {
                                         position: 'sticky',
                                         top: headerHeight + subHeaderHeight,
                                         zIndex: 4,
-                                        backgroundColor: UI_BG_BLACK,
+                                        backgroundColor: 'var(--color-main)',
                                         height: '34vh',
                                         minHeight: 204,
                                         marginBottom: 12,

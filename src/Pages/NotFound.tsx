@@ -8,22 +8,18 @@ import { Button, Card, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-    UI_ACCENT_GREEN,
-    UI_ACCENT_TEXT_SHADOW,
-    UI_BG_BLACK,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_COLOR_TRANSPARENT,
-    UI_ERROR,
-    UI_INPUT_SURFACE,
-    UI_PANEL_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SUBTLE,
-} from '../Constants/uiTheme.ts';
+    MAIN_COLOR,
+    MAIN_DEEP,
+    SECONDARY_COLOR,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    STATUS_ERROR,
+    fonts,
+} from '../Constants/theme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import { TerminalTitle } from '../Components/TerminalTitle.tsx';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 export const NotFound: React.FC = () => {
     const navigate = useNavigate();
@@ -32,105 +28,106 @@ export const NotFound: React.FC = () => {
     return (
         <main
             style={{
-                minHeight: `calc(100dvh - ${headerHeight}px - 24px)`,
+                minHeight: `calc(100dvh - ${headerHeight}px - 60px)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '24px 0',
+                padding: '30px',
                 boxSizing: 'border-box',
             }}
         >
             <Card
                 bordered
                 style={{
-                    width: 'min(100%, 560px)',
-                    background: UI_PANEL_BG,
-                    borderColor: UI_BORDER_MUTED,
-                    boxShadow: `0 0 0 1px ${UI_BG_BLACK}, 0 12px 40px rgba(0, 0, 0, 0.45)`,
+                    width: 'min(100%, 580px)',
+                    background: MAIN_COLOR,
+                    borderColor: SECONDARY_COLOR,
+                    borderRadius: 0,
+                    boxShadow: `0 16px 48px rgba(0, 0, 0, 0.8), 0 0 1px ${SECONDARY_COLOR}`,
                 }}
                 styles={{ body: { padding: 0 } }}
             >
                 <div
                     style={{
-                        padding: '10px 16px',
-                        borderBottom: `1px solid ${UI_BORDER_MUTED}`,
-                        background: UI_INPUT_SURFACE,
-                        color: UI_TEXT_SUBTLE,
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        letterSpacing: '0.08em',
+                        padding: '12px 20px',
+                        borderBottom: `1px solid ${SECONDARY_COLOR}`,
+                        background: MAIN_DEEP,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                     }}
                 >
-                    <span style={{ color: UI_ACCENT_GREEN }}>LUCY</span>
-                    {' / NAVIGATION'}
-                    <span style={{ float: 'right', color: UI_ERROR }}>404</span>
+                    <TerminalTitle title="LUCY" subtitle="NAVIGATION" level={5} />
+                    <span style={{ color: STATUS_ERROR, fontFamily: fonts.mono, fontWeight: 'bold', fontSize: 12 }}>
+                        ERR: 404
+                    </span>
                 </div>
 
-                <div style={{ padding: 'clamp(28px, 7vw, 52px)' }}>
+                <div style={{ padding: 'clamp(28px, 6vw, 48px)' }}>
                     <Text
                         style={{
                             display: 'block',
-                            color: UI_ACCENT_GREEN,
-                            fontFamily: 'monospace',
-                            fontSize: 'clamp(72px, 18vw, 132px)',
+                            color: 'var(--color-highlight)',
+                            fontFamily: fonts.graphical,
+                            fontSize: 'clamp(64px, 16vw, 96px)',
                             fontWeight: 700,
                             lineHeight: 0.9,
-                            letterSpacing: '-0.08em',
-                            textShadow: UI_ACCENT_TEXT_SHADOW,
+                            letterSpacing: '2px',
                         }}
                     >
                         404
                     </Text>
 
-                    <Title
-                        level={2}
-                        style={{
-                            margin: '28px 0 8px',
-                            color: UI_TEXT_PRIMARY_ON_DARK,
-                            fontFamily: 'monospace',
-                            fontSize: 'clamp(20px, 4vw, 28px)',
-                        }}
-                    >
-                        Route not found
-                    </Title>
-                    <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 14 }}>
-                        Lucy could not locate the requested control panel route.
+                    <div style={{ margin: '24px 0 12px' }}>
+                        <TerminalTitle
+                            title="ROUTE NOT FOUND"
+                            subtitle="SYSTEM ERROR"
+                            level={2}
+                        />
+                    </div>
+
+                    <Text style={{ color: TEXT_SECONDARY, fontSize: 14, fontFamily: fonts.content, display: 'block' }}>
+                        Lucy control system could not locate the requested interface route.
                     </Text>
 
-                    <Space wrap size="middle" style={{ marginTop: 30 }}>
+                    <Space wrap size="middle" style={{ marginTop: 32 }}>
                         <Button
                             type="primary"
                             icon={<HomeOutlined />}
                             onClick={() => navigate('/')}
                             style={{
-                                background: UI_ACCENT_GREEN,
-                                borderColor: UI_ACCENT_GREEN,
-                                color: UI_TEXT_ON_ACCENT,
+                                background: 'var(--color-highlight)',
+                                borderColor: 'var(--color-highlight)',
+                                color: 'var(--color-text-on-highlight)',
+                                fontWeight: 'bold',
+                                borderRadius: 0,
                             }}
                         >
-                            Return home
+                            RETURN HOME
                         </Button>
                         <Button
                             icon={<ArrowLeftOutlined />}
                             onClick={() => navigate(-1)}
                             style={{
-                                background: UI_COLOR_TRANSPARENT,
-                                borderColor: UI_BORDER_SOFT,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                background: 'transparent',
+                                borderColor: SECONDARY_COLOR,
+                                color: TEXT_PRIMARY,
+                                borderRadius: 0,
                             }}
                         >
-                            Go back
+                            GO BACK
                         </Button>
                         <Button
                             icon={<ReloadOutlined />}
                             onClick={() => window.location.reload()}
                             style={{
-                                background: UI_COLOR_TRANSPARENT,
-                                borderColor: UI_BORDER_SOFT,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                background: 'transparent',
+                                borderColor: SECONDARY_COLOR,
+                                color: TEXT_PRIMARY,
+                                borderRadius: 0,
                             }}
                         >
-                            Retry
+                            RELOAD
                         </Button>
                     </Space>
                 </div>
@@ -138,3 +135,5 @@ export const NotFound: React.FC = () => {
         </main>
     );
 };
+
+export default NotFound;

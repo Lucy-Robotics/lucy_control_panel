@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -221,52 +221,52 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                 </div>
 
                 {!activateModalSimulationOnly ? (
-                <>
-                <div>
-                    <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
-                        BOARDS
-                        {pipelineBoardOptions.length > 0 ? (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {' '}
-                                — none selected → ACTIVATE ONLY (no build / flash)
+                    <>
+                        <div>
+                            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
+                                BOARDS
+                                {pipelineBoardOptions.length > 0 ? (
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        {' '}
+                                        — none selected → ACTIVATE ONLY (no build / flash)
+                                    </Text>
+                                ) : null}
                             </Text>
-                        ) : null}
-                    </Text>
-                    {pipelineBoardOptions.length === 0 ? (
-                        <Text type="secondary">No boards in the loaded YAML — system mapping applies.</Text>
-                    ) : (
-                        <Checkbox.Group
-                            className="hardware-config-ant-checkbox-group"
-                            options={pipelineBoardOptions}
-                            value={activateModalBoards}
-                            onChange={(vals) => onActivateModalBoardsChange(vals.map(String))}
-                            disabled={workflowRunning}
-                        />
-                    )}
-                </div>
-                <div>
-                    <Switch
-                        className="hardware-config-ant-switch"
-                        checked={activateModalActivateOnly}
-                        onChange={onActivateModalActivateOnlyChange}
-                        disabled={workflowRunning}
-                    />
-                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
-                </div>
-                <div>
-                    <Switch
-                        className="hardware-config-ant-switch"
-                        checked={activateModalBuildOnly}
-                        onChange={onActivateModalBuildOnlyChange}
-                        disabled={workflowRunning}
-                    />
-                    <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
-                </div>
-                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                    ros2_control and controllers are regenerated before firmware build (same as simulation,
-                    plus BUILD / FLASH when selected).
-                </Text>
-                </>
+                            {pipelineBoardOptions.length === 0 ? (
+                                <Text type="secondary">No boards in the loaded YAML — system mapping applies.</Text>
+                            ) : (
+                                <Checkbox.Group
+                                    className="hardware-config-ant-checkbox-group"
+                                    options={pipelineBoardOptions}
+                                    value={activateModalBoards}
+                                    onChange={(vals) => onActivateModalBoardsChange(vals.map(String))}
+                                    disabled={workflowRunning}
+                                />
+                            )}
+                        </div>
+                        <div>
+                            <Switch
+                                className="hardware-config-ant-switch"
+                                checked={activateModalActivateOnly}
+                                onChange={onActivateModalActivateOnlyChange}
+                                disabled={workflowRunning}
+                            />
+                            <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
+                        </div>
+                        <div>
+                            <Switch
+                                className="hardware-config-ant-switch"
+                                checked={activateModalBuildOnly}
+                                onChange={onActivateModalBuildOnlyChange}
+                                disabled={workflowRunning}
+                            />
+                            <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
+                        </div>
+                        <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                            ros2_control and controllers are regenerated before firmware build (same as simulation,
+                            plus BUILD / FLASH when selected).
+                        </Text>
+                    </>
                 ) : null}
 
                 <Card size="small" style={{ ...UI_CARD_SURFACE_STYLE }}>
@@ -310,38 +310,38 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                             .map((id) => workflowSteps.find((s) => s.id === id))
                             .filter((s): s is NonNullable<typeof s> => s != null)
                             .map((s) => (
-                            <Card
-                                key={s.id}
-                                size="small"
-                                style={{
-                                    ...UI_CARD_SURFACE_STYLE,
-                                    borderColor: s.status === 'running' ? UI_ACCENT_GREEN : UI_BORDER_MUTED,
-                                    opacity: s.status === 'pending' ? 0.75 : 1,
-                                }}
-                            >
-                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                    <Space size={6}>
-                                        {stepIcon(s.status)}
-                                        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 12 }}>
-                                            {s.title}
-                                        </Text>
+                                <Card
+                                    key={s.id}
+                                    size="small"
+                                    style={{
+                                        ...UI_CARD_SURFACE_STYLE,
+                                        borderColor: s.status === 'running' ? UI_ACCENT_GREEN : UI_BORDER_MUTED,
+                                        opacity: s.status === 'pending' ? 0.75 : 1,
+                                    }}
+                                >
+                                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                        <Space size={6}>
+                                            {stepIcon(s.status)}
+                                            <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 12 }}>
+                                                {s.title}
+                                            </Text>
+                                        </Space>
+                                        {s.status === 'running' ? (
+                                            <Progress
+                                                percent={Math.round(s.fraction * 100)}
+                                                size="small"
+                                                showInfo={false}
+                                                strokeColor={UI_WARNING}
+                                            />
+                                        ) : null}
+                                        {s.detail ? (
+                                            <Text type="secondary" style={{ fontSize: 10, lineHeight: 1.3 }}>
+                                                {s.detail}
+                                            </Text>
+                                        ) : null}
                                     </Space>
-                                    {s.status === 'running' ? (
-                                        <Progress
-                                            percent={Math.round(s.fraction * 100)}
-                                            size="small"
-                                            showInfo={false}
-                                            strokeColor={UI_WARNING}
-                                        />
-                                    ) : null}
-                                    {s.detail ? (
-                                        <Text type="secondary" style={{ fontSize: 10, lineHeight: 1.3 }}>
-                                            {s.detail}
-                                        </Text>
-                                    ) : null}
-                                </Space>
-                            </Card>
-                        ))}
+                                </Card>
+                            ))}
                     </div>
                     {workflowDetailLine ? (
                         <Text type="secondary" style={{ display: 'block', marginTop: 10, fontSize: 12 }}>
@@ -424,7 +424,7 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
                         {diff.actuatorsModified.map((a) => (
                             <div key={`a~${a.actuatorId}`}>
                                 <Text type="warning">~ actuator {a.label}</Text>
-                                <span style={{ color: '#999' }}>
+                                <span style={{ color: 'var(--color-text-secondary)' }}>
                                     {' '}
                                     {a.changes
                                         .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)

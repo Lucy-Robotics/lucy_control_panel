@@ -64,7 +64,7 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 ```sh
 # 1. Clone the repository
-git clone https://github.com/sentience-robotics/lucy_control_panel.git
+git clone https://github.com/lucy-robotics/lucy_control_panel.git
 cd lucy_control_panel
 
 # 2. Switch to the required Node version (requires nvm)
@@ -157,7 +157,7 @@ VITE_ENABLE_LOGS=true
 
 ## 📖 Documentation
 
-For more details on creation processes, troubleshooting, and other guidance, visit the [Sentience Robotics documentation](https://docs.sentience-robotics.fr).
+For more details on creation processes, troubleshooting, and other guidance, visit the [Lucy Robotics documentation](https://docs.lucy-robotics.com).
 
 ---
 
@@ -167,7 +167,7 @@ We value the participation of each member of our community and are committed to 
 
 By participating in this project, you agree to uphold this code in all your interactions, both online and offline. Let's work together to maintain a welcoming and inclusive community for everyone.
 
-If you encounter any issues or have questions regarding the Code of Conduct, please contact us at [contact@sentience-robotics.fr](mailto:contact@sentience-robotics.fr).
+If you encounter any issues or have questions regarding the Code of Conduct, please contact us at [contact@lucy-robotics.com](mailto:contact@lucy-robotics.com).
 
 Thank you for being a part of our community!
 
@@ -210,8 +210,8 @@ Parts of this project that are derived from InMoov files (including Blender mode
 
 ## 📬 Contact
 
-- 📧 Email: [contact@sentience-robotics.fr](mailto:contact@sentience-robotics.fr)<br>
-- 🌍 GitHub Organization: [Sentience Robotics](https://github.com/sentience-robotics)<br>
+- 📧 Email: [contact@lucy-robotics.com](mailto:contact@lucy-robotics.com)<br>
+- 🌍 GitHub Organization: [Lucy Robotics](https://github.com/lucy-robotics)<br>
 
 ---
 

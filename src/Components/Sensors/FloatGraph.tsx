@@ -1,12 +1,14 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import React, { useRef } from 'react';
 import { Button } from 'antd';
 import type { SensorSource } from '../../Constants/rosConfig';
-import { UI_ACCENT_GREEN, UI_BG_BLACK, UI_BORDER_SOFT } from '../../Constants/uiTheme';
+import {
+    fonts,
+} from '../../Constants/theme';
 import { useSensorStream } from '../../hooks/useSensorStream';
 
 interface FloatGraphProps {
@@ -44,9 +46,9 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
     const renderGraph = () => {
         const width = graphRef.current?.clientWidth || 300;
         const height = 280;
-        const paddingLeft = 36;
+        const paddingLeft = 40;
         const paddingRight = 88;
-        const paddingY = 20;
+        const paddingY = 24;
 
         const now = Date.now();
         const minTime = now - 60_000;
@@ -55,12 +57,12 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
         const mapX = (time: number) =>
             paddingLeft +
             ((time - minTime) / Math.max(maxTime - minTime, 1)) *
-                (width - paddingLeft - paddingRight);
+            (width - paddingLeft - paddingRight);
         const mapY = (val: number) =>
             height -
             paddingY -
             ((val - minValue) / Math.max(maxValue - minValue, 1)) *
-                (height - paddingY * 2);
+            (height - paddingY * 2);
 
         const midValue = (minValue + maxValue) / 2;
         const latest = displaySamples[displaySamples.length - 1];
@@ -68,12 +70,12 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
         const pathData =
             displaySamples.length >= 2
                 ? displaySamples
-                      .map((sample, index) => {
-                          const x = mapX(sample.time);
-                          const y = mapY(sample.value);
-                          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                      })
-                      .join(' ')
+                    .map((sample, index) => {
+                        const x = mapX(sample.time);
+                        const y = mapY(sample.value);
+                        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+                    })
+                    .join(' ')
                 : '';
 
         return (
@@ -81,18 +83,18 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                 <text
                     x={6}
                     y={paddingY + 4}
-                    fill={UI_ACCENT_GREEN}
-                    fontSize="10"
-                    fontFamily="monospace"
+                    fill="var(--color-highlight)"
+                    fontSize="11"
+                    fontFamily={fonts.mono}
                 >
                     {maxValue.toFixed(1)}
                 </text>
                 <text
                     x={6}
                     y={height - paddingY + 4}
-                    fill={UI_ACCENT_GREEN}
-                    fontSize="10"
-                    fontFamily="monospace"
+                    fill="var(--color-highlight)"
+                    fontSize="11"
+                    fontFamily={fonts.mono}
                 >
                     {minValue.toFixed(1)}
                 </text>
@@ -101,21 +103,26 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                     y1={mapY(midValue)}
                     x2={width - paddingRight}
                     y2={mapY(midValue)}
-                    stroke={UI_BORDER_SOFT}
+                    stroke="var(--color-secondary)"
                     strokeDasharray="4"
                 />
                 <text
                     x={6}
                     y={mapY(midValue) + 4}
-                    fill={UI_BORDER_SOFT}
-                    fontSize="10"
-                    fontFamily="monospace"
+                    fill="var(--color-secondary)"
+                    fontSize="11"
+                    fontFamily={fonts.mono}
                 >
                     {midValue.toFixed(1)}
                 </text>
 
                 {pathData ? (
-                    <path d={pathData} fill="none" stroke={UI_ACCENT_GREEN} strokeWidth="2" />
+                    <path
+                        d={pathData}
+                        fill="none"
+                        stroke="var(--color-highlight)"
+                        strokeWidth="2"
+                    />
                 ) : null}
 
                 {latest ? (
@@ -124,14 +131,14 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                             cx={mapX(latest.time)}
                             cy={mapY(latest.value)}
                             r="4"
-                            fill={UI_ACCENT_GREEN}
+                            fill="var(--color-highlight)"
                         />
                         <text
                             x={mapX(latest.time) + 10}
                             y={mapY(latest.value) + 8}
-                            fill={UI_ACCENT_GREEN}
+                            fill="var(--color-highlight)"
                             fontSize="24"
-                            fontFamily="monospace"
+                            fontFamily={fonts.mono}
                             fontWeight="bold"
                         >
                             {latest.value.toFixed(0)}
@@ -141,9 +148,9 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                     <text
                         x={width - paddingRight + 4}
                         y={height / 2}
-                        fill={UI_ACCENT_GREEN}
+                        fill="var(--color-highlight)"
                         fontSize="24"
-                        fontFamily="monospace"
+                        fontFamily={fonts.mono}
                         fontWeight="bold"
                     >
                         {currentValue.toFixed(0)}
@@ -152,11 +159,11 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                     <text
                         x={paddingLeft}
                         y={height / 2}
-                        fill={UI_BORDER_SOFT}
+                        fill="var(--color-text-secondary)"
                         fontSize="12"
-                        fontFamily="monospace"
+                        fontFamily={fonts.mono}
                     >
-                        Waiting for sensor data...
+                        Waiting for sensor telemetry...
                     </text>
                 )}
             </svg>
@@ -164,12 +171,18 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
     };
 
     return (
-        <div className="tui-container" ref={graphRef}>
+        <div
+            className="tui-container"
+            ref={graphRef}
+            style={{
+                padding: '16px',
+            }}
+        >
             <div
                 style={{
-                    marginBottom: '8px',
-                    borderBottom: `1px solid ${UI_BORDER_SOFT}`,
-                    paddingBottom: '4px',
+                    marginBottom: '12px',
+                    borderBottom: '1px solid var(--color-secondary)',
+                    paddingBottom: '8px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -177,32 +190,54 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                 }}
             >
                 <div style={{ minWidth: 0 }}>
-                    <span className="tui-text-success" style={{ fontWeight: 'bold' }}>
-                        {source.name}
-                    </span>
-                    <div className="tui-text-muted" style={{ fontSize: '11px' }}>
-                        {source.topic}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold' }}>&gt;</span>
+                        <span style={{ color: 'var(--color-text-primary)', fontFamily: fonts.title, fontWeight: 'bold', fontSize: 13 }}>
+                            {source.name.toUpperCase()}
+                        </span>
+                        <span style={{ color: 'var(--color-text-secondary)', fontFamily: fonts.mono, fontSize: 11, marginLeft: 4 }}>
+                            {source.topic}
+                        </span>
                     </div>
                 </div>
                 <div>
-                    <span className="tui-text-muted" style={{ marginRight: '10px' }}>
+                    <span
+                        style={{
+                            marginRight: '10px',
+                            color: isPaused ? 'var(--color-text-secondary)' : 'var(--color-highlight)',
+                            fontFamily: fonts.mono,
+                            fontSize: 11,
+                            fontWeight: 'bold',
+                        }}
+                    >
                         {isPaused ? '[PAUSED]' : '[LIVE]'}
                     </span>
-                    <Button size="small" onClick={() => setPaused(!isPaused)}>
+                    <Button
+                        size="small"
+                        onClick={() => setPaused(!isPaused)}
+                        style={{
+                            borderColor: 'var(--color-secondary)',
+                            color: 'var(--color-text-primary)',
+                            borderRadius: 0,
+                        }}
+                    >
                         {isPaused ? 'Resume' : 'Pause'}
                     </Button>
                 </div>
             </div>
             <div
+                className="chamfer-box-sm"
                 style={{
-                    height: '300px',
-                    padding: '10px 0',
-                    backgroundColor: UI_BG_BLACK,
+                    height: '280px',
+                    padding: '8px 0',
                     overflow: 'hidden',
-                }}
+                    '--box-bg': '#0a0a0a',
+                } as React.CSSProperties}
             >
                 {renderGraph()}
             </div>
         </div>
     );
 };
+
+export default FloatGraph;

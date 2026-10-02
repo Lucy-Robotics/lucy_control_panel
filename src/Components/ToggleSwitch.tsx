@@ -1,12 +1,13 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import React from 'react';
 import {
-    UI_ACCENT_GREEN,
-} from '../Constants/uiTheme.ts';
+    STATUS_ERROR,
+    fonts,
+} from '../Constants/theme.ts';
 
 export interface ToggleSwitchProps {
     isOn: boolean;
@@ -37,31 +38,73 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     isOffRed = true,
 }) => {
     const titleStyle: React.CSSProperties = {
-        fontFamily: 'monospace',
+        fontFamily: fonts.mono,
         fontSize: 11,
-        color: UI_ACCENT_GREEN,
-        letterSpacing: 0.5,
+        color: 'var(--color-text-primary)',
+        letterSpacing: '0.5px',
         textTransform: 'uppercase',
-        opacity: 0.8,
         whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
     };
 
     const toggle = (
-        <div className="tui-toggle" style={{ width: width ? `${width}px` : 'auto', display: 'flex' }}>
+        <div
+            className="tui-toggle"
+            style={{
+                width: width ? `${width}px` : 'auto',
+                display: 'flex',
+                border: '1px solid var(--color-secondary)',
+                backgroundColor: 'var(--color-main)',
+            }}
+        >
             <button
                 className={`tui-toggle-button${!isOn ? (isOffRed ? ' off' : ' on') : ''}`}
                 onClick={() => onToggle(false)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    boxShadow: 'none',
+                    animation: 'none',
+                    backgroundColor: !isOn && isOffRed ? STATUS_ERROR : 'transparent',
+                    color: !isOn ? (isOffRed ? 'var(--color-text-primary)' : 'var(--color-highlight)') : 'var(--color-text-secondary)',
+                    fontFamily: fonts.mono,
+                    fontWeight: 'bold',
+                    fontSize: 11,
+                    padding: '4px 8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                }}
                 aria-label={`${title}: ${textOff}`}
             >
                 {leftIcon}
                 {textOff}
             </button>
-            <div className="tui-toggle-divider" />
+            <div style={{ width: 1, backgroundColor: 'var(--color-secondary)' }} />
             <button
                 className={`tui-toggle-button${isOn ? ' on' : ''}`}
                 onClick={() => onToggle(true)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    boxShadow: 'none',
+                    animation: 'none',
+                    backgroundColor: isOn ? 'var(--color-highlight)' : 'transparent',
+                    color: isOn ? 'var(--color-text-on-highlight)' : 'var(--color-text-secondary)',
+                    fontFamily: fonts.mono,
+                    fontWeight: 'bold',
+                    fontSize: 11,
+                    padding: '4px 8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                }}
                 aria-label={`${title}: ${textOn}`}
             >
                 {rightIcon}
@@ -70,19 +113,28 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         </div>
     );
 
+    const titleLabel = (
+        <span style={titleStyle}>
+            <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold' }}>&gt;</span>
+            {title}
+        </span>
+    );
+
     if (titlePlacement === 'inline') {
         return (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={titleStyle}>{title}</span>
+                {titleLabel}
                 {toggle}
             </div>
         );
     }
 
     return (
-        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, alignItems: centerTitle ? 'center' : 'flex-start' }}>
-            <span style={titleStyle}>{title}</span>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: centerTitle ? 'center' : 'flex-start' }}>
+            {titleLabel}
             {toggle}
         </div>
     );
 };
+
+export default ToggleSwitch;

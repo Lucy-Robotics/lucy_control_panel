@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -25,21 +25,21 @@ function initialSteps(
 ): WorkflowStepSlice[] {
     const skippedBuildFlash = simulationOnly
         ? [
-              {
-                  id: 'build' as const,
-                  title: 'BUILD',
-                  status: 'skipped' as const,
-                  fraction: 0,
-                  detail: 'Skipped (simulation only)',
-              },
-              {
-                  id: 'flash' as const,
-                  title: 'FLASH',
-                  status: 'skipped' as const,
-                  fraction: 0,
-                  detail: 'Skipped (simulation only)',
-              },
-          ]
+            {
+                id: 'build' as const,
+                title: 'BUILD',
+                status: 'skipped' as const,
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+            {
+                id: 'flash' as const,
+                title: 'FLASH',
+                status: 'skipped' as const,
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+        ]
         : [];
 
     if (simulationOnly) {
@@ -85,8 +85,8 @@ function initialSteps(
             detail: buildOnly
                 ? 'Skipped (build only)'
                 : activateOnly
-                  ? 'Skipped (activate only)'
-                  : '',
+                    ? 'Skipped (activate only)'
+                    : '',
         },
         {
             id: 'reload',

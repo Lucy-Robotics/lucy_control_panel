@@ -9,7 +9,7 @@ This short getting-started guide will walk you through the basics of the control
 
 ---
 
-If you need more in-depth information, you can click the 'Documentation' button at any time or go to [this address](https://docs.sentience-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV).
+If you need more in-depth information, you can click the 'Documentation' button at any time or go to [this address](https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV).
 
 Additionally, if you need specific information or want to exchange on the project, you can join our [community discord server](https://discord.gg/g4KNZ3eeBd), we'll be more than happy to exchange with you!
 
@@ -83,10 +83,25 @@ Using the drop-down menu, you can select every sensors you want to watch.
 ---
 
 > We currently support direct data display & temperatures, with a graph.
-> If you have sensors whose data cannot be displayed, feel free to create an [issue](https://github.com/Sentience-Robotics/lucy_control_panel/issues) or to [contact us](https://discord.gg/g4KNZ3eeBd) directly.
+> If you have sensors whose data cannot be displayed, feel free to create an [issue](https://github.com/Lucy-Robotics/lucy_control_panel/issues) or to [contact us](https://discord.gg/g4KNZ3eeBd) directly.
+
+<-- Themes & Customization -->
+
+## Customizing Your Control Panel
+
+Lucy Control Panel comes with a built-in theme engine designed to let both casual users and developers personalize the interface.
+
+> Access the theme customizer anytime from Settings -> Themes & Custom Styling or the palette icon in the navigation bar.
+
+---
+
+### Built-in Presets & Quick Colors
+
+- **Presets Tab**: Switch between curated themes like Obsidian Green, Deep Matrix, Neon Cyber, and Void Amber with a single click.
+- **Quick Colors Tab**: For non-technical users, simple color pickers allow you to instantly tweak the background, borders, highlight accent, and text with a real-time live preview.
 
 <-- Configuration -->
 
 The configuration page is undergoing a complete refactor, usage guide will be updated soon.
 
-In the meantime, if you need more information, please refer to our [online documentation](https://docs.sentience-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV).
+In the meantime, if you need more information, please refer to our [online documentation](https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV).

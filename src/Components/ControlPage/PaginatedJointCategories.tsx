@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pagination } from 'antd';
 import { JointCategory } from './JointCategory';
 import type { JointControlState } from '../../Constants/robotTypes';
-import { UI_BORDER_MUTED, UI_NAV_BAR_BG } from '../../Constants/uiTheme';
 import { usePaginatedCategories } from '../../contexts/PaginatedCategoriesContext';
 
 export type CategorizedJoints = Record<string, JointControlState[]>;
@@ -40,13 +39,11 @@ const PaginatedJointCategories = ({
 
     const anchor: React.CSSProperties = {
         position: 'fixed',
-        bottom: 16,
-        left: 22,
+        bottom: 20,
+        left: 30, // Aligned with 30px screen border
         zIndex: 1000,
-        backgroundColor: UI_NAV_BAR_BG,
-        padding: '8px',
-        border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: '0'
+        padding: '8px 12px',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7)',
     };
 
     const validCategories = useMemo<string[]>(
@@ -90,8 +87,8 @@ const PaginatedJointCategories = ({
                 ))}
             </div>
 
-            { validCategories.length > categoriesPerPage && (
-                <div style={anchor}>
+            {validCategories.length > categoriesPerPage && (
+                <div style={anchor} className="chamfer-box category-pagination-anchor">
                     <Pagination
                         current={categoryPage}
                         pageSize={categoriesPerPage}

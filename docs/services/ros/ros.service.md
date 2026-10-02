@@ -72,7 +72,7 @@ service.disconnect();
 ### `onStatusChange(callback): () => void`
 
 Registers a listener that is called whenever `ConnectionStatus` changes.
-Returns an **unsubscribe function** — call it to remove the listener.
+Returns an **unsubscribe function** - call it to remove the listener.
 
 ```typescript
 const unsubscribe = service.onStatusChange((status) => {
@@ -136,7 +136,7 @@ disconnect() called
 
 ## Design notes
 
-- **Singleton** — all handlers and hooks share the same socket; avoids duplicate connections.
-- **Status deduplication** — `setConnectionStatus` only fires listeners when the value actually changes, preventing redundant re-renders.
-- **Promise + event dual API** — `connect()` returns a promise for async/await callers (e.g. a connect button handler) while the event-based `onStatusChange` serves long-lived subscribers such as topic handlers.
-- **Timeout responsibility** — ROSLIB does not expose a native connection timeout; the 10 s guard is implemented manually with `setTimeout` / `clearTimeout`.
+- **Singleton** - all handlers and hooks share the same socket; avoids duplicate connections.
+- **Status deduplication** - `setConnectionStatus` only fires listeners when the value actually changes, preventing redundant re-renders.
+- **Promise + event dual API** - `connect()` returns a promise for async/await callers (e.g. a connect button handler) while the event-based `onStatusChange` serves long-lived subscribers such as topic handlers.
+- **Timeout responsibility** - ROSLIB does not expose a native connection timeout; the 10 s guard is implemented manually with `setTimeout` / `clearTimeout`.

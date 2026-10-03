@@ -1,4 +1,4 @@
-# Lucy Control Panel — Documentation
+# Lucy Control Panel - Documentation
 
 Technical reference for the Lucy Control Panel frontend application.
 
@@ -6,8 +6,13 @@ Technical reference for the Lucy Control Panel frontend application.
 
 ## Navigation
 
-### [Architecture](./architecture/overview.md)
-High-level module map and data-flow diagram across the full stack.
+### Architecture
+
+| Document | Description |
+|---|---|
+| [UI architecture](./architecture/overview.md) | Control Panel module map and UI-container diagrams |
+| [Architecture index](../../../docs/architecture/README.md) | Schematics index + conventions guide |
+| [System overview](../../../docs/architecture/overview.md) | Full Lucy schematic (packages, MCU, peripherals) |
 
 ### Services
 
@@ -27,5 +32,6 @@ Route-level views and their responsibilities.
 ## Conventions
 
 - Each module doc follows the template: **Purpose → API → Data flow → Dependencies → Notes**.
+- Architecture schematics follow the workspace [GUIDE](../../../docs/architecture/GUIDE.md) (UML caption + Mermaid).
 - Code snippets use TypeScript.
 - ROS topic names and message types are written in `monospace`.

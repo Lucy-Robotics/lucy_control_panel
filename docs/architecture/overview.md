@@ -1,6 +1,6 @@
 # Architecture Overview - lucy_control_panel
 
-**UML Component (UI container)** - browser-side Control Panel only.  
+Browser-side Control Panel only.  
 **Index:** [`lucy_ws/docs/architecture/README.md`](../../../../docs/architecture/README.md)  
 **System schematic** (workspace + MCU + peripherals):  
 [`lucy_ws/docs/architecture/overview.md`](../../../../docs/architecture/overview.md)  
@@ -28,7 +28,7 @@ src/
 **UML Component (Control Panel)** - React app inside the browser; rosbridge is the external edge.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"lineColor": "#00FF41", "edgeLabelBackground": "#161b22", "clusterBorder": "#00FF41"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"darkMode": true, "background": "#0d1117", "mainBkg": "#21262d", "primaryColor": "#21262d", "primaryTextColor": "#f0f6fc", "primaryBorderColor": "#00FF41", "secondaryColor": "#161b22", "secondaryTextColor": "#f0f6fc", "secondaryBorderColor": "#00FF41", "tertiaryColor": "#161b22", "tertiaryTextColor": "#f0f6fc", "tertiaryBorderColor": "#00FF41", "lineColor": "#00FF41", "textColor": "#f0f6fc", "nodeTextColor": "#f0f6fc", "edgeLabelBackground": "#161b22", "clusterBkg": "#0d1117", "clusterBorder": "#00FF41", "titleColor": "#f0f6fc"}}}%%
 flowchart TB
   subgraph browser ["Browser"]
     Pages["Pages"]
@@ -61,35 +61,26 @@ Downstream ROS / hardware / MCU path is documented only in the
 
 ## Joint control data flow
 
-**UML Sequence (joint command from UI)** - slider degrees to ROS radians.
+**UML Component (joint command from UI)** - slider degrees to `ros2_control` radians and readback.
 
 ```mermaid
-sequenceDiagram
-  actor User
-  participant Slider as "JointControl"
-  participant Panel as "RobotControlPanel"
-  participant JSH as "JointStateHandler"
-  participant WS as "RosBridgeService"
-  participant ROS as "ros2_control"
-  User->>Slider: move slider servo deg
-  Slider->>Panel: onJointChange
-  Panel->>Panel: servoDegToJointRad
-  Panel->>JSH: publishJointStates
-  JSH->>WS: JointTrajectory publish
-  WS->>ROS: trajectory positions rad
-  ROS-->>JSH: joint_states rad
-  JSH-->>Slider: jointRadToServoDeg
+%%{init: {"theme": "base", "themeVariables": {"darkMode": true, "background": "#0d1117", "mainBkg": "#21262d", "primaryColor": "#21262d", "primaryTextColor": "#f0f6fc", "primaryBorderColor": "#00FF41", "secondaryColor": "#161b22", "secondaryTextColor": "#f0f6fc", "secondaryBorderColor": "#00FF41", "tertiaryColor": "#161b22", "tertiaryTextColor": "#f0f6fc", "tertiaryBorderColor": "#00FF41", "lineColor": "#00FF41", "textColor": "#f0f6fc", "nodeTextColor": "#f0f6fc", "edgeLabelBackground": "#161b22", "clusterBkg": "#0d1117", "clusterBorder": "#00FF41", "titleColor": "#f0f6fc"}}}%%
+flowchart LR
+  User["User"] -->|"servo deg"| Slider["JointControl"]
+  Slider -->|"onJointChange"| Panel["RobotControlPanel"]
+  Panel -->|"servoDegToJointRad"| JSH["JointStateHandler"]
+  JSH -->|"JointTrajectory"| WS["RosBridgeService"]
+  WS -->|"WebSocket rad"| ROS["ros2_control"]
+  ROS -->|"joint_states rad"| JSH
+  JSH -->|"jointRadToServoDeg"| Slider
+  linkStyle default stroke:#00FF41,stroke-width:2px
 ```
 
-### Units along the path
-
-| Stage | Unit | Source |
-|-------|------|--------|
-| Slider native | servo degrees | UI; limits converted from rad hardware YAML |
-| Wire to `ros2_control` | URDF radians | `servoDegToJointRad(...)` |
-| `LucySystemHardware::write()` | URDF radians, then millirad on SHM | See ros2_control docs |
-| `/joint_states` | URDF radians | `joint_state_broadcaster` |
-| 3D viewer + slider readback | servo degrees | `jointRadToServoDeg(...)` |
+| Stage | Unit |
+|-------|------|
+| Slider | servo degrees |
+| Wire to `ros2_control` | URDF radians |
+| `/joint_states` readback | URDF radians → servo degrees in UI |
 
 Hardware YAML stores **radians**; the panel edits **degrees** at the UI boundary only.
 

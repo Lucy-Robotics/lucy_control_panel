@@ -4,36 +4,12 @@
  */
 
 /**
- * ============================================================================
- * LUCY ROBOTICS DESIGN SYSTEM - SINGLE SOURCE OF TRUTH FOR ALL THEMES & TOKENS
- * ============================================================================
- * 
- * Strict 75% - 10% - 15% Color System:
- * - 75% Main Dominant (Backgrounds, Panels, Canvas): #141414 (Dark Obsidian)
- * - 10% Secondary (Only for borders, subtle framing & small elements): #2B3E50 (Deep Steel Navy)
- * - 15% Highlight (Identifying brand factor, active states, cues, focus): #00FF41 (Terminal Green)
- * 
- * Text Palette:
- * - Primary Text: #F7F1E5 (Warm Parchment - NOT white!)
- * - Secondary / Muted Text: #6C7D8E (Muted Slate)
- * - Text on Highlight: #141414
- * 
- * Title & Branding Rules:
- * - Titles prefixed with '>' in #00ff41
- * - Title separators are '//' in #00ff41
- * - Title text in #F7F1E5
- * - Subtitles: ALL CAPS, with underline
- * 
- * Typography:
- * - GRAPHICAL: Size 50px | Font: Orbitron | Grease: Bold (700)
- * - TITLE: Size 36px (Web 32px) | Font: IBM Plex Mono | Grease: Regular (400) / Bold (700)
- * - CONTENT: Size 20px (Web 16px Regular / 12px Light) | Font: IBM Plex Mono | Grease: Light (300)
- * 
- * Layout Spacing:
- * - 30px: Screen border
- * - 20px: Standard spacing
- * - 40px: Large spacing
- * - 12px: Small spacing
+ * LUCY ROBOTICS DESIGN SYSTEM - CANONICAL TOKENS
+ *
+ * System Guidelines (75% - 10% - 15% ratio):
+ * - 75% Main Dominant: Canvas, surfaces, and primary layout panels.
+ * - 10% Secondary: Borders, subtle framing, and small dividers.
+ * - 15% Highlight: Brand identifier, interactive active states, and focus cues.
  */
 
 // ============================================================================

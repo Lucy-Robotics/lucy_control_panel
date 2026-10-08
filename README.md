@@ -40,7 +40,7 @@ git clone https://github.com/lucy-robotics/lucy_control_panel.git
 cd lucy_control_panel
 
 # 2. Switch to the required Node version (requires nvm)
-nvm use 22
+nvm use
 
 # 3. Install dependencies
 yarn install

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import type { ThemeConfig } from 'antd';
 import { theme as antdThemeEngine } from 'antd';
 import {
@@ -168,49 +168,49 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
     }, [activeColors]);
 
-    const setActiveTheme = (id: string) => {
+    const setActiveTheme = useCallback((id: string) => {
         themeService.setActiveTheme(id);
-    };
+    }, []);
 
-    const setCustomThemeEnabled = (enabled: boolean) => {
+    const setCustomThemeEnabled = useCallback((enabled: boolean) => {
         themeService.setCustomThemeEnabled(enabled);
-    };
+    }, []);
 
-    const setCustomCss = (css: string) => {
+    const setCustomCss = useCallback((css: string) => {
         const inspection = themeService.setCustomCss(css);
         setLastSecurityReport(inspection);
         setSecurityHistory(cssSecurityService.getAuditHistory());
-    };
+    }, []);
 
-    const loadThemeFromUrl = async (url: string, policy?: SecurityPolicyOptions): Promise<FetchCssResult> => {
+    const loadThemeFromUrl = useCallback(async (url: string, policy?: SecurityPolicyOptions): Promise<FetchCssResult> => {
         const result = await themeService.loadThemeFromUrl(url, policy);
         setLastSecurityReport(result.inspection);
         setSecurityHistory(cssSecurityService.getAuditHistory());
         return result;
-    };
+    }, []);
 
-    const loadThemeFromFile = async (file: File, policy?: SecurityPolicyOptions): Promise<string> => {
+    const loadThemeFromFile = useCallback(async (file: File, policy?: SecurityPolicyOptions): Promise<string> => {
         const result = await themeService.loadThemeFromFile(file, policy);
         setLastSecurityReport(themeService.getLastSecurityInspection());
         setSecurityHistory(cssSecurityService.getAuditHistory());
         return result;
-    };
+    }, []);
 
-    const inspectCss = (css: string, policy?: SecurityPolicyOptions): CssSecurityInspectionResult => {
+    const inspectCss = useCallback((css: string, policy?: SecurityPolicyOptions): CssSecurityInspectionResult => {
         return cssSecurityService.inspectCss(css, policy);
-    };
+    }, []);
 
-    const resetToDefault = () => {
+    const resetToDefault = useCallback(() => {
         themeService.resetToDefault();
-    };
+    }, []);
 
-    const exportTemplate = () => {
+    const exportTemplate = useCallback(() => {
         themeService.exportThemeTemplateFile();
-    };
+    }, []);
 
-    const setThemeColors = (colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }) => {
+    const setThemeColors = useCallback((colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }) => {
         themeService.setThemeColors(colors);
-    };
+    }, []);
 
     return (
         <ThemeContext.Provider

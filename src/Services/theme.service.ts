@@ -3,14 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * ============================================================================
- * THEME SERVICE - MODULAR RUNTIME CSS THEME ENGINE
- * ============================================================================
- * Allows users to apply custom CSS stylesheets, load themes from files (.css),
- * URLs, or inline Quick CSS, and provides curated preset themes.
- */
-
 import {
     MAIN_COLOR,
     SECONDARY_COLOR,
@@ -19,6 +11,11 @@ import {
     injectThemeVariables,
 } from '../Constants/theme';
 import {
+    BUILTIN_THEMES,
+    type ThemePreset,
+} from '../Constants/builtinThemes';
+import { LUCY_THEME_TEMPLATE_CSS } from '../Constants/themeTemplate';
+import {
     cssSecurityService,
     type CssSecurityInspectionResult,
     type FetchCssResult,
@@ -26,20 +23,7 @@ import {
     SecurityInspectionError,
 } from './cssSecurity.service';
 
-export interface ThemePreset {
-    id: string;
-    name: string;
-    description: string;
-    author: string;
-    version: string;
-    colors: {
-        main: string;
-        secondary: string;
-        highlight: string;
-        text: string;
-    };
-    css?: string;
-}
+export { BUILTIN_THEMES, type ThemePreset };
 
 export const THEME_STORAGE_KEYS = {
     ACTIVE_THEME: 'lucy_active_theme_id',
@@ -47,147 +31,6 @@ export const THEME_STORAGE_KEYS = {
     THEME_ENABLED: 'lucy_custom_theme_enabled',
     THEME_URL: 'lucy_theme_url',
 } as const;
-
-export const BUILTIN_THEMES: ThemePreset[] = [
-    {
-        id: 'default',
-        name: 'Lucy (Default)',
-        description: 'Official 75-10-15 theme: Rich black (#141414), Gray blue (#2B3E50), electric green highlight (#00FF41), off-white text (#F7F1E5).',
-        author: 'Lucy Robotics Team',
-        version: '1.0.0',
-        colors: {
-            main: MAIN_COLOR,
-            secondary: SECONDARY_COLOR,
-            highlight: HIGHLIGHT_COLOR,
-            text: TEXT_PRIMARY,
-        },
-        css: '', // Uses base CSS variables
-    },
-    {
-        id: 'midnight-cyan',
-        name: 'Midnight Neon',
-        description: 'Deep space obsidian with electric cyan accents and sleek slate borders.',
-        author: 'Community',
-        version: '1.0.0',
-        colors: {
-            main: '#0B0F19',
-            secondary: '#1E293B',
-            highlight: '#00D8FF',
-            text: '#F1F5F9',
-        },
-        css: `
-:root {
-  --color-main: #0B0F19;
-  --color-main-surface: #0B0F19;
-  --color-main-elevated: #131B2E;
-  --color-main-deep: #06080E;
-  --color-secondary: #1E293B;
-  --color-secondary-border: #1E293B;
-  --color-secondary-subtle: rgba(30, 41, 59, 0.45);
-  --color-highlight: #00D8FF;
-  --color-highlight-light: #4DE4FF;
-  --color-highlight-glow: rgba(0, 216, 255, 0.25);
-  --color-highlight-glow-strong: rgba(0, 216, 255, 0.55);
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --ui-accent-green: #00D8FF;
-}
-        `.trim(),
-    },
-    {
-        id: 'solar-tactical',
-        name: 'Solar Tactical',
-        description: 'High-contrast military aerospace theme with amber telemetry and charred carbon surfaces.',
-        author: 'Community',
-        version: '1.0.0',
-        colors: {
-            main: '#121212',
-            secondary: '#3E3224',
-            highlight: '#FFB300',
-            text: '#FFF8E7',
-        },
-        css: `
-:root {
-  --color-main: #121212;
-  --color-main-surface: #121212;
-  --color-main-elevated: #1B1A17;
-  --color-main-deep: #0A0A09;
-  --color-secondary: #3E3224;
-  --color-secondary-border: #3E3224;
-  --color-secondary-subtle: rgba(62, 50, 36, 0.45);
-  --color-highlight: #FFB300;
-  --color-highlight-light: #FFC94D;
-  --color-highlight-glow: rgba(255, 179, 0, 0.25);
-  --color-highlight-glow-strong: rgba(255, 179, 0, 0.55);
-  --color-text-primary: #FFF8E7;
-  --color-text-secondary: #A89B88;
-  --ui-accent-green: #FFB300;
-}
-        `.trim(),
-    },
-    {
-        id: 'synthwave-crimson',
-        name: 'Synthwave Void',
-        description: 'Vibrant neon hot-pink highlighting on deep violet-black shadows with rose borders.',
-        author: 'Community',
-        version: '1.0.0',
-        colors: {
-            main: '#13091B',
-            secondary: '#391945',
-            highlight: '#FF2A6D',
-            text: '#FCEEF5',
-        },
-        css: `
-:root {
-  --color-main: #13091B;
-  --color-main-surface: #13091B;
-  --color-main-elevated: #1D0E29;
-  --color-main-deep: #09030E;
-  --color-secondary: #391945;
-  --color-secondary-border: #391945;
-  --color-secondary-subtle: rgba(57, 25, 69, 0.45);
-  --color-highlight: #FF2A6D;
-  --color-highlight-light: #FF5E91;
-  --color-highlight-glow: rgba(255, 42, 109, 0.25);
-  --color-highlight-glow-strong: rgba(255, 42, 109, 0.55);
-  --color-text-primary: #FCEEF5;
-  --color-text-secondary: #A8869E;
-  --ui-accent-green: #FF2A6D;
-}
-        `.trim(),
-    },
-    {
-        id: 'matrix-terminal',
-        name: 'Matrix Core',
-        description: 'Pure CRT terminal aesthetic: pitch black background, matrix phosphor green and deep green framing.',
-        author: 'Community',
-        version: '1.0.0',
-        colors: {
-            main: '#050D08',
-            secondary: '#16301D',
-            highlight: '#00FF41',
-            text: '#D4FAD9',
-        },
-        css: `
-:root {
-  --color-main: #050D08;
-  --color-main-surface: #050D08;
-  --color-main-elevated: #0C1A11;
-  --color-main-deep: #020603;
-  --color-secondary: #16301D;
-  --color-secondary-border: #16301D;
-  --color-secondary-subtle: rgba(22, 48, 29, 0.45);
-  --color-highlight: #00FF41;
-  --color-highlight-light: #4DFF7B;
-  --color-highlight-glow: rgba(0, 255, 65, 0.3);
-  --color-highlight-glow-strong: rgba(0, 255, 65, 0.65);
-  --color-text-primary: #D4FAD9;
-  --color-text-secondary: #74A07B;
-  --ui-accent-green: #00FF41;
-}
-        `.trim(),
-    },
-];
 
 const STYLE_TAG_ID = 'lucy-custom-theme-style';
 
@@ -268,7 +111,6 @@ class ThemeService {
         const effectiveCss = sanitize ? inspection.sanitizedCss : css;
         localStorage.setItem(THEME_STORAGE_KEYS.CUSTOM_CSS, effectiveCss);
         localStorage.setItem(THEME_STORAGE_KEYS.THEME_ENABLED, 'true');
-        // Switch to custom preset if custom CSS is entered
         if (effectiveCss.trim()) {
             localStorage.setItem(THEME_STORAGE_KEYS.ACTIVE_THEME, 'custom');
         }
@@ -337,8 +179,7 @@ class ThemeService {
 
     public setThemeColors(colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }): void {
         const textSec = colors.textSecondary || '#6C7D8E';
-        const css = `/* Quick Colors Customizer */
-:root {
+        const css = `:root {
   --color-main: ${colors.main};
   --color-main-surface: ${colors.main};
   --color-main-elevated: ${colors.main};
@@ -387,10 +228,9 @@ class ThemeService {
 
         const root = document.documentElement;
 
-        // Step 1: Baseline - Always apply canonical default CSS variables first
+        // Baseline: Always apply canonical default CSS variables first
         injectThemeVariables(root);
 
-        // If custom themes are disabled or set to default, clear style tag
         if (!this.isCustomThemeEnabled()) {
             styleElement.textContent = '';
             document.body.style.backgroundColor = MAIN_COLOR;
@@ -418,7 +258,6 @@ class ThemeService {
         const sanitizedCss = cssSecurityService.sanitizeCss(cssToApply);
         styleElement.textContent = sanitizedCss;
 
-        // Parse and set CSS variables directly on root.style so inline specificity cannot block updates
         if (sanitizedCss) {
             const varRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;!}\n\r]+)/g;
             let match;
@@ -429,7 +268,6 @@ class ThemeService {
             }
         }
 
-        // Apply active colors to primary variables
         const colors = this.getActiveColors();
         root.style.setProperty('--color-main', colors.main);
         root.style.setProperty('--color-main-surface', colors.main);
@@ -441,81 +279,11 @@ class ThemeService {
         root.style.setProperty('--color-text-primary', colors.text);
         root.style.setProperty('--ui-accent-green', colors.highlight);
 
-        // Update body background
         document.body.style.backgroundColor = colors.main;
     }
 
     public getThemeTemplateCss(): string {
-        return `/**
- * ============================================================================
- * LUCY ROBOTICS CUSTOM THEME TEMPLATE
- * ============================================================================
- * 
- * Instructions:
- * 1. Customize the CSS Custom Properties (:root) below.
- * 2. Upload this file in Lucy Control Panel -> Settings -> Themes & Custom CSS,
- *    or paste it directly into the Quick CSS Editor!
- * 
- * The app uses a 75% - 10% - 15% color system:
- * - 75% Dominant: --color-main (Backgrounds & Surfaces)
- * - 10% Secondary: --color-secondary (Borders & Small Elements)
- * - 15% Highlight: --color-highlight (Brand Accent & Active States)
- */
-
-:root {
-  /* ─── 75% Main Dominant (Surfaces & Backgrounds) ────────────────────────── */
-  --color-main: #141414;
-  --color-main-surface: #141414;
-  --color-main-elevated: #1e1e1e;
-  --color-main-deep: #0a0a0a;
-
-  /* ─── 10% Secondary (Borders, Dividers & Small Framing) ──────────────────── */
-  --color-secondary: #2B3E50;
-  --color-secondary-border: #2B3E50;
-  --color-secondary-subtle: rgba(43, 62, 80, 0.4);
-  --color-secondary-hover: #3d5873;
-
-  /* ─── 15% Highlight (Brand Identifier & Active States) ───────────────────── */
-  --color-highlight: #00FF41;
-  --color-highlight-light: #33ff66;
-  --color-highlight-glow: rgba(0, 255, 65, 0.25);
-  --color-highlight-glow-strong: rgba(0, 255, 65, 0.55);
-
-  /* ─── Typography & Content (Warm Parchment, not white!) ─────────────────── */
-  --color-text-primary: #F7F1E5;
-  --color-text-secondary: #6C7D8E;
-  --color-text-muted: #52677F;
-  --color-text-on-highlight: #141414;
-
-  /* ─── Status Colors ──────────────────────────────────────────────────────── */
-  --color-status-error: #FF4343;
-  --color-status-warning: #FFAA00;
-  --color-status-info: #00D8FF;
-  --color-status-active: #00FF41;
-
-  /* ─── Fonts ──────────────────────────────────────────────────────────────── */
-  --font-graphical: 'Orbitron', sans-serif;
-  --font-title: 'IBM Plex Mono', monospace;
-  --font-content: 'IBM Plex Mono', monospace;
-  --font-mono: 'IBM Plex Mono', monospace;
-
-  /* ─── Layout Spacing ─────────────────────────────────────────────────────── */
-  --spacing-screen: 30px;
-  --spacing-standard: 20px;
-  --spacing-large: 40px;
-  --spacing-small: 12px;
-}
-
-/* ─── Custom CSS Overrides (Add your own custom rules below) ───────────────── */
-
-/* Example: Add glowing border to cards */
-/*
-.ant-card {
-  border: 1px solid var(--color-secondary) !important;
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.05) !important;
-}
-*/
-`;
+        return LUCY_THEME_TEMPLATE_CSS;
     }
 
     public exportThemeTemplateFile(): void {

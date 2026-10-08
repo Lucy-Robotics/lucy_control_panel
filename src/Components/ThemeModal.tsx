@@ -756,6 +756,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                                 </div>
                                             }
                                             type={securityAlert.type}
+                                            icon={securityAlert.type === 'success' ? <CheckCircleOutlined /> : undefined}
                                             showIcon
                                             closable
                                             onClose={() => setSecurityAlert(null)}
@@ -808,6 +809,9 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                             <Text style={{ color: TEXT_PRIMARY, fontSize: 12, fontWeight: 'bold' }}>
                                                 Direct Raw CSS URL (GitHub raw, CDN, web link):
                                             </Text>
+                                            <span style={{ color: 'var(--color-highlight)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <LockOutlined /> Protected
+                                            </span>
                                         </div>
                                         <Space.Compact style={{ width: '100%' }}>
                                             <Input

@@ -210,7 +210,6 @@ class ThemeService {
     }
 
     public init(): void {
-        injectThemeVariables();
         this.applyActiveTheme();
     }
 
@@ -388,9 +387,12 @@ class ThemeService {
 
         const root = document.documentElement;
 
+        // Step 1: Baseline - Always apply canonical default CSS variables first
+        injectThemeVariables(root);
+
+        // If custom themes are disabled or set to default, clear style tag
         if (!this.isCustomThemeEnabled()) {
             styleElement.textContent = '';
-            injectThemeVariables(true);
             document.body.style.backgroundColor = MAIN_COLOR;
             return;
         }
@@ -399,7 +401,6 @@ class ThemeService {
 
         if (activeId === 'default') {
             styleElement.textContent = '';
-            injectThemeVariables(true);
             document.body.style.backgroundColor = MAIN_COLOR;
             return;
         }
@@ -415,14 +416,13 @@ class ThemeService {
         }
 
         const sanitizedCss = cssSecurityService.sanitizeCss(cssToApply);
-
         styleElement.textContent = sanitizedCss;
 
         // Parse and set CSS variables directly on root.style so inline specificity cannot block updates
-        if (cssToApply) {
+        if (sanitizedCss) {
             const varRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;!}\n\r]+)/g;
             let match;
-            while ((match = varRegex.exec(cssToApply)) !== null) {
+            while ((match = varRegex.exec(sanitizedCss)) !== null) {
                 const varName = match[1].trim();
                 const varValue = match[2].trim();
                 root.style.setProperty(varName, varValue);

@@ -5,8 +5,18 @@
 
 /**
  * ============================================================================
- * BACKWARD COMPATIBILITY BRIDGE FOR UI THEME CONSTANTS
- * All tokens are defined in src/Constants/theme.ts as the single source of truth.
+ * LEGACY UI THEME COMPATIBILITY BRIDGE (DEPRECATED)
+ * ============================================================================
+ * @deprecated This bridge exists solely for backward compatibility with legacy
+ * components. Canonical theme definitions reside in `src/Constants/theme.ts`.
+ * Runtime theme resolution and DOM application are handled by `themeService`
+ * in `src/Services/theme.service.ts`.
+ *
+ * For new components, use CSS Custom Properties directly:
+ *   - Background: var(--color-main)
+ *   - Borders:    var(--color-secondary)
+ *   - Accent:     var(--color-highlight)
+ *   - Text:       var(--color-text-primary)
  * ============================================================================
  */
 
@@ -14,45 +24,48 @@ import {
     MAIN_COLOR,
     SECONDARY_COLOR,
     HIGHLIGHT_COLOR,
-    TEXT_ON_HIGHLIGHT,
     STATUS_ERROR,
     STATUS_WARNING,
     STATUS_INFO,
     SPACING_SCREEN_BORDER,
     colors,
     rgba,
-    injectThemeVariables,
 } from './theme.ts';
+import { themeService } from '../Services/theme.service.ts';
 
-// Re-export theme single source of truth
+// Re-export canonical theme definitions
 export * from './theme.ts';
 
+/** @deprecated Use `var(--color-highlight)` or canonical `HIGHLIGHT_COLOR` from `src/Constants/theme.ts` */
 export const UI_ACCENT_GREEN_HEX = HIGHLIGHT_COLOR;
+/** @deprecated Use `var(--color-highlight)` */
 export const UI_ACCENT_GREEN = 'var(--color-highlight)';
 export const UI_ACCENT_RGB = '0, 255, 65';
 
+/** @deprecated Use `rgba()` from `src/Constants/theme.ts` */
 export function uiAccentRgba(alpha: number): string {
     return rgba(HIGHLIGHT_COLOR, alpha);
 }
 
 export const UI_ERROR_RGB = '255, 67, 67';
 
+/** @deprecated Use `rgba()` from `src/Constants/theme.ts` */
 export function uiErrorRgba(alpha: number): string {
     return rgba(STATUS_ERROR, alpha);
 }
 
-// 75% Dominant Main Surface
+// 75% Dominant Main Surface (resolved dynamically via CSS custom properties)
 export const UI_PANEL_BG = 'var(--color-main)';
 export const UI_BG_BLACK = 'var(--color-main)';
 export const UI_INPUT_SURFACE = 'var(--color-main)';
 
-// 10% Secondary: Borders & Framing only
+// 10% Secondary: Borders & Framing only (resolved dynamically via CSS custom properties)
 export const UI_BORDER_MUTED = 'var(--color-secondary)';
 export const UI_BORDER_STRONG = 'var(--color-secondary)';
 export const UI_BORDER_SOFT = 'var(--color-secondary)';
 export const UI_BORDER_DIM = 'var(--color-secondary)';
 
-// Text: Parchment #F7F1E5 (not white)
+// Text: Warm Parchment (resolved dynamically via CSS custom properties)
 export const UI_TEXT_ON_ACCENT = 'var(--color-text-on-highlight)';
 export const UI_TEXT_PRIMARY_ON_DARK = 'var(--color-text-primary)';
 export const UI_TEXT_SECONDARY_MUTED = 'var(--color-text-secondary)';
@@ -64,7 +77,7 @@ export const UI_WARNING = STATUS_WARNING;
 export const UI_ACCENT_BLUE = STATUS_INFO;
 export const UI_DECORATIVE_CORAL = STATUS_ERROR;
 
-// Component surfaces
+// Component surfaces (resolved dynamically via CSS custom properties)
 export const UI_LIST_ROW_BG = 'var(--color-main)';
 export const UI_CHROME_SURFACE = 'var(--color-main)';
 export const UI_MODAL_SURFACE = 'var(--color-main)';
@@ -106,22 +119,30 @@ export const PAGE_CONTENT_STYLE = {
     position: 'relative',
 } as const;
 
+/**
+ * Dynamic card surface style that adapts to the active theme.
+ */
 export const UI_CARD_SURFACE_STYLE = {
-    background: MAIN_COLOR,
-    borderColor: SECONDARY_COLOR,
+    background: 'var(--color-main)',
+    borderColor: 'var(--color-secondary)',
 } as const;
 
+/**
+ * Dynamic primary button style that adapts to the active theme.
+ */
 export const UI_PRIMARY_GREEN_BUTTON_STYLE = {
-    backgroundColor: HIGHLIGHT_COLOR,
-    borderColor: HIGHLIGHT_COLOR,
-    color: TEXT_ON_HIGHLIGHT,
+    backgroundColor: 'var(--color-highlight)',
+    borderColor: 'var(--color-highlight)',
+    color: 'var(--color-text-on-highlight)',
     fontWeight: 'bold',
 } as const;
 
 export const UI_GRADIENT_AUTH_PAGE = `radial-gradient(ellipse at center, ${colors.main.elevated} 0%, ${MAIN_COLOR} 100%)`;
 export const UI_GRADIENT_MODAL_HEADER = `linear-gradient(180deg, ${colors.main.elevated}, ${MAIN_COLOR})`;
 
-/** Call once at startup so .css files can use var(--ui-*). */
+/**
+ * @deprecated Legacy hook. Runtime theme injection is managed centrally by `themeService.init()`.
+ */
 export function mountUiThemeCssVars(): void {
-    injectThemeVariables();
+    themeService.applyActiveTheme();
 }

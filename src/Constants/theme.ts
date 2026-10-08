@@ -322,32 +322,14 @@ export const CSS_VARIABLES_MAP: Record<string, string> = {
 };
 
 /**
- * Injects default CSS variables into document root (:root).
- * Can be overridden at runtime by any custom theme CSS file.
+ * Injects default canonical CSS variables into the document root element.
+ * Called exclusively by ThemeService as the baseline layer.
  */
-export function injectThemeVariables(force: boolean = false): void {
+export function injectThemeVariables(target: HTMLElement = document.documentElement): void {
     if (typeof document === 'undefined') return;
-    try {
-        const activeTheme = localStorage.getItem('lucy_active_theme_id') || localStorage.getItem('lucy_active_theme');
-        const customCss = localStorage.getItem('lucy_custom_theme_css') || localStorage.getItem('lucy_custom_css');
-        const isCustomEnabled = localStorage.getItem('lucy_custom_theme_enabled') !== 'false';
-        if (!force && isCustomEnabled && (customCss || (activeTheme && activeTheme !== 'default'))) {
-            // A non-default or custom theme is active; let themeService handle injection
-            return;
-        }
-    } catch {
-        // localStorage unavailable (e.g. security sandbox)
-    }
-
-    const root = document.documentElement;
     for (const [key, value] of Object.entries(CSS_VARIABLES_MAP)) {
-        root.style.setProperty(key, value);
+        target.style.setProperty(key, value);
     }
-}
-
-// Auto-inject immediately upon load in the browser if no custom theme is active
-if (typeof document !== 'undefined') {
-    injectThemeVariables(false);
 }
 
 // ============================================================================

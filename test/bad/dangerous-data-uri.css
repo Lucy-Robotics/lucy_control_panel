@@ -1,0 +1,15 @@
+/*
+ * Malicious Test CSS: Executable Data URI Payload
+ * Attack Vector: Embedding data:text/html base64 encoded scripts or scriptable SVG
+ * Expected Result: BLOCKED (High Severity: xss-dangerous-data-uri)
+ */
+
+.vector-icon {
+  /* Base64 encoded: <script>alert(1)</script> */
+  background: url("data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==");
+}
+
+.svg-carrier {
+  /* SVG carrier containing script */
+  list-style: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><script>alert('SVG_XSS')</script></svg>");
+}

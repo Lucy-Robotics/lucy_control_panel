@@ -1,0 +1,12 @@
+/*
+ * Malicious Test CSS: XSS Payload (Public URL Testable)
+ * Expected Result: REJECTED & BLOCKED by URL Loader
+ */
+
+:root {
+  --color-main: #141414;
+}
+
+.ant-card {
+  background-image: url("javascript:alert('XSS_FROM_URL')");
+}

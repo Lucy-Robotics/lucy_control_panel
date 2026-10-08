@@ -152,6 +152,13 @@ VITE_ENABLE_LOGS=true
 
 **Note**: If either `VITE_LOCAL_USERNAME` or `VITE_LOCAL_PASSWORD` is not set, the application will run without authentication.
 
+---
+
+## Tests
+
+```bash
+yarn test
+```
 
 ---
 

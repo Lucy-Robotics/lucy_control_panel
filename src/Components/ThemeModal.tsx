@@ -15,6 +15,8 @@ import {
     message,
     Tooltip,
     Divider,
+    Alert,
+    Tag,
 } from 'antd';
 import {
     BgColorsOutlined,
@@ -26,6 +28,10 @@ import {
     ReloadOutlined,
     FileTextOutlined,
     FormatPainterOutlined,
+    SafetyCertificateOutlined,
+    SecurityScanOutlined,
+    CheckCircleOutlined,
+    LockOutlined,
 } from '@ant-design/icons';
 import { MovableModal } from './MovableModal';
 import { useTheme } from '../contexts/ThemeContext';
@@ -39,6 +45,10 @@ import {
     TEXT_SECONDARY,
     fonts,
 } from '../Constants/theme';
+import {
+    SecurityInspectionError,
+    type CssViolation,
+} from '../Services/cssSecurity.service';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -72,6 +82,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
         setThemeColors,
         loadThemeFromUrl,
         loadThemeFromFile,
+        inspectCss,
         resetToDefault,
         exportTemplate,
     } = useTheme();
@@ -87,6 +98,15 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
     const [editingCss, setEditingCss] = useState(customCss);
     const [urlInput, setUrlInput] = useState('');
     const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+    const [isScanningCss, setIsScanningCss] = useState(false);
+
+    // Security feedback state
+    const [securityAlert, setSecurityAlert] = useState<{
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        description: string;
+        violations?: CssViolation[];
+    } | null>(null);
 
     useEffect(() => {
         if (activeColors) {
@@ -129,8 +149,49 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
     };
 
     const handleApplyCustomCss = () => {
+        const inspection = inspectCss(editingCss);
+        if (!inspection.isSafe) {
+            setSecurityAlert({
+                type: 'warning',
+                title: 'Dangerous Rules Sanitized',
+                description: `Detected ${inspection.violations.length} injection/infection pattern(s). The stylesheet was automatically sanitized to neutralize harmful vectors before DOM application.`,
+                violations: inspection.violations,
+            });
+            message.warning('Custom CSS contained dangerous rules and was sanitized before application');
+        } else {
+            setSecurityAlert({
+                type: 'success',
+                title: 'Custom CSS Applied & Verified Safe',
+                description: 'Stylesheet applied cleanly. All security inspection checks passed.',
+            });
+            message.success('Custom stylesheet applied');
+        }
         setCustomCss(editingCss);
-        message.success('Custom stylesheet applied');
+    };
+
+    const handleAuditCss = () => {
+        setIsScanningCss(true);
+        try {
+            const inspection = inspectCss(editingCss);
+            if (inspection.isSafe) {
+                setSecurityAlert({
+                    type: 'success',
+                    title: 'Security Audit Passed: No Injections Detected',
+                    description: `Evaluated ${inspection.metadata.rulesEvaluated} security rules (${Math.round((inspection.metadata.cssSizeBytes / 1024) * 10) / 10} KB). No script execution, tag breakout, SSRF, or keylogger vectors detected.`,
+                });
+                message.success('CSS passed security audit');
+            } else {
+                setSecurityAlert({
+                    type: 'error',
+                    title: `Security Threat Detected (${inspection.threatLevel.toUpperCase()})`,
+                    description: `Found ${inspection.violations.length} dangerous construct(s). In strict mode, these rules are blocked from loading into the DOM.`,
+                    violations: inspection.violations,
+                });
+                message.error('Security violations detected in CSS editor');
+            }
+        } finally {
+            setIsScanningCss(false);
+        }
     };
 
     const handleLoadFromUrl = async () => {
@@ -139,26 +200,63 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
             return;
         }
         setIsLoadingUrl(true);
+        setSecurityAlert(null);
         try {
-            await loadThemeFromUrl(urlInput);
-            message.success('Theme stylesheet loaded successfully from URL');
+            const result = await loadThemeFromUrl(urlInput);
+            message.success('Theme stylesheet verified & loaded successfully from URL');
+            setSecurityAlert({
+                type: 'success',
+                title: 'Security Verified: Remote Stylesheet Safe',
+                description: `Inspected and validated ${Math.round((result.contentLength / 1024) * 10) / 10} KB from "${urlInput}". Passed XSS, SSRF, tag breakout, and CSS keylogger filters.`,
+            });
             setUrlInput('');
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Failed to fetch theme';
-            message.error(msg);
+            if (err instanceof SecurityInspectionError) {
+                setSecurityAlert({
+                    type: 'error',
+                    title: `Blocked Malicious Injection (${err.threatLevel.toUpperCase()})`,
+                    description: err.message,
+                    violations: err.violations,
+                });
+                message.error('CSS rejected by Security Service!');
+            } else {
+                const msg = err instanceof Error ? err.message : 'Failed to fetch theme';
+                setSecurityAlert({
+                    type: 'error',
+                    title: 'URL Load Failed',
+                    description: msg,
+                });
+                message.error(msg);
+            }
         } finally {
             setIsLoadingUrl(false);
         }
     };
 
     const handleFileUpload = async (file: File) => {
+        setSecurityAlert(null);
         try {
             const content = await loadThemeFromFile(file);
             setEditingCss(content);
-            message.success(`Theme "${file.name}" loaded successfully`);
+            setSecurityAlert({
+                type: 'success',
+                title: 'File Security Verified',
+                description: `Successfully inspected "${file.name}". No malicious scripts, HTML breakouts, or infections detected.`,
+            });
+            message.success(`Theme "${file.name}" verified and loaded successfully`);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Failed to load theme file';
-            message.error(msg);
+            if (err instanceof SecurityInspectionError) {
+                setSecurityAlert({
+                    type: 'error',
+                    title: 'Uploaded CSS File Blocked',
+                    description: err.message,
+                    violations: err.violations,
+                });
+                message.error('File rejected: malicious injection detected');
+            } else {
+                const msg = err instanceof Error ? err.message : 'Failed to load theme file';
+                message.error(msg);
+            }
         }
         return false; // Prevent automatic antd upload POST
     };
@@ -614,6 +712,57 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                             ),
                             children: (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {/* Security Feedback Alert */}
+                                    {securityAlert && (
+                                        <Alert
+                                            message={securityAlert.title}
+                                            description={
+                                                <div>
+                                                    <div style={{ marginBottom: securityAlert.violations && securityAlert.violations.length > 0 ? 8 : 0 }}>
+                                                        {securityAlert.description}
+                                                    </div>
+                                                    {securityAlert.violations && securityAlert.violations.length > 0 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                                                            {securityAlert.violations.map((violation, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 6,
+                                                                        fontSize: 11,
+                                                                        backgroundColor: 'rgba(0,0,0,0.3)',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: 3,
+                                                                    }}
+                                                                >
+                                                                    <Tag
+                                                                        color={
+                                                                            violation.severity === 'critical'
+                                                                                ? 'error'
+                                                                                : violation.severity === 'high'
+                                                                                    ? 'warning'
+                                                                                    : 'default'
+                                                                        }
+                                                                        style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}
+                                                                    >
+                                                                        {violation.severity.toUpperCase()}
+                                                                    </Tag>
+                                                                    <span style={{ color: TEXT_PRIMARY }}>{violation.description}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            }
+                                            type={securityAlert.type}
+                                            showIcon
+                                            closable
+                                            onClose={() => setSecurityAlert(null)}
+                                            style={{ border: '1px solid var(--color-secondary)' }}
+                                        />
+                                    )}
+
                                     {/* File Upload Section */}
                                     <div
                                         style={{
@@ -636,7 +785,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                                 Drop custom theme .css file here
                                             </p>
                                             <p style={{ color: TEXT_SECONDARY, fontSize: 11, marginBottom: 8 }}>
-                                                Upload any stylesheet overriding :root variables or custom classes
+                                                Upload any stylesheet overriding :root variables or custom classes (automatically security inspected)
                                             </p>
                                             <Button
                                                 type="primary"
@@ -655,9 +804,11 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
 
                                     {/* Online URL Section */}
                                     <div>
-                                        <Text style={{ color: TEXT_PRIMARY, display: 'block', marginBottom: 6, fontSize: 12 }}>
-                                            Direct Raw CSS URL (GitHub raw, CDN, web link):
-                                        </Text>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                            <Text style={{ color: TEXT_PRIMARY, fontSize: 12, fontWeight: 'bold' }}>
+                                                Direct Raw CSS URL (GitHub raw, CDN, web link):
+                                            </Text>
+                                        </div>
                                         <Space.Compact style={{ width: '100%' }}>
                                             <Input
                                                 prefix={<LinkOutlined style={{ color: 'var(--color-highlight)' }} />}
@@ -670,6 +821,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                             <Button
                                                 type="primary"
                                                 loading={isLoadingUrl}
+                                                icon={<SafetyCertificateOutlined />}
                                                 onClick={handleLoadFromUrl}
                                                 style={{
                                                     backgroundColor: 'var(--color-highlight)',
@@ -678,9 +830,12 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                                     fontWeight: 'bold',
                                                 }}
                                             >
-                                                FETCH & APPLY
+                                                FETCH & AUDIT
                                             </Button>
                                         </Space.Compact>
+                                        <Text style={{ color: TEXT_SECONDARY, fontSize: 11, display: 'block', marginTop: 4 }}>
+                                            Only secure HTTP/HTTPS endpoints are accepted. Internal private addresses (RFC1918, localhost) and oversized payloads (&gt;512KB) are strictly blocked.
+                                        </Text>
                                     </div>
 
                                     <Divider style={{ borderColor: 'var(--color-secondary)', margin: '4px 0' }} />
@@ -712,25 +867,41 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                                                 onClick={() => {
                                                     setEditingCss('');
                                                     setCustomCss('');
+                                                    setSecurityAlert(null);
                                                     message.info('Custom CSS cleared');
                                                 }}
                                                 size="small"
                                             >
                                                 Clear CSS
                                             </Button>
-                                            <Button
-                                                type="primary"
-                                                icon={<CheckOutlined />}
-                                                onClick={handleApplyCustomCss}
-                                                style={{
-                                                    backgroundColor: 'var(--color-highlight)',
-                                                    borderColor: 'var(--color-highlight)',
-                                                    color: 'var(--color-text-on-highlight)',
-                                                    fontWeight: 'bold',
-                                                }}
-                                            >
-                                                APPLY CSS
-                                            </Button>
+                                            <Space>
+                                                <Button
+                                                    icon={<SecurityScanOutlined />}
+                                                    loading={isScanningCss}
+                                                    onClick={handleAuditCss}
+                                                    style={{
+                                                        backgroundColor: 'transparent',
+                                                        borderColor: 'var(--color-secondary)',
+                                                        color: TEXT_PRIMARY,
+                                                        fontSize: 12,
+                                                    }}
+                                                >
+                                                    SCAN FOR THREATS
+                                                </Button>
+                                                <Button
+                                                    type="primary"
+                                                    icon={<CheckOutlined />}
+                                                    onClick={handleApplyCustomCss}
+                                                    style={{
+                                                        backgroundColor: 'var(--color-highlight)',
+                                                        borderColor: 'var(--color-highlight)',
+                                                        color: 'var(--color-text-on-highlight)',
+                                                        fontWeight: 'bold',
+                                                    }}
+                                                >
+                                                    APPLY CSS
+                                                </Button>
+                                            </Space>
                                         </div>
                                     </div>
 

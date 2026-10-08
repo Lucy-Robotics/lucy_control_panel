@@ -12,6 +12,13 @@ import {
     type ThemePreset,
 } from '../Services/theme.service';
 import {
+    cssSecurityService,
+    type CssSecurityInspectionResult,
+    type FetchCssResult,
+    type SecurityPolicyOptions,
+    type SecurityAuditRecord,
+} from '../Services/cssSecurity.service';
+import {
     MAIN_COLOR,
     SECONDARY_COLOR,
     HIGHLIGHT_COLOR,
@@ -27,12 +34,15 @@ interface ThemeContextType {
     themeUrl: string;
     themePresets: ThemePreset[];
     activeColors: ThemePreset['colors'];
+    lastSecurityReport: CssSecurityInspectionResult | null;
+    securityHistory: SecurityAuditRecord[];
     setActiveTheme: (id: string) => void;
     setCustomThemeEnabled: (enabled: boolean) => void;
     setCustomCss: (css: string) => void;
     setThemeColors: (colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }) => void;
-    loadThemeFromUrl: (url: string) => Promise<void>;
-    loadThemeFromFile: (file: File) => Promise<string>;
+    loadThemeFromUrl: (url: string, policy?: SecurityPolicyOptions) => Promise<FetchCssResult>;
+    loadThemeFromFile: (file: File, policy?: SecurityPolicyOptions) => Promise<string>;
+    inspectCss: (css: string, policy?: SecurityPolicyOptions) => CssSecurityInspectionResult;
     resetToDefault: () => void;
     exportTemplate: () => void;
     antdThemeConfig: ThemeConfig;
@@ -45,6 +55,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [customCss, setCustomCssState] = useState<string>(() => themeService.getCustomCss());
     const [isCustomThemeEnabled, setCustomThemeEnabledState] = useState<boolean>(() => themeService.isCustomThemeEnabled());
     const [themeUrl, setThemeUrlState] = useState<string>(() => themeService.getThemeUrl());
+    const [lastSecurityReport, setLastSecurityReport] = useState<CssSecurityInspectionResult | null>(() => themeService.getLastSecurityInspection());
+    const [securityHistory, setSecurityHistory] = useState<SecurityAuditRecord[]>(() => cssSecurityService.getAuditHistory());
 
     useEffect(() => {
         const unsubscribe = themeService.subscribe(() => {
@@ -52,6 +64,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setCustomCssState(themeService.getCustomCss());
             setCustomThemeEnabledState(themeService.isCustomThemeEnabled());
             setThemeUrlState(themeService.getThemeUrl());
+            setLastSecurityReport(themeService.getLastSecurityInspection());
+            setSecurityHistory(cssSecurityService.getAuditHistory());
         });
         return unsubscribe;
     }, []);
@@ -163,15 +177,27 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const setCustomCss = (css: string) => {
-        themeService.setCustomCss(css);
+        const inspection = themeService.setCustomCss(css);
+        setLastSecurityReport(inspection);
+        setSecurityHistory(cssSecurityService.getAuditHistory());
     };
 
-    const loadThemeFromUrl = async (url: string) => {
-        await themeService.loadThemeFromUrl(url);
+    const loadThemeFromUrl = async (url: string, policy?: SecurityPolicyOptions): Promise<FetchCssResult> => {
+        const result = await themeService.loadThemeFromUrl(url, policy);
+        setLastSecurityReport(result.inspection);
+        setSecurityHistory(cssSecurityService.getAuditHistory());
+        return result;
     };
 
-    const loadThemeFromFile = async (file: File) => {
-        return await themeService.loadThemeFromFile(file);
+    const loadThemeFromFile = async (file: File, policy?: SecurityPolicyOptions): Promise<string> => {
+        const result = await themeService.loadThemeFromFile(file, policy);
+        setLastSecurityReport(themeService.getLastSecurityInspection());
+        setSecurityHistory(cssSecurityService.getAuditHistory());
+        return result;
+    };
+
+    const inspectCss = (css: string, policy?: SecurityPolicyOptions): CssSecurityInspectionResult => {
+        return cssSecurityService.inspectCss(css, policy);
     };
 
     const resetToDefault = () => {
@@ -195,12 +221,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 themeUrl,
                 themePresets: BUILTIN_THEMES,
                 activeColors,
+                lastSecurityReport,
+                securityHistory,
                 setActiveTheme,
                 setCustomThemeEnabled,
                 setCustomCss,
                 setThemeColors,
                 loadThemeFromUrl,
                 loadThemeFromFile,
+                inspectCss,
                 resetToDefault,
                 exportTemplate,
                 antdThemeConfig,

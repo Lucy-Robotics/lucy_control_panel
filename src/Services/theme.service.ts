@@ -18,6 +18,13 @@ import {
     TEXT_PRIMARY,
     injectThemeVariables,
 } from '../Constants/theme';
+import {
+    cssSecurityService,
+    type CssSecurityInspectionResult,
+    type FetchCssResult,
+    type SecurityPolicyOptions,
+    SecurityInspectionError,
+} from './cssSecurity.service';
 
 export interface ThemePreset {
     id: string;
@@ -187,6 +194,7 @@ const STYLE_TAG_ID = 'lucy-custom-theme-style';
 class ThemeService {
     private static instance: ThemeService;
     private listeners: Set<() => void> = new Set();
+    private lastSecurityInspection: CssSecurityInspectionResult | null = null;
 
     private constructor() {
         if (typeof window !== 'undefined') {
@@ -237,6 +245,10 @@ class ThemeService {
         return localStorage.getItem(THEME_STORAGE_KEYS.THEME_URL) || '';
     }
 
+    public getLastSecurityInspection(): CssSecurityInspectionResult | null {
+        return this.lastSecurityInspection;
+    }
+
     public setActiveTheme(themeId: string): void {
         localStorage.setItem(THEME_STORAGE_KEYS.ACTIVE_THEME, themeId);
         localStorage.setItem(THEME_STORAGE_KEYS.THEME_ENABLED, 'true');
@@ -250,37 +262,62 @@ class ThemeService {
         this.notify();
     }
 
-    public setCustomCss(css: string): void {
-        localStorage.setItem(THEME_STORAGE_KEYS.CUSTOM_CSS, css);
+    public setCustomCss(css: string, sanitize = true): CssSecurityInspectionResult {
+        const inspection = cssSecurityService.inspectCss(css);
+        this.lastSecurityInspection = inspection;
+
+        const effectiveCss = sanitize ? inspection.sanitizedCss : css;
+        localStorage.setItem(THEME_STORAGE_KEYS.CUSTOM_CSS, effectiveCss);
         localStorage.setItem(THEME_STORAGE_KEYS.THEME_ENABLED, 'true');
         // Switch to custom preset if custom CSS is entered
-        if (css.trim()) {
+        if (effectiveCss.trim()) {
             localStorage.setItem(THEME_STORAGE_KEYS.ACTIVE_THEME, 'custom');
         }
         this.applyActiveTheme();
         this.notify();
+        return inspection;
     }
 
-    public async loadThemeFromUrl(url: string): Promise<void> {
+    public async loadThemeFromUrl(url: string, customPolicy?: SecurityPolicyOptions): Promise<FetchCssResult> {
         const trimmed = url.trim();
         if (!trimmed) throw new Error('URL cannot be empty');
-        const response = await fetch(trimmed);
-        if (!response.ok) {
-            throw new Error(`Failed to load theme from URL (${response.status}: ${response.statusText})`);
-        }
-        const css = await response.text();
+
+        const result = await cssSecurityService.fetchCssWithSecurity(trimmed, customPolicy);
+        this.lastSecurityInspection = result.inspection;
+
         localStorage.setItem(THEME_STORAGE_KEYS.THEME_URL, trimmed);
-        this.setCustomCss(css);
+        this.setCustomCss(result.sanitizedCss);
+        return result;
     }
 
-    public async loadThemeFromFile(file: File): Promise<string> {
+    public async loadThemeFromFile(file: File, customPolicy?: SecurityPolicyOptions): Promise<string> {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const content = e.target?.result as string;
                 if (typeof content === 'string') {
-                    this.setCustomCss(content);
-                    resolve(content);
+                    const inspection = cssSecurityService.inspectCss(content, customPolicy);
+                    this.lastSecurityInspection = inspection;
+
+                    if (!inspection.isSafe) {
+                        const criticalOrHigh = inspection.violations.filter(
+                            (v) => v.severity === 'critical' || v.severity === 'high'
+                        );
+                        const summary = criticalOrHigh
+                            .map((v) => `• [${v.severity.toUpperCase()}] ${v.description}`)
+                            .join('\n');
+                        reject(
+                            new SecurityInspectionError(
+                                `Theme file rejected due to dangerous CSS threats:\n${summary}`,
+                                inspection.violations,
+                                inspection.threatLevel
+                            )
+                        );
+                        return;
+                    }
+
+                    this.setCustomCss(inspection.sanitizedCss);
+                    resolve(inspection.sanitizedCss);
                 } else {
                     reject(new Error('Invalid file content format'));
                 }
@@ -377,8 +414,9 @@ class ThemeService {
             }
         }
 
-        // Apply raw CSS into the dynamic style tag
-        styleElement.textContent = cssToApply;
+        const sanitizedCss = cssSecurityService.sanitizeCss(cssToApply);
+
+        styleElement.textContent = sanitizedCss;
 
         // Parse and set CSS variables directly on root.style so inline specificity cannot block updates
         if (cssToApply) {

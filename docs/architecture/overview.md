@@ -1,4 +1,10 @@
-# Architecture Overview
+# Architecture Overview - lucy_control_panel
+
+Browser-side Control Panel only.  
+**Index:** [`lucy_ws/docs/architecture/README.md`](../../../../docs/architecture/README.md)  
+**System schematic** (workspace + MCU + peripherals):  
+[`lucy_ws/docs/architecture/overview.md`](../../../../docs/architecture/overview.md)  
+**Conventions:** [`lucy_ws/docs/architecture/GUIDE.md`](../../../../docs/architecture/GUIDE.md)
 
 ## Module map
 
@@ -17,118 +23,66 @@ src/
 └── Utils/          Pure helpers (math, logger)
 ```
 
----
+## UI container diagram
 
-## System diagram
+**UML Component (Control Panel)** - React app inside the browser; rosbridge is the external edge.
 
 ```mermaid
-flowchart TD
-    subgraph Browser["🌐 Browser"]
-        subgraph React["React Application"]
-            Pages["Pages\n(RobotControlPanel, Robot3DViewer,\nConfiguration, Stream)"]
-            Components["Components\n(JointControl, PoseManager,\nStreamPlayer, ...)"]
-            Hooks["useRosConnection"]
-            Storage["StorageService\n(LocalStorage)"]
+%%{init: {"theme": "base", "themeVariables": {"darkMode": true, "background": "#0d1117", "mainBkg": "#21262d", "primaryColor": "#21262d", "primaryTextColor": "#f0f6fc", "primaryBorderColor": "#00FF41", "secondaryColor": "#161b22", "secondaryTextColor": "#f0f6fc", "secondaryBorderColor": "#00FF41", "tertiaryColor": "#161b22", "tertiaryTextColor": "#f0f6fc", "tertiaryBorderColor": "#00FF41", "lineColor": "#00FF41", "textColor": "#f0f6fc", "nodeTextColor": "#f0f6fc", "edgeLabelBackground": "#161b22", "clusterBkg": "#0d1117", "clusterBorder": "#00FF41", "titleColor": "#f0f6fc"}}}%%
+flowchart TB
+  subgraph browser ["Browser"]
+    Pages["Pages"]
+    Components["Components"]
+    Hooks["useRosConnection"]
+    Storage["StorageService"]
+    RosBridge["RosBridgeService"]
+    JSH["JointStateHandler"]
+    CamH["CameraHandler"]
+    CCH["ConnectedClientsHandler"]
 
-            Pages -->|"renders"| Components
-            Pages -->|"reads status"| Hooks
-            Pages -->|"save / load poses"| Storage
-        end
+    Pages --> Components
+    Pages --> Hooks
+    Pages --> Storage
+    Pages --> JSH
+    Pages --> CamH
+    Pages --> CCH
+    Hooks --> RosBridge
+    JSH --> RosBridge
+    CamH --> RosBridge
+    CCH --> RosBridge
+  end
 
-        Hooks -->|"connect / disconnect"| RosBridge
-        Pages -->|"publishJointStates()"| JSH
-        Pages -->|"subscribe()"| CamH
-        Pages -->|"subscribe()"| CCH
-
-        subgraph Services["Services / ROS layer"]
-            RosBridge["RosBridgeService\n(WebSocket singleton)"]
-            JSH["JointStateHandler"]
-            CamH["CameraHandler"]
-            CCH["ConnectedClientsHandler"]
-        end
-
-        JSH -->|"uses"| RosBridge
-        CamH -->|"uses"| RosBridge
-        CCH -->|"uses"| RosBridge
-    end
-
-    subgraph ROS["🤖 ROS 2 (robot / Gazebo)"]
-        ROSBridgeServer["rosbridge_server\n(WebSocket)"]
-        ControllerManager["controller_manager\n(ros2_control)"]
-        ClockTopic["/clock"]
-        CameraTopic["camera topic"]
-        Hardware["Hardware / Gazebo"]
-    end
-
-    RosBridge <-->|"ws:// or wss://"| ROSBridgeServer
-    JSH -->|"trajectory_msgs/JointTrajectory"| ROSBridgeServer
-    ROSBridgeServer --> ControllerManager --> Hardware
-    ClockTopic -->|"rosgraph_msgs/Clock"| JSH
-    CameraTopic -->|"sensor_msgs/Image"| CamH
-
-    %% ── React Application nodes ──────────────────────────────
-    style Pages      fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#e8f4ff
-    style Components fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#e8f4ff
-    style Hooks      fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#e8f4ff
-    style Storage    fill:#2a2a4a,stroke:#7070cc,stroke-width:2px,color:#d0d0ff
-
-    %% ── Service layer nodes ──────────────────────────────────
-    style RosBridge  fill:#0d3d2e,stroke:#00c97a,stroke-width:2px,color:#ccffe8
-    style JSH        fill:#0d3d2e,stroke:#00c97a,stroke-width:2px,color:#ccffe8
-    style CamH       fill:#0d3d2e,stroke:#00c97a,stroke-width:2px,color:#ccffe8
-    style CCH        fill:#0d3d2e,stroke:#00c97a,stroke-width:2px,color:#ccffe8
-
-    %% ── ROS 2 nodes ──────────────────────────────────────────
-    style ROSBridgeServer   fill:#3d1f00,stroke:#ff8c00,stroke-width:2px,color:#ffe0b2
-    style ControllerManager fill:#3d1f00,stroke:#ff8c00,stroke-width:2px,color:#ffe0b2
-    style Hardware          fill:#3d1f00,stroke:#ff8c00,stroke-width:2px,color:#ffe0b2
-    style ClockTopic        fill:#2a1a00,stroke:#cc6600,stroke-width:1px,color:#ffd080
-    style CameraTopic       fill:#2a1a00,stroke:#cc6600,stroke-width:1px,color:#ffd080
-
-    %% ── Subgraph backgrounds ─────────────────────────────────
-    style React     fill:#0a1628,stroke:#4a9eff,stroke-width:2px,color:#ffffff
-    style Services  fill:#051a12,stroke:#00c97a,stroke-width:2px,color:#ffffff
-    style Browser   fill:#0d0d1a,stroke:#555599,stroke-width:2px,color:#aaaacc
-    style ROS       fill:#1a0d00,stroke:#ff8c00,stroke-width:2px,color:#ffcc88
+  RosBridge -->|"WebSocket"| RosbridgeServer["rosbridge_server"]
+  linkStyle default stroke:#00FF41,stroke-width:2px
 ```
 
----
+Downstream ROS / hardware / MCU path is documented only in the
+[workspace overview](../../../../docs/architecture/overview.md) - do not duplicate it here.
 
 ## Joint control data flow
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant Slider as JointControl (slider, servo deg)
-    participant Panel as RobotControlPanel
-    participant JSH as JointStateHandler
-    participant WS as RosBridgeService (WebSocket)
-    participant ROS as ros2_control / LucySystemHardware
+**UML Component (joint command from UI)** - slider degrees to `ros2_control` radians and readback.
 
-    User->>Slider: moves slider (servo deg)
-    Slider->>Panel: onJointChange(name, servo_deg)
-    Panel->>Panel: servoDegToJointRad(name, servo_deg)
-    Panel->>JSH: publishJointStates(joints)
-    JSH->>JSH: group joints by controller
-    JSH->>WS: topic.publish(JointTrajectory)
-    WS->>ROS: trajectory_msgs/JointTrajectory\n[names, positions (rad), t=0.2 s]
-    ROS->>ROS: clamp to URDF <command_interface min/max>
-    ROS-->>Hardware: drive actuators (clamped)
-    ROS-->>JSH: /joint_states (URDF rad, clamped)
-    JSH-->>Slider: jointRadToServoDeg → actualValue
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"darkMode": true, "background": "#0d1117", "mainBkg": "#21262d", "primaryColor": "#21262d", "primaryTextColor": "#f0f6fc", "primaryBorderColor": "#00FF41", "secondaryColor": "#161b22", "secondaryTextColor": "#f0f6fc", "secondaryBorderColor": "#00FF41", "tertiaryColor": "#161b22", "tertiaryTextColor": "#f0f6fc", "tertiaryBorderColor": "#00FF41", "lineColor": "#00FF41", "textColor": "#f0f6fc", "nodeTextColor": "#f0f6fc", "edgeLabelBackground": "#161b22", "clusterBkg": "#0d1117", "clusterBorder": "#00FF41", "titleColor": "#f0f6fc"}}}%%
+flowchart LR
+  User["User"] -->|"servo deg"| Slider["JointControl"]
+  Slider -->|"onJointChange"| Panel["RobotControlPanel"]
+  Panel -->|"servoDegToJointRad"| JSH["JointStateHandler"]
+  JSH -->|"JointTrajectory"| WS["RosBridgeService"]
+  WS -->|"WebSocket rad"| ROS["ros2_control"]
+  ROS -->|"joint_states rad"| JSH
+  JSH -->|"jointRadToServoDeg"| Slider
+  linkStyle default stroke:#00FF41,stroke-width:2px
 ```
 
-### Units along the path
+| Stage | Unit |
+|-------|------|
+| Slider | servo degrees |
+| Wire to `ros2_control` | URDF radians |
+| `/joint_states` readback | URDF radians → servo degrees in UI |
 
-| Stage | Unit | Source |
-|-------|------|--------|
-| Slider native | servo degrees | `servo_min_deg` / `servo_max_deg` from the active YAML |
-| Wire to `ros2_control` | URDF radians | `servoDegToJointRad(servo_deg, offset_deg, direction, scale)` |
-| `LucySystemHardware::write()` | URDF radians, clamped | `<command_interface><param name="min/max"/></command_interface>` |
-| `/joint_states` | URDF radians | `joint_state_broadcaster` |
-| 3D viewer + slider readback | servo degrees | `jointRadToServoDeg(joint_rad, offset_deg, direction, scale)` |
-
-The slider exposes the full hardware envelope on purpose — `ros2_control` is the single point that enforces the URDF wall, so the LCP can show the user "your servo can mechanically reach this, but the controller will refuse past *X* deg".
+Hardware YAML stores **radians**; the panel edits **degrees** at the UI boundary only.
 
 ## Activate / Configure workflow
 
@@ -138,9 +92,9 @@ The slider exposes the full hardware envelope on purpose — `ros2_control` is t
 |------|----|---------------|--------------|
 | VALIDATE | always shown | `validate` | never |
 | ACTIVATE | always shown | (frontend save + activation) | never |
-| **GENERATE** | always shown | `generate` (regenerates `ros2_control.xacro` + `controllers.yaml`) | never |
+| **GENERATE** | always shown | `generate` | never |
 | BUILD | shown when not *SIMULATION ONLY* | `build` | `simulation_only` |
 | FLASH | shown when not *SIMULATION ONLY* | `flash` | `simulation_only`, `build_only` |
-| RELOAD | always shown | `reload` (`/lucy_control/restart`) | never |
+| RELOAD | always shown | `reload` | never |
 
-The dedicated **GENERATE** step makes it explicit that *SIMULATION ONLY* still rewrites ros2_control configuration; only firmware build/flash are skipped.
+*SIMULATION ONLY* still rewrites ros2_control configuration; only firmware build/flash are skipped.

@@ -3,18 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * ============================================================================
- * LUCY CONTROL PANEL - GLOBAL STYLESHEET & THEME FOUNDATION
- * ============================================================================
- * 
- * 75% - 10% - 15% Color System:
- * - 75% Main Dominant: #141414 (surfaces & dark backgrounds)
- * - 10% Secondary: #2B3E50 (borders, framing, small structural elements)
- * - 15% Highlight: #00FF41 (terminal green brand accent & active states)
- * - Text: #F7F1E5 (warm parchment, NOT white!)
- */
-
+/* ─── Baseline ────────────────────────────────────────────────────────────── */
 :root {
   /* 75% Dominant: Dark Canvas & Surface */
   --color-main: #141414;
@@ -341,14 +330,12 @@ h6 {
   border: none !important;
   border-radius: 0 !important;
   color: var(--color-text-primary) !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
   transition: background 0.2s ease, filter 0.2s ease;
 }
 
@@ -360,14 +347,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--card-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -543,14 +528,12 @@ h6 {
   border-radius: 0 !important;
   color: var(--color-text-primary) !important;
   filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
 }
 
 .ant-modal-content::before {
@@ -561,14 +544,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--modal-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -602,14 +583,12 @@ h6 {
   border: none !important;
   border-radius: 0 !important;
   filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
 }
 
 .lucy-movable-modal::before {
@@ -620,14 +599,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--modal-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -668,14 +645,12 @@ h6 {
   border: none !important;
   border-radius: 0 !important;
   color: var(--color-text-primary) !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
 }
 
 .ant-alert::before {
@@ -686,14 +661,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--alert-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -737,14 +710,12 @@ h6 {
   border: none !important;
   border-radius: 0 !important;
   padding: var(--spacing-standard);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
 }
 
 .tui-container::before,
@@ -756,14 +727,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--box-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -797,14 +766,12 @@ h6 {
   background: var(--box-border) !important;
   border: none !important;
   border-radius: 0 !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
 }
 
 .chamfer-box::before {
@@ -815,14 +782,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--box-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
 }
 
@@ -873,14 +838,12 @@ h6 {
   align-items: center !important;
   justify-content: center !important;
   gap: 6px !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  ) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
   transition: all 0.2s ease !important;
 }
 
@@ -892,14 +855,12 @@ h6 {
   inset: var(--border-width, 1px);
   z-index: -1;
   background: var(--btn-bg);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--inner-chamfer)) 0,
-    100% var(--inner-chamfer),
-    100% 100%,
-    var(--inner-chamfer) 100%,
-    0 calc(100% - var(--inner-chamfer))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
   pointer-events: none;
   transition: background 0.2s ease;
 }

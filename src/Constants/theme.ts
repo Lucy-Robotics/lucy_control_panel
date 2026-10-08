@@ -3,18 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * LUCY ROBOTICS DESIGN SYSTEM - CANONICAL TOKENS
- *
- * System Guidelines (75% - 10% - 15% ratio):
- * - 75% Main Dominant: Canvas, surfaces, and primary layout panels.
- * - 10% Secondary: Borders, subtle framing, and small dividers.
- * - 15% Highlight: Brand identifier, interactive active states, and focus cues.
- */
-
-// ============================================================================
-// 1. SPACING CONSTANTS
-// ============================================================================
+// Spacing constants
 export const SPACING_SCREEN_BORDER = 30; // 30px - Screen border
 export const SPACING_STANDARD = 20;      // 20px - Standard spacing
 export const SPACING_LARGE = 40;         // 40px - Large spacing
@@ -40,33 +29,25 @@ export const PAGE_CONTENT_STYLE = {
     position: 'relative',
 } as const;
 
-// ============================================================================
-// 2. COLOR PALETTE (THE SINGLE SOURCE OF TRUTH)
-// ============================================================================
-// 75% Dominant: Dark Canvas & Surface
+// Color palette
 export const MAIN_COLOR = '#141414';
 export const MAIN_DEEP = '#0a0a0a';
 export const MAIN_ELEVATED = '#1e1e1e';
 
-// 10% Secondary: Borders, Subtle Framing & Small Elements Only
 export const SECONDARY_COLOR = '#2B3E50';
 
-// 15% Highlight: Identifying Brand Factor, Active States & Terminal Cues
 export const HIGHLIGHT_COLOR = '#00FF41';
 
-// Text Colors (Warm parchment #F7F1E5, not white!)
 export const TEXT_PRIMARY = '#F7F1E5';
 export const TEXT_SECONDARY = '#6C7D8E';
 export const TEXT_MUTED = '#52677F';
 export const TEXT_ON_HIGHLIGHT = '#141414';
 
-// Semantic & Status Colors
 export const STATUS_ACTIVE = '#00FF41';
 export const STATUS_ERROR = '#FF4343';
 export const STATUS_WARNING = '#FFAA00';
 export const STATUS_INFO = '#00D8FF';
 
-// Helper utilities for hex and rgba manipulation
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
     const clean = hex.replace('#', '');
     if (clean.length === 3) {
@@ -100,16 +81,14 @@ export const colors = {
     secondaryColor: SECONDARY_COLOR,
     highlightColor: HIGHLIGHT_COLOR,
 
-    // 75% Main - Dark background & surfaces
     main: {
         base: MAIN_COLOR,
         surface: MAIN_COLOR,
-        elevated: adjustBrightness(MAIN_COLOR, 4), // ~#1f1f1f
-        deep: adjustBrightness(MAIN_COLOR, -4),     // ~#0a0a0a
+        elevated: adjustBrightness(MAIN_COLOR, 4),
+        deep: adjustBrightness(MAIN_COLOR, -4),
         contrastText: TEXT_PRIMARY,
     },
 
-    // 10% Secondary - Only for borders, subtle framing & small elements
     secondary: {
         base: SECONDARY_COLOR,
         border: SECONDARY_COLOR,
@@ -120,7 +99,6 @@ export const colors = {
         text: TEXT_SECONDARY,
     },
 
-    // 15% Highlight - Brand identifier, active states & cues
     highlight: {
         base: HIGHLIGHT_COLOR,
         light: adjustBrightness(HIGHLIGHT_COLOR, 15),
@@ -158,19 +136,14 @@ export const colors = {
     },
 } as const;
 
-// ============================================================================
-// 3. TYPOGRAPHY (Fonts, Weights / Greases, Sizes)
-// ============================================================================
+// Typography
 export const fonts = {
-    // Graphical display font
     graphical: "'Orbitron', sans-serif",
-    // Titles & content font (IBM Plex Mono for everything else)
     title: "'IBM Plex Mono', 'Courier New', monospace",
     mono: "'IBM Plex Mono', 'Courier New', monospace",
     content: "'IBM Plex Mono', 'Courier New', monospace",
 } as const;
 
-// Weights ("Greases")
 export const fontWeights = {
     light: 300,
     regular: 400,
@@ -181,21 +154,13 @@ export const fontWeights = {
     black: 900,
 } as const;
 
-// Font Sizes according to specification:
-// GRAPHICAL: 50 (Bold)
-// Title: 36 (web: 32px Bold)
-// Content: 20 (web: 16px Regular, 12px Light)
 export const fontSizes = {
-    // Graphical display
     graphical: '50px',
     graphicalWeb: '40px',
-    // Titles
     title36: '36px',
     titleWeb: '32px',
-    // Headings / Sub-titles
     h3: '24px',
     h4: '20px',
-    // Content
     content20: '20px',
     webContent: '16px',
     webSmall: '12px',
@@ -217,9 +182,7 @@ export const letterSpacing = {
     title: '3px',
 } as const;
 
-// ============================================================================
-// 4. BORDERS & SHAPES
-// ============================================================================
+// Borders & shapes
 export const borders = {
     radius: '0px', // Strict crisp cybernetic 0px
     standard: `1px solid ${SECONDARY_COLOR}`,
@@ -228,9 +191,7 @@ export const borders = {
     highlightThick: `2px solid ${HIGHLIGHT_COLOR}`,
 } as const;
 
-// ============================================================================
-// 5. CSS VARIABLES GENERATOR & ROOT INJECTOR
-// ============================================================================
+// CSS variables generator
 export const CSS_VARIABLES_MAP: Record<string, string> = {
     // 75% Main Dominant
     '--color-main': MAIN_COLOR,
@@ -308,9 +269,7 @@ export function injectThemeVariables(target: HTMLElement = document.documentElem
     }
 }
 
-// ============================================================================
-// 6. UNIFIED THEME CONFIG EXPORT
-// ============================================================================
+// Unified theme config
 export const THEME_CONFIG = {
     spacing,
     spacingScreenBorder: SPACING_SCREEN_BORDER,

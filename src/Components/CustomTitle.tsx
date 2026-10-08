@@ -11,39 +11,19 @@ import {
 } from '../Constants/theme';
 
 export interface CustomTitleProps {
-    /** The main title text */
     title: string;
-    /** Optional prefix (defaults to '>') */
     prefix?: string;
-    /** Optional separator (defaults to '//') */
     separator?: string;
-    /** Optional subtitle text (will be displayed in ALL CAPS) */
     subtitle?: string;
-    /** Whether to underline the subtitle (defaults to true) */
     underlineSubtitle?: boolean;
-    /** Heading level or style tier */
     level?: 1 | 2 | 3 | 4 | 5 | 'graphical';
-    /** Custom CSS styles for container */
     style?: React.CSSProperties;
-    /** Custom CSS styles for main title text */
     titleStyle?: React.CSSProperties;
-    /** Custom CSS styles for subtitle text */
     subtitleStyle?: React.CSSProperties;
-    /** Additional class names */
     className?: string;
-    /** Align title */
     align?: 'left' | 'center' | 'right';
 }
 
-/**
- * CustomTitle Component
- * Enforces the Lucy brand title specifications:
- * - Always prefix titles with '>' in #00ff41 (var(--color-highlight))
- * - Separators are '//' in #00ff41 (var(--color-highlight))
- * - Title text in #F7F1E5 (Warm parchment, not white)
- * - Subtitles: ALL CAPS, underline
- * - Fonts: Orbitron for graphical display, IBM Plex Mono for standard titles
- */
 export const CustomTitle: React.FC<CustomTitleProps> = ({
     title,
     prefix = '>',
@@ -64,15 +44,15 @@ export const CustomTitle: React.FC<CustomTitleProps> = ({
             case 'graphical':
                 return fontSizes.graphical;
             case 1:
-                return fontSizes.titleWeb; // 32px web
+                return fontSizes.titleWeb;
             case 2:
-                return fontSizes.h3; // 24px
+                return fontSizes.h3;
             case 3:
-                return fontSizes.h4; // 20px
+                return fontSizes.h4;
             case 4:
-                return fontSizes.webContent; // 16px
+                return fontSizes.webContent;
             case 5:
-                return fontSizes.webSmall; // 12px
+                return fontSizes.webSmall;
             default:
                 return fontSizes.titleWeb;
         }

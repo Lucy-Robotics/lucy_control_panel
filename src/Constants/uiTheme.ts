@@ -4,9 +4,7 @@
  */
 
 /**
- * ============================================================================
  * LEGACY UI THEME COMPATIBILITY BRIDGE (DEPRECATED)
- * ============================================================================
  * @deprecated This bridge exists solely for backward compatibility with legacy
  * components. Canonical theme definitions reside in `src/Constants/theme.ts`.
  * Runtime theme resolution and DOM application are handled by `themeService`

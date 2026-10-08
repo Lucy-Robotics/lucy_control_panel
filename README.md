@@ -1,39 +1,11 @@
 # Lucy Control Panel
 <!-- Advanced web-based control interface for InMoov humanoid robots with real-time 3D visualization -->
 
-A modern, TUI-themed web interface for controlling robots with real-time joint manipulation and immersive 3D visualization.
+The default interface shipped with [Lucy](https://github.com/Lucy-Robotics/lucy_ws/).
 
 ---
 
-## 📌 Overview
-
-Lucy Control Panel is a comprehensive web-based control system designed specifically for robots. Built with React and Three.js, it provides an intuitive terminal-style interface that allows users to control individual robot joints, save/load poses, and visualize the robot in real-time 3D.
-
-The application features a distinctive green-on-black cyberpunk aesthetic reminiscent of classic terminal interfaces, making robot control both functional and visually engaging. Whether you're programming complex movements or fine-tuning individual joints, Lucy Control Panel provides the tools needed for precise robot manipulation.
-
----
-
-## 🚀 Features
-
-- **🎮 Real-time Joint Control** - Individual control of all robot joints with precision sliders and input fields. Sliders display the **hardware-defined** servo range (`servo_min_deg` / `servo_max_deg` from the active YAML) so you can probe the full mechanical envelope; URDF `<limit>` enforcement is performed downstream by `ros2_control` (`LucySystemHardware`).
-- **👥 Multi-client exclusive control** - Multiple browsers can connect simultaneously; only one publishes at a time — see [Connection & Control user flow](docs/guides/connection-and-control.md)
-- **📡 Live motor feedback** - 3D viewer and slider readback consume `/joint_states` (URDF radians) and convert to servo degrees with the per-joint mapping (`offset_deg`, `direction`, `scale`).
-- **🎯 URDF Parser** - Automatic parsing of InMoov URDF files to extract joint configurations and constraints
-- **💾 Pose Management** - Save, load, and manage multiple robot poses with custom names
-- **⚙️ Activate / Configure workflow** - Five-step pipeline (VALIDATE → GENERATE → BUILD → FLASH → RELOAD) with a dedicated **GENERATE** step that regenerates `ros2_control` xacro + `controllers.yaml` even in *SIMULATION ONLY* mode (no firmware build).
-- **🔄 Drag & Drop Categories** - Reorganize joint categories (Head, Arms, Torso, etc.) via intuitive drag-and-drop
-- **📐 Unit Conversion** - Toggle between degrees and radians for joint angle display
-- **🤖 3D Robot Visualization** - Real-time 3D rendering of robot meshes with STL support
-- **⚙️ Visual Controls** - Wireframe mode, grid display, transparency adjustment, and camera controls
-- **🎨 Cyberpunk UI** - Terminal-inspired interface with signature green glow effects
-- **📱 Responsive Design** - Works seamlessly across desktop and mobile devices
-- **🔌 Connection Management** - Visual connection status and control interface
-- **🔐 Secure Authentication** - Optional username and password protection with MD5 encryption
-- **🌐 Custom ROS Bridge URL** - Configurable ROS Bridge connection with persistent settings
-
----
-
-## 🛠️ Prerequisites
+## Prerequisites
 
 | Tool | Required version | Notes |
 |---|---|---|
@@ -60,7 +32,7 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```sh
 # 1. Clone the repository
@@ -68,7 +40,7 @@ git clone https://github.com/lucy-robotics/lucy_control_panel.git
 cd lucy_control_panel
 
 # 2. Switch to the required Node version (requires nvm)
-nvm use
+nvm use 22
 
 # 3. Install dependencies
 yarn install
@@ -81,7 +53,7 @@ See the [Configuration](#️-configuration) section below for all available envi
 
 ---
 
-## ▶️ Run
+## Run
 
 ### Development
 
@@ -124,7 +96,7 @@ VITE_SSL_KEY_PATH=./certs/key.pem
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -162,13 +134,13 @@ yarn test
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 For more details on creation processes, troubleshooting, and other guidance, visit the [Lucy Robotics documentation](https://docs.lucy-robotics.com).
 
 ---
 
-## 📜 Code of Conduct
+## Code of Conduct
 
 We value the participation of each member of our community and are committed to ensuring that every interaction is respectful and productive. To foster a positive environment, we ask you to read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -180,33 +152,23 @@ Thank you for being a part of our community!
 
 ---
 
-## 🤝 Contributing
+## Contributing 
+
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)
 
 To find out more on how you can contribute to the project, please check our [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
-## 📜 License and Attribution
+## License
 
-### Project License
+This project is licensed under the terms of the GNU GPL V3 License.
 
-- **Original project code/files:** GNU GPL V3 License
-- **InMoov-derived files:** CC BY-NC 4.0 (as specified under)
- 
 See the [LICENSE](LICENSE) file for details.
-
-### InMoov-Derived Components
-
-Parts of this project that are derived from InMoov files (including Blender models, CAD files, and STL files) are based on the original work by **Gael Langevin**.
-
-**Original Work:** InMoov by Gael Langevin  
-**License:** [Creative Commons Attribution-NonCommercial (CC BY-NC)](https://creativecommons.org/licenses/by-nc/4.0/)  
-**Source:** http://inmoov.fr/  
-**Applies to:** Blender files, CAD files, STL files, and other 3D models derived from InMoov
 
 ---
 
-## 🙌 Acknowledgments
+## Acknowledgments
 
 - 🎉 [InMoov Project](https://inmoov.fr/) – Original design by Gael Langevin<br>
 - 🎉 **All contributors** to the InMoov community<br>
@@ -215,11 +177,11 @@ Parts of this project that are derived from InMoov files (including Blender mode
 
 ---
 
-## 📬 Contact
+## Contact
 
 - 📧 Email: [contact@lucy-robotics.com](mailto:contact@lucy-robotics.com)<br>
 - 🌍 GitHub Organization: [Lucy Robotics](https://github.com/lucy-robotics)<br>
 
 ---
 
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)
+Made with ❤️ by the Lucy Robotics Team !

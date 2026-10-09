@@ -9,8 +9,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { JointControl } from './JointControl.tsx';
 import { CustomTitle } from '../CustomTitle.tsx';
-import { CONTROL_OFF_HINT } from '../../Constants/controlPanelCopy.ts';
-import { ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
 import {
     SECONDARY_COLOR,
     TEXT_PRIMARY,

@@ -55,8 +55,7 @@ import {
 import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
 import { CustomTitle } from './CustomTitle';
-import { ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
-import { CONTROL_OFF_HINT } from '../Constants/controlPanelCopy.ts';
+import { CONTROL_OFF_HINT, ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
 
 const { Text } = Typography;
 

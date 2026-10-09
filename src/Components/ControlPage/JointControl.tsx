@@ -7,8 +7,7 @@ import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
-import { CONTROL_OFF_HINT } from '../../Constants/controlPanelCopy.ts';
-import { ReadOnlyHint } from './ReadOnlyHint.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { storageService } from '../../Services/storage.service.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";

@@ -80,8 +80,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
-import { ReadOnlyHint, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
-import { CONTROL_OFF_HINT } from '../Constants/controlPanelCopy.ts';
+import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';

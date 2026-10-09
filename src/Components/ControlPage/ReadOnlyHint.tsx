@@ -7,6 +7,9 @@ import React from 'react';
 import { Tag, Tooltip } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 
+export const CONTROL_OFF_HINT =
+    'Read-only: turn Control Robot ON to move the robot';
+
 interface ReadOnlyHintProps {
     /** Why the wrapped control is inert. Omit while it is usable: children then render untouched. */
     reason?: string | undefined;

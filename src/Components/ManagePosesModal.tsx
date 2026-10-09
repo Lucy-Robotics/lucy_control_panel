@@ -54,6 +54,8 @@ import {
 } from '../Services/storage.service.ts';
 import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
+import { ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
+import { CONTROL_OFF_HINT } from '../Constants/controlPanelCopy.ts';
 
 const { Text, Title } = Typography;
 
@@ -61,6 +63,7 @@ interface ManagePosesModalProps {
     joints: JointControlState[];
     onLoadPose: (joints: Record<string, number>) => void;
     onPlayAnimation: (animation: SavedAnimation) => void;
+    controlEnabled: boolean;
     isAnimating: boolean;
     onStopAnimation: () => void;
     isVisible?: boolean;
@@ -74,6 +77,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     joints,
     onLoadPose,
     onPlayAnimation,
+    controlEnabled,
     isAnimating,
     onStopAnimation,
     isVisible: controlledVisible,
@@ -176,7 +180,13 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
         }
     };
 
+    const readOnlyReason = controlEnabled ? undefined : CONTROL_OFF_HINT;
+
     const handleLoadPose = async (id: string) => {
+        if (!controlEnabled) {
+            message.info(CONTROL_OFF_HINT);
+            return;
+        }
         setLoading(true);
         try {
             if (isAnimating) onStopAnimation();
@@ -385,16 +395,20 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                                 <List.Item
                                                     style={{ backgroundColor: UI_LIST_ROW_BG, border: `1px solid ${UI_BORDER_MUTED}`, padding: 12 }}
                                                     actions={[
-                                                        <Button
-                                                            key="load"
-                                                            type="primary"
-                                                            icon={<FolderOpenOutlined />}
-                                                            loading={loading}
-                                                            onClick={() => void handleLoadPose(pose.id)}
-                                                            style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE, color: UI_TEXT_ON_ACCENT }}
-                                                        >
-                                                            LOAD
-                                                        </Button>,
+                                                        <ReadOnlyHint key="load" reason={readOnlyReason}>
+                                                            <Button
+                                                                type="primary"
+                                                                icon={<FolderOpenOutlined />}
+                                                                loading={loading}
+                                                                disabled={!controlEnabled}
+                                                                onClick={() => void handleLoadPose(pose.id)}
+                                                                style={controlEnabled
+                                                                    ? { ...UI_PRIMARY_GREEN_BUTTON_STYLE, color: UI_TEXT_ON_ACCENT }
+                                                                    : undefined}
+                                                            >
+                                                                LOAD
+                                                            </Button>
+                                                        </ReadOnlyHint>,
                                                         <Popconfirm key="delete" title={`Delete "${pose.name}"?`} onConfirm={() => void deletePose(pose.id, pose.name)} okButtonProps={{ danger: true }}>
                                                             <Button danger type="text" icon={<DeleteOutlined />} />
                                                         </Popconfirm>,
@@ -531,7 +545,24 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                     >
                                         {selectedAnimationId ? 'UPDATE ANIMATION' : 'CREATE ANIMATION'}
                                     </Button>
-                                    {selectedAnimationId && <Button icon={<PlayCircleOutlined />} onClick={() => { const animation = animations.find(item => item.id === selectedAnimationId); if (animation) onPlayAnimation(animation); }}>PLAY</Button>}
+                                    {selectedAnimationId && (
+                                        <ReadOnlyHint reason={readOnlyReason}>
+                                            <Button
+                                                icon={<PlayCircleOutlined />}
+                                                disabled={!controlEnabled}
+                                                onClick={() => {
+                                                    if (!controlEnabled) {
+                                                        message.info(CONTROL_OFF_HINT);
+                                                        return;
+                                                    }
+                                                    const animation = animations.find(item => item.id === selectedAnimationId);
+                                                    if (animation) onPlayAnimation(animation);
+                                                }}
+                                            >
+                                                PLAY
+                                            </Button>
+                                        </ReadOnlyHint>
+                                    )}
                                     {selectedAnimationId && <Popconfirm title="Delete this animation?" onConfirm={() => void deleteAnimation()}><Button danger icon={<DeleteOutlined />}>DELETE</Button></Popconfirm>}
                                 </Space>
                             </Space>

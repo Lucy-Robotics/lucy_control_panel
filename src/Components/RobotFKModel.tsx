@@ -22,7 +22,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { UI_ACCENT_GREEN_HEX } from '../Constants/uiTheme';
-import { findParentLink } from '../Utils/robotModel.utils';
+import { findParentLink, findLinkWithJoint } from '../Utils/robotModel.utils';
 
 // Pristine DAE/mesh materials, captured per robot instance and kept at module
 // level so they survive remounts (the robot itself is module-cached in
@@ -58,6 +58,7 @@ export interface RobotFKModelProps {
     isSyncPaused?: boolean;
     activeGizmoJointName?: string | null;
     heldJointsRef?: React.RefObject<Map<string, { targetRad: number; timestamp: number }>>;
+    actuatedJointNames?: Set<string>;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -72,6 +73,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     isSyncPaused = false,
     activeGizmoJointName = null,
     heldJointsRef,
+    actuatedJointNames,
 }) => {
     const { gl } = useThree();
     const temporaryMaterialsRef = useRef<THREE.Material[]>([]);
@@ -108,7 +110,9 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             const origMat = originals!.get(mesh)!;
             const parentLink = findParentLink(mesh, robot);
             const linkName = parentLink?.urdfName || parentLink?.name;
-            const isSelected = Boolean(selectedPartName && linkName === selectedPartName);
+            const resolvedLink = parentLink ? findLinkWithJoint(parentLink, robot, actuatedJointNames) : null;
+            const resolvedName = resolvedLink?.urdfName || resolvedLink?.name || linkName;
+            const isSelected = Boolean(selectedPartName && (linkName === selectedPartName || resolvedName === selectedPartName));
             const isAnySelected = Boolean(selectedPartName);
 
             if (useOriginalTexture) {
@@ -188,7 +192,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             temporaryMaterialsRef.current = [];
             selectedMaterialsRef.current = [];
         };
-    }, [robot, opacity, wireframe, useOriginalTexture, selectedPartName, unselectedOpacity]);
+    }, [robot, opacity, wireframe, useOriginalTexture, selectedPartName, unselectedOpacity, actuatedJointNames]);
 
     useFrame((state) => {
         if (jointAngles.size > 0) {
@@ -238,7 +242,9 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         e.stopPropagation();
         const hitMesh = e.object;
         const link = findParentLink(hitMesh, robot);
-        const name = link?.urdfName || link?.name;
+        if (!link) return;
+        const targetLink = findLinkWithJoint(link, robot, actuatedJointNames);
+        const name = targetLink?.urdfName || targetLink?.name;
         if (name && onPartDoubleClick) {
             onPartDoubleClick(name);
         }

@@ -398,6 +398,8 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                                                 lineHeight: 1.3,
                                                 whiteSpace: 'pre-wrap',
                                                 wordBreak: 'break-word',
+                                                userSelect: 'text',
+                                                WebkitUserSelect: 'text',
                                             }}
                                         >
                                             {s.detail}

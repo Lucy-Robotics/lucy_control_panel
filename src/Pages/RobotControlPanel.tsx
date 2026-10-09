@@ -462,6 +462,17 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
+    useEffect(() => {
+        const handleGizmoChange = (e: Event) => {
+            const customEvent = e as CustomEvent<{ name: string; value: number }>;
+            if (customEvent.detail) {
+                handleJointValueChange(customEvent.detail.name, customEvent.detail.value);
+            }
+        };
+        window.addEventListener('robotJointValueChange', handleGizmoChange);
+        return () => window.removeEventListener('robotJointValueChange', handleGizmoChange);
+    }, [handleJointValueChange]);
+
     const handleTeleopJoint = (y: number, jointName: string) => {
         if (!isSendingRef.current) return;
         setJoints((prevJoints) =>
@@ -668,7 +679,13 @@ export const RobotControlPanel: React.FC = () => {
     const dockContent = (
         <Dock
             childrens={{
-                '3D_VIEW': <Robot3DViewer />,
+                '3D_VIEW': (
+                    <Robot3DViewer
+                        isControlOn={isSending}
+                        joints={joints}
+                        onJointValueChange={handleJointValueChange}
+                    />
+                ),
                 'STREAM': <StreamPlayer />,
                 'TELEOPERATION': (
                     <Suspense fallback={<Spin size="large" />}>
@@ -736,6 +753,9 @@ export const RobotControlPanel: React.FC = () => {
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
+                isControlOn={isSending}
+                joints={joints}
+                onJointValueChange={handleJointValueChange}
             />
 
             <StreamPlayerModal

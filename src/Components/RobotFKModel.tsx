@@ -53,7 +53,6 @@ export interface RobotFKModelProps {
     useOriginalTexture?: boolean;
     /** Currently selected/highlighted link name. */
     selectedPartName?: string | null;
-    /** Opacity for unselected parts when a part is focused (0 = hidden, 1 = fully opaque). */
     unselectedOpacity?: number;
     onPartDoubleClick?: (partName: string) => void;
 }
@@ -110,7 +109,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 if (!isAnySelected) {
                     mesh.material = origMat;
                 } else if (isSelected) {
-                    // Highlight selected part: full opacity with glowing emissive
                     const cloneMat = (m: THREE.Material): THREE.Material => {
                         const copy = m.clone();
                         temporaryMaterialsRef.current.push(copy);
@@ -126,7 +124,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                         mesh.material = cloneMat(origMat);
                     }
                 } else {
-                    // Dim unselected parts using configured unselectedOpacity
                     const dimMat = (m: THREE.Material): THREE.Material => {
                         const copy = m.clone();
                         temporaryMaterialsRef.current.push(copy);
@@ -142,9 +139,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                     }
                 }
             } else {
-                // Green override mode
                 if (isSelected) {
-                    // Electric cyan highlight material for the selected part
                     const highlightMat = new THREE.MeshStandardMaterial({
                         color: '#00E5FF',
                         emissive: '#005577',
@@ -160,7 +155,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                     selectedMaterialsRef.current.push(highlightMat);
                     mesh.material = highlightMat;
                 } else {
-                    // Dim unselected parts if any part is selected using unselectedOpacity
                     const effectiveOpacity = isAnySelected ? unselectedOpacity : opacity;
                     const greenMat = new THREE.MeshStandardMaterial({
                         color: UI_ACCENT_GREEN_HEX,
@@ -178,7 +172,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         });
 
         return () => {
-            // Restore pristine originals on cleanup
             robot.traverse(child => {
                 const mesh = child as THREE.Mesh;
                 if (!mesh.isMesh) return;
@@ -191,9 +184,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         };
     }, [robot, opacity, wireframe, useOriginalTexture, selectedPartName, unselectedOpacity]);
 
-    // ------------------------------------------------------------------
-    // Push live joint angles each frame & pulse highlight
-    // ------------------------------------------------------------------
     useFrame((state) => {
         if (jointAngles.size > 0) {
             const values: Record<string, number> = {};
@@ -201,7 +191,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             robot.setJointValues(values);
         }
 
-        // High-tech subtle pulse effect for selected meshes
         if (selectedPartName && selectedMaterialsRef.current.length > 0) {
             const pulse = 0.65 + 0.35 * Math.sin(state.clock.elapsedTime * 4.5);
             for (const mat of selectedMaterialsRef.current) {

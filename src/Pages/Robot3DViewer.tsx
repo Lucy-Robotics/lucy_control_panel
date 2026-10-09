@@ -11,11 +11,14 @@ import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
-import { getLinkBoundingBox, isURDFVisual } from '../Utils/robotModel.utils';
+import { JointRotationGizmo } from '../Components/JointRotationGizmo';
+import { getLinkBoundingBox, isURDFVisual, findJointForLink } from '../Utils/robotModel.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
+import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
+import type { JointControlState } from '../Constants/robotTypes';
 import {
     UI_ACCENT_GREEN_HEX,
     UI_TEXT_PRIMARY_ON_DARK,
@@ -32,6 +35,7 @@ const MOUSE_HINTS = [
     'R-drag · pan',
     'dbl-click part · focus & follow',
     'dbl-click space · unfocus',
+    'gizmo drag · rotate joint',
 ];
 
 type Vec3 = [number, number, number];
@@ -198,10 +202,34 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     return null;
 };
 
-const Robot3DViewer: React.FC = () => {
+export interface Robot3DViewerProps {
+    isControlOn?: boolean;
+    joints?: JointControlState[];
+    onJointValueChange?: (name: string, value: number) => void;
+}
+
+const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
+    isControlOn: isControlOnProp,
+    joints,
+    onJointValueChange,
+}) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
+
+    const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
+        const handler = ControlModeHandler.getInstance();
+        return handler.currentControllerId !== '' && handler.currentControllerId === handler.clientId;
+    });
+
+    useEffect(() => {
+        const handler = ControlModeHandler.getInstance();
+        return handler.onControllerChanged((activeClientId) => {
+            setHasRosControl(activeClientId !== '' && activeClientId === handler.clientId);
+        });
+    }, []);
+
+    const effectiveControlOn = isControlOnProp !== undefined ? isControlOnProp : hasRosControl;
 
     // Default to DAE — matches the urdf-loader initial state before any material override
     const [useOriginalTexture, setUseOriginalTexture] = useState(true);
@@ -226,6 +254,13 @@ const Robot3DViewer: React.FC = () => {
             return link && link.children.some(isURDFVisual);
         });
     }, [robot]);
+
+    const focusedJoint = useMemo(() => {
+        if (!robot || !selectedPartName) return null;
+        const link = robot.links[selectedPartName];
+        if (!link) return null;
+        return findJointForLink(link, robot);
+    }, [robot, selectedPartName]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -318,6 +353,14 @@ const Robot3DViewer: React.FC = () => {
                     />
                 )}
 
+                <JointRotationGizmo
+                    joint={focusedJoint}
+                    isControlOn={effectiveControlOn}
+                    joints={joints}
+                    onJointValueChange={onJointValueChange}
+                    controlsRef={controlsRef}
+                />
+
                 <CameraFollowController
                     robot={robot}
                     selectedPartName={selectedPartName}
@@ -326,6 +369,7 @@ const Robot3DViewer: React.FC = () => {
 
                 <OrbitControls
                     ref={controlsRef}
+                    makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
                     enablePan
@@ -351,7 +395,7 @@ const Robot3DViewer: React.FC = () => {
                     className="chamfer-box viewer-overlay-box"
                     style={{
                         position: 'absolute',
-                        bottom: 12,
+                        bottom: 56,
                         left: '50%',
                         transform: 'translateX(-50%)',
                         padding: '6px 14px',
@@ -378,6 +422,42 @@ const Robot3DViewer: React.FC = () => {
                     />
                     <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>FOLLOWING:</span>
                     <span style={{ color: '#00E5FF', fontWeight: 'bold' }}>{selectedPartName}</span>
+                    {focusedJoint && (
+                        <>
+                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
+                            <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{focusedJoint.urdfName || focusedJoint.name}</span>
+                            {effectiveControlOn ? (
+                                <span
+                                    style={{
+                                        fontSize: 9,
+                                        padding: '1px 6px',
+                                        borderRadius: 2,
+                                        background: 'rgba(0, 229, 255, 0.15)',
+                                        border: '1px solid #00E5FF',
+                                        color: '#00E5FF',
+                                        fontWeight: 'bold',
+                                        letterSpacing: 0.5,
+                                    }}
+                                >
+                                    GIZMO ACTIVE
+                                </span>
+                            ) : (
+                                <span
+                                    style={{
+                                        fontSize: 9,
+                                        padding: '1px 6px',
+                                        borderRadius: 2,
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid var(--color-secondary)',
+                                        color: UI_TEXT_SECONDARY_MUTED,
+                                    }}
+                                    title="Turn Control Robot ON to enable rotation gizmo"
+                                >
+                                    CONTROL OFF
+                                </span>
+                            )}
+                        </>
+                    )}
                     <button
                         onClick={() => setSelectedPartName(null)}
                         style={{
@@ -494,4 +574,3 @@ const Robot3DViewer: React.FC = () => {
 };
 
 export default Robot3DViewer;
-

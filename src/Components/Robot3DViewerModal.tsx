@@ -5,12 +5,16 @@
 
 import { FloatingViewerModal } from './FloatingViewerModal.tsx';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
+import type { JointControlState } from '../Constants/robotTypes';
 
 interface Robot3DViewerModalProps {
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
+    isControlOn?: boolean;
+    joints?: JointControlState[];
+    onJointValueChange?: (name: string, value: number) => void;
 }
 
 export function Robot3DViewerModal({
@@ -18,6 +22,9 @@ export function Robot3DViewerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 400, h: 800 },
+    isControlOn,
+    joints,
+    onJointValueChange,
 }: Robot3DViewerModalProps) {
     return (
         <FloatingViewerModal
@@ -27,7 +34,12 @@ export function Robot3DViewerModal({
             initialPosition={initialPosition}
             initialSize={initialSize}
         >
-            <Robot3DViewer />
+            <Robot3DViewer
+                isControlOn={isControlOn}
+                joints={joints}
+                onJointValueChange={onJointValueChange}
+            />
         </FloatingViewerModal>
     );
 }
+

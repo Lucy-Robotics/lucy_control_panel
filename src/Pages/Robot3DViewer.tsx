@@ -12,12 +12,13 @@ import type { URDFRobot } from 'urdf-loader';
 import { Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { getLinkBoundingBox, isURDFVisual, findJointForLink } from '../Utils/robotModel.utils';
+import { getLinkBoundingBox, isURDFVisual, findJointForLink, findLinkWithJoint } from '../Utils/robotModel.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
+import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     UI_ACCENT_GREEN_HEX,
@@ -304,6 +305,22 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         target: [...savedCamera.target] as Vec3,
     }).current;
 
+    const actuatedJointNames = useMemo(() => {
+        if (joints && joints.length > 0) {
+            return new Set(joints.map(j => j.name));
+        }
+        try {
+            const handler = JointStateHandler.getInstance();
+            const handlerJoints = handler.getJoints();
+            if (handlerJoints.length > 0) {
+                return new Set(handlerJoints.map(j => j.name));
+            }
+        } catch {
+            // ignore
+        }
+        return undefined;
+    }, [joints]);
+
     const availableParts = useMemo(() => {
         if (!robot) return [];
         return Object.keys(robot.links).filter(linkName => {
@@ -316,8 +333,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (!robot || !selectedPartName) return null;
         const link = robot.links[selectedPartName];
         if (!link) return null;
-        return findJointForLink(link, robot);
-    }, [robot, selectedPartName]);
+        return findJointForLink(link, robot, actuatedJointNames);
+    }, [robot, selectedPartName, actuatedJointNames]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -338,7 +355,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const handlePartDoubleClick = (partName: string) => {
         lastPartClickTimeRef.current = Date.now();
-        setSelectedPartName(prev => (prev === partName ? null : partName));
+        if (!robot) {
+            setSelectedPartName(prev => (prev === partName ? null : partName));
+            return;
+        }
+        const link = robot.links[partName];
+        const targetLink = link ? findLinkWithJoint(link, robot, actuatedJointNames) : null;
+        const targetName = targetLink ? (targetLink.urdfName || targetLink.name) : partName;
+        setSelectedPartName(prev => (prev === targetName ? null : targetName));
     };
 
     const handleCanvasDoubleClick = () => {
@@ -410,6 +434,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         isSyncPaused={isGizmoDragging}
                         activeGizmoJointName={isGizmoDragging ? (focusedJoint?.urdfName || focusedJoint?.name) : null}
                         heldJointsRef={heldJointsRef}
+                        actuatedJointNames={actuatedJointNames}
                     />
                 )}
 
@@ -510,7 +535,17 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                             <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9 }}>PART FOCUS</span>
                             <select
                                 value={selectedPartName || ''}
-                                onChange={e => setSelectedPartName(e.target.value || null)}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (!val || !robot) {
+                                        setSelectedPartName(val || null);
+                                        return;
+                                    }
+                                    const link = robot.links[val];
+                                    const targetLink = link ? findLinkWithJoint(link, robot, actuatedJointNames) : null;
+                                    const targetName = targetLink ? (targetLink.urdfName || targetLink.name) : val;
+                                    setSelectedPartName(targetName);
+                                }}
                                 style={{
                                     width: '100%',
                                     background: 'var(--color-main)',

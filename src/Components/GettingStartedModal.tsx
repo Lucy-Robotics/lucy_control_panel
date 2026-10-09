@@ -1,23 +1,13 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Divider, Space, Typography } from 'antd';
-import {
-    UI_ACCENT_GREEN,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_CHROME_SURFACE,
-    UI_COLOR_TRANSPARENT,
-    UI_PANEL_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SUBTLE,
-} from '../Constants/uiTheme.ts';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { MovableModal } from './MovableModal.tsx';
+import { CustomTitle } from './CustomTitle.tsx';
 import gettingStartedMarkdown from '../../docs/getting_started.md?raw';
 
 const { Paragraph, Text, Title } = Typography;
@@ -64,7 +54,7 @@ function renderInline(text: string): React.ReactNode[] {
                     href={link[2]}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ color: UI_ACCENT_GREEN, textDecoration: 'underline' }}
+                    style={{ color: 'var(--color-highlight)', textDecoration: 'underline' }}
                 >
                     {link[1]}
                 </a>
@@ -108,7 +98,7 @@ function MarkdownContent({ content }: { content: string }) {
             blocks.push(
                 <Divider
                     key={`divider-${index}`}
-                    style={{ borderColor: UI_BORDER_MUTED, margin: '20px 0' }}
+                    style={{ borderColor: 'var(--color-secondary)', margin: '20px 0' }}
                 />,
             );
         } else if (trimmed.startsWith('- ')) {
@@ -121,8 +111,8 @@ function MarkdownContent({ content }: { content: string }) {
                 <blockquote
                     key={`quote-${index}`}
                     style={{
-                        borderLeft: `3px solid ${UI_ACCENT_GREEN}`,
-                        color: UI_TEXT_SUBTLE,
+                        borderLeft: '3px solid var(--color-highlight)',
+                        color: 'var(--color-text-secondary)',
                         margin: '0 0 16px',
                         paddingLeft: 16,
                     }}
@@ -188,7 +178,7 @@ export const GettingStartedModal: React.FC = () => {
             initialSize={{ w: 720, h: 520 }}
             contentPadding={0}
             header={
-                <Text style={{ color: UI_TEXT_SUBTLE, fontFamily: 'monospace', fontSize: 11 }}>
+                <Text style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: 11 }}>
                     SECTION {sectionIndex + 1}/{sections.length}
                 </Text>
             }
@@ -198,7 +188,7 @@ export const GettingStartedModal: React.FC = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    backgroundColor: UI_PANEL_BG,
+                    backgroundColor: 'var(--color-main)',
                 }}
             >
                 <article
@@ -207,24 +197,18 @@ export const GettingStartedModal: React.FC = () => {
                         overflowY: 'auto',
                         overscrollBehavior: 'contain',
                         padding: '24px 28px 12px',
-                        color: UI_TEXT_PRIMARY_ON_DARK,
+                        color: 'var(--color-text-primary)',
                         fontFamily: 'monospace',
                         lineHeight: 1.5,
                     }}
                     onWheel={(event) => event.stopPropagation()}
                 >
-                    <Title
-                        level={1}
-                        style={{
-                            color: UI_ACCENT_GREEN,
-                            fontFamily: 'monospace',
-                            fontSize: 24,
-                            margin: '0 0 24px',
-                            textShadow: '0 0 10px rgba(0, 255, 65, 0.6)',
-                        }}
-                    >
-                        {section.name}
-                    </Title>
+                    <div style={{ marginBottom: 24 }}>
+                        <CustomTitle
+                            title={section.name.toUpperCase()}
+                            level={2}
+                        />
+                    </div>
                     <MarkdownContent content={section.content} />
                 </article>
                 <div
@@ -234,16 +218,16 @@ export const GettingStartedModal: React.FC = () => {
                         alignItems: 'center',
                         gap: 16,
                         padding: '12px 16px',
-                        borderTop: `1px solid ${UI_BORDER_MUTED}`,
-                        backgroundColor: UI_CHROME_SURFACE,
+                        borderTop: '1px solid var(--color-secondary)',
+                        backgroundColor: 'var(--color-main)',
                     }}
                 >
                     <Button
                         onClick={complete}
                         style={{
-                            backgroundColor: UI_COLOR_TRANSPARENT,
-                            borderColor: UI_BORDER_SOFT,
-                            color: UI_TEXT_PRIMARY_ON_DARK,
+                            backgroundColor: 'transparent',
+                            borderColor: 'var(--color-secondary)',
+                            color: 'var(--color-text-primary)',
                         }}
                     >
                         SKIP
@@ -252,6 +236,10 @@ export const GettingStartedModal: React.FC = () => {
                         <Button
                             disabled={sectionIndex === 0}
                             onClick={() => setSectionIndex(index => index - 1)}
+                            style={{
+                                color: 'var(--color-text-primary)',
+                                borderColor: 'var(--color-secondary)',
+                            }}
                         >
                             BACK
                         </Button>
@@ -259,7 +247,12 @@ export const GettingStartedModal: React.FC = () => {
                             <Button
                                 type="primary"
                                 onClick={complete}
-                                style={{ backgroundColor: UI_ACCENT_GREEN, borderColor: UI_ACCENT_GREEN, color: UI_TEXT_ON_ACCENT }}
+                                style={{
+                                    backgroundColor: 'var(--color-highlight)',
+                                    borderColor: 'var(--color-highlight)',
+                                    color: 'var(--color-text-on-highlight)',
+                                    fontWeight: 'bold',
+                                }}
                             >
                                 FINISH
                             </Button>
@@ -267,7 +260,12 @@ export const GettingStartedModal: React.FC = () => {
                             <Button
                                 type="primary"
                                 onClick={() => setSectionIndex(index => index + 1)}
-                                style={{ backgroundColor: UI_ACCENT_GREEN, borderColor: UI_ACCENT_GREEN, color: UI_TEXT_ON_ACCENT }}
+                                style={{
+                                    backgroundColor: 'var(--color-highlight)',
+                                    borderColor: 'var(--color-highlight)',
+                                    color: 'var(--color-text-on-highlight)',
+                                    fontWeight: 'bold',
+                                }}
                             >
                                 NEXT
                             </Button>

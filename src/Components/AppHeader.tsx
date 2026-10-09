@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -10,13 +10,10 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import {
-    UI_ACCENT_GREEN,
-    UI_WARNING,
-    UI_BORDER_MUTED,
-    UI_CHROME_SURFACE,
-    UI_ERROR,
-    UI_TEXT_SECONDARY_MUTED,
-} from '../Constants/uiTheme';
+    STATUS_ERROR,
+    STATUS_WARNING,
+    fonts,
+} from '../Constants/theme';
 import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
 
 const { Text } = Typography;
@@ -96,24 +93,24 @@ export const AppHeader: React.FC = () => {
 
     const getConnectionStatusColor = () => {
         if (countState > 1 && isConnected) {
-            return UI_WARNING;
+            return STATUS_WARNING;
         }
         switch (connectionStatus) {
             case 'connected':
-                return UI_ACCENT_GREEN;
+                return 'var(--color-highlight)';
             case 'connecting':
-                return UI_WARNING;
+                return STATUS_WARNING;
             case 'disconnected':
-                return UI_ERROR;
+                return STATUS_ERROR;
             default:
-                return UI_TEXT_SECONDARY_MUTED;
+                return 'var(--color-text-secondary)';
         }
     };
 
     const getControllerColor = () => {
-        if (activeControllerId === ControlModeHandler.getInstance().clientId) return UI_ACCENT_GREEN;
-        if (activeControllerId !== '') return UI_WARNING;
-        return UI_TEXT_SECONDARY_MUTED;
+        if (activeControllerId === ControlModeHandler.getInstance().clientId) return 'var(--color-highlight)';
+        if (activeControllerId !== '') return STATUS_WARNING;
+        return 'var(--color-text-secondary)';
     };
 
     const bridgeColor = getConnectionStatusColor();
@@ -123,35 +120,32 @@ export const AppHeader: React.FC = () => {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
-        padding: isMobile ? '3px 8px' : '4px 10px',
-        borderRadius: 16,
-        backgroundColor: UI_CHROME_SURFACE,
-        border: `1px solid ${UI_BORDER_MUTED}`,
+        padding: isMobile ? '3px 8px' : '4px 12px',
         minWidth: 0,
     };
 
     const dotStyle: React.CSSProperties = {
-        width: 10,
-        height: 10,
-        borderRadius: '50%',
+        width: 8,
+        height: 8,
+        borderRadius: 0, // Sharp square technical indicator
     };
 
     const statusIndicators = (
         <>
-            <Tooltip title={`Number of connected clients to the ROS Bridge.`}>
-                <div style={statusStyle}>
+            <Tooltip title="Number of connected clients to the ROS Bridge.">
+                <div style={statusStyle} className="header-status-box chamfer-box-sm">
                     <span
                         style={{
                             ...dotStyle,
                             backgroundColor: bridgeColor,
-                            boxShadow: `0 0 8px ${bridgeColor}`,
                         }}
                     />
                     <Text
                         style={{
                             color: bridgeColor,
-                            fontFamily: 'monospace',
-                            fontSize: 12,
+                            fontFamily: fonts.mono,
+                            fontSize: 11,
+                            letterSpacing: '0.5px',
                         }}
                     >
                         {isMobile ? `${countState}` : `ROS BRIDGE:${countState > 0 ? ` ${countState}` : ''} ${getConnectionStatusText()}`}
@@ -159,19 +153,19 @@ export const AppHeader: React.FC = () => {
                 </div>
             </Tooltip>
             <Tooltip title={activeControllerId !== '' ? 'A client is currently controlling the robot.' : 'No client is currently controlling the robot.'}>
-                <div style={statusStyle}>
+                <div style={statusStyle} className="header-status-box chamfer-box-sm">
                     <span
                         style={{
                             ...dotStyle,
                             backgroundColor: controllerColor,
-                            boxShadow: `0 0 8px ${controllerColor}`,
                         }}
                     />
                     <Text
                         style={{
                             color: controllerColor,
-                            fontFamily: 'monospace',
-                            fontSize: 12,
+                            fontFamily: fonts.mono,
+                            fontSize: 11,
+                            letterSpacing: '0.5px',
                         }}
                     >
                         {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
@@ -185,14 +179,19 @@ export const AppHeader: React.FC = () => {
         <>
             <Tooltip title="Documentation">
                 <Button
+                    className="nav-item-btn"
                     icon={isMobile ? <ReadOutlined /> : undefined}
-                    onClick={() => window.open('https://docs.sentience-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
+                    onClick={() => window.open('https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
                 >
                     {!isMobile && 'Documentation'}
                 </Button>
             </Tooltip>
             <Tooltip title="Settings">
-                <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
+                <Button
+                    className="nav-item-btn"
+                    icon={<SettingOutlined />}
+                    onClick={() => setIsSettingsModalVisible(true)}
+                />
             </Tooltip>
             <SettingsModal
                 visible={isSettingsModalVisible}
@@ -216,3 +215,5 @@ export const AppHeader: React.FC = () => {
         </div>
     );
 };
+
+export default AppHeader;

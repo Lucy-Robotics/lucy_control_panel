@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -35,10 +35,10 @@ export function HardwareConfigPresetHeaderTag(props: {
         variant === 'active'
             ? UI_TAG_ACTIVE_PRESET
             : variant === 'flashed'
-              ? UI_TAG_FLASHED_PRESET
-              : variant === 'loaded'
-                ? UI_TAG_LOADED_PRESET
-                : UI_TAG_TARGET_PRESET;
+                ? UI_TAG_FLASHED_PRESET
+                : variant === 'loaded'
+                    ? UI_TAG_LOADED_PRESET
+                    : UI_TAG_TARGET_PRESET;
     return (
         <Tag color={color} title={title}>
             {inner}
@@ -57,8 +57,8 @@ export function HardwareConfigPresetRoleTag(props: {
         props.variant === 'active'
             ? UI_TAG_ACTIVE_PRESET
             : props.variant === 'flashed'
-              ? UI_TAG_FLASHED_PRESET
-              : UI_TAG_TARGET_PRESET;
+                ? UI_TAG_FLASHED_PRESET
+                : UI_TAG_TARGET_PRESET;
     const merged: CSSProperties = { marginInlineEnd: 0, ...props.style };
     return (
         <Tag color={color} style={merged}>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -9,14 +9,8 @@ import { Button, Space, Grid } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import { ROUTES } from '../Constants/routes.ts';
 import {
-    UI_ACCENT_GREEN,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_COLOR_TRANSPARENT,
-    UI_NAV_BAR_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-} from '../Constants/uiTheme.ts';
+    SECONDARY_COLOR,
+} from '../Constants/theme.ts';
 
 const { useBreakpoint } = Grid;
 
@@ -33,13 +27,10 @@ export const Navigation: React.FC = () => {
 
     const desktopStyle: React.CSSProperties = {
         position: 'fixed',
-        bottom: 16,
-        right: 16,
+        bottom: 20,
+        right: 30, // Aligned with 30px screen border
         zIndex: 1000,
-        backgroundColor: UI_NAV_BAR_BG,
-        padding: '8px',
-        border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: '0'
+        padding: '8px 12px',
     };
 
     const mobileStyle: React.CSSProperties = {
@@ -48,54 +39,54 @@ export const Navigation: React.FC = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
-        backgroundColor: UI_NAV_BAR_BG,
-        borderTop: `1px solid ${UI_BORDER_MUTED}`,
+        backgroundColor: `rgba(20, 20, 20, 0.98)`,
+        borderTop: `1px solid ${SECONDARY_COLOR}`,
         display: 'flex',
         justifyContent: 'space-around',
-        padding: '8px 0',
+        padding: '8px 8px',
+        gap: 6,
     };
-
-    const buttonStyle = (isActive: boolean): React.CSSProperties => ({
-        backgroundColor: isActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-        borderColor: isActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-        color: isActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-        fontWeight: 'bold',
-        fontSize: '11px'
-    });
 
     if (isMobile) {
         return (
             <div style={mobileStyle}>
-                {navigationItems.map(item => (
-                    <Link to={item.to} key={item.to} style={{ flex: 1, textAlign: 'center' }}>
-                        <Button
-                            type={location.pathname === item.to ? 'primary' : 'default'}
-                            icon={item.icon}
-                            style={buttonStyle(location.pathname === item.to)}
-                        >
-                            {screens.sm && item.label}
-                        </Button>
-                    </Link>
-                ))}
+                {navigationItems.map(item => {
+                    const isActive = location.pathname === item.to;
+                    return (
+                        <Link to={item.to} key={item.to} style={{ flex: 1, textAlign: 'center' }}>
+                            <Button
+                                className={`nav-item-btn ${isActive ? 'active' : ''}`}
+                                icon={item.icon}
+                                style={{ width: '100%' }}
+                            >
+                                {screens.sm && item.label}
+                            </Button>
+                        </Link>
+                    );
+                })}
             </div>
         );
     }
 
     return (
-        <div style={desktopStyle}>
-            <Space>
-                {navigationItems.map(item => (
-                    <Link to={item.to} key={item.to}>
-                        <Button
-                            type={location.pathname === item.to ? 'primary' : 'default'}
-                            icon={item.icon}
-                            style={buttonStyle(location.pathname === item.to)}
-                        >
-                            {item.label}
-                        </Button>
-                    </Link>
-                ))}
+        <div style={desktopStyle} className="lucy-navigation-bar chamfer-box-lg">
+            <Space size={8}>
+                {navigationItems.map(item => {
+                    const isActive = location.pathname === item.to;
+                    return (
+                        <Link to={item.to} key={item.to}>
+                            <Button
+                                className={`nav-item-btn ${isActive ? 'active' : ''}`}
+                                icon={item.icon}
+                            >
+                                {item.label}
+                            </Button>
+                        </Link>
+                    );
+                })}
             </Space>
         </div>
     );
 };
+
+export default Navigation;

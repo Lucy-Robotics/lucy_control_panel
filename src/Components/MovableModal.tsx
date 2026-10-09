@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -8,12 +8,9 @@ import { createPortal } from 'react-dom';
 import { Button, Space, Grid } from 'antd';
 import {
     UI_ACCENT_GREEN,
-    UI_BORDER_DIM,
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
-    UI_MODAL_SURFACE,
     UI_OVERLAY_BACKDROP_SOFT,
-    UI_SHADOW_ELEVATED,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
@@ -262,9 +259,9 @@ export function MovableModal({
 
     const frame = (
         <div
+            className="lucy-movable-modal"
             onMouseDown={centered ? (event) => event.stopPropagation() : undefined}
             style={{
-
                 position: centered ? 'relative' : isLocked ? 'sticky' : 'fixed',
                 left: isPinned ? undefined : isMobile ? VIEWPORT_MARGIN : x,
                 top: centered ? undefined : isLocked ? mobileTopOffset : y,
@@ -275,10 +272,6 @@ export function MovableModal({
                 maxHeight: centered ? '100%' : undefined,
                 marginBottom: isLocked ? 12 : undefined,
                 zIndex: centered ? undefined : isLocked ? 1 : 1000,
-                backgroundColor: UI_MODAL_SURFACE,
-                border: `1px solid ${UI_BORDER_MUTED}`,
-                borderRadius: 0,
-                boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
                 overscrollBehavior: 'contain',
                 userSelect: 'none',
@@ -297,14 +290,23 @@ export function MovableModal({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 24px',
-                    backgroundColor: UI_MODAL_SURFACE,
-                    borderBottom: `1px solid ${UI_BORDER_DIM}`,
+                    backgroundColor: 'var(--color-main)',
+                    borderBottom: '1px solid var(--color-secondary)',
                     cursor: isPinned ? 'default' : 'move',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <span style={{
                         color: UI_ACCENT_GREEN,
+                        fontFamily: 'monospace',
+                        fontWeight: 'bold',
+                        fontSize: 14,
+                        userSelect: 'none',
+                    }}>
+                        &gt;
+                    </span>
+                    <span style={{
+                        color: UI_TEXT_PRIMARY_ON_DARK,
                         fontFamily: 'monospace',
                         fontSize: 14,
                         fontWeight: 600,
@@ -362,8 +364,8 @@ export function MovableModal({
                         alignItems: 'center',
                         gap: 8,
                         padding: '12px 24px',
-                        borderTop: `1px solid ${UI_BORDER_DIM}`,
-                        backgroundColor: UI_CHROME_SURFACE,
+                        borderTop: '1px solid var(--color-secondary)',
+                        backgroundColor: 'var(--color-main)',
                         boxSizing: 'border-box',
                         flex: '0 0 auto',
                         flexWrap: footerWrap ? 'wrap' : 'nowrap',

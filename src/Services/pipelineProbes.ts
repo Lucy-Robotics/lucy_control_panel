@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -53,9 +53,9 @@ export async function probeConnection(): Promise<void> {
             publishers.length ? 'ok' : 'warn',
             publishers.length
                 ? `/joint_states published by ${publishers.join(', ')}` +
-                  (publishers.some((p) => p.includes(JOINT_STATE_FALLBACK))
-                      ? ' (stand-in, not ros2_control)'
-                      : '')
+                (publishers.some((p) => p.includes(JOINT_STATE_FALLBACK))
+                    ? ' (stand-in, not ros2_control)'
+                    : '')
                 : 'rosapi answered, but nothing publishes /joint_states',
         );
     } catch (error) {

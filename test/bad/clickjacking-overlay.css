@@ -1,0 +1,16 @@
+/*
+ * Malicious Test CSS: Clickjacking & UI Redressing Overlay
+ * Attack Vector: Creates an invisible fullscreen layer with extreme z-index to hijack user clicks
+ * Expected Result: DETECTED (Medium Severity: redress-invisible-overlay)
+ */
+
+.clickjack-trap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483647;
+  opacity: 0;
+  cursor: pointer;
+}

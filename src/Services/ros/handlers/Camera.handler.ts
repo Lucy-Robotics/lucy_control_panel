@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -71,7 +71,7 @@ export class CameraHandler {
             this.fpsStartTime = now;
         }
         this.frameCount++;
-        
+
         // Update FPS every second
         const timeElapsed = now - this.fpsStartTime;
         if (timeElapsed >= 1000) {
@@ -171,7 +171,7 @@ export class CameraHandler {
         }
 
         this.currentStreamSource = streamSource;
-        
+
         // If we have subscribers and ROS is connected, reinitialize with new topic
         if (this.subscribers.length > 0 && this.ros) {
             this.initializeTopic(streamSource);

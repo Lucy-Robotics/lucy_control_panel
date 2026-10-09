@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -49,23 +49,23 @@ export const AUDIO_TOPICS = {
 } as const;
 
 export interface StreamSource {
-    id: string;
-    name: string;
-    topic: string;
-    messageType: string;
+  id: string;
+  name: string;
+  topic: string;
+  messageType: string;
 }
 
 /** Per-sensor stream entry derived from hardware YAML (pressure sensors on `sensors/<scope>` topics). */
 export interface SensorSource {
-    id: string;
-    name: string;
-    /** ROS topic for the board's Float32Array payload (e.g. `/sensors/left_arm`). */
-    topic: string;
-    messageType: string;
-    /** Index into the Float32Array for this sensor (board sensors sorted by `virtual_pin`). */
-    arrayIndex: number;
-    type: string;
-    boardId: string;
+  id: string;
+  name: string;
+  /** ROS topic for the board's Float32Array payload (e.g. `/sensors/left_arm`). */
+  topic: string;
+  messageType: string;
+  /** Index into the Float32Array for this sensor (board sensors sorted by `virtual_pin`). */
+  arrayIndex: number;
+  type: string;
+  boardId: string;
 }
 
 export const SENSOR_FLOAT32_ARRAY_MESSAGE_TYPE = 'ros_gz_interfaces/msg/Float32Array' as const;

@@ -20,6 +20,8 @@ Technical reference for the Lucy Control Panel frontend application.
 |---|---|
 | [RosBridgeService](./services/ros/ros.service.md) | WebSocket connection lifecycle, status events |
 | [JointStateHandler](./services/ros/handlers/JointState.handler.md) | Joint command publication via `trajectory_msgs/JointTrajectory` |
+| [ThemeService](./services/theme.service.md) | Runtime CSS theme engine, preset switcher, and DOM injection |
+| [CssSecurityService](./services/cssSecurity.service.md) | Static CSS security scanner, SSRF validator, and sanitization pipeline |
 
 ### [Components](./components/README.md)
 Shared UI components reference table.

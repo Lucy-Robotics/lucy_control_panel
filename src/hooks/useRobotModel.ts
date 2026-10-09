@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -64,10 +64,10 @@ export function useRobotModel(): UseRobotModelReturn {
     const [robot, setRobot] = useState<URDFRobot | null>(
         globalCache.ready ? globalCache.robot : null,
     );
-    const [loading, setLoading]             = useState(!globalCache.ready);
+    const [loading, setLoading] = useState(!globalCache.ready);
     const [loadingStatus, setLoadingStatus] = useState('');
-    const [progress, setProgress]           = useState(0);
-    const [error, setError]                 = useState<string | null>(null);
+    const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
 
     // The URDF string most recently parsed — guards against re-parsing the same
     // model when the latched topic re-delivers it (e.g. after a reconnect).
@@ -172,9 +172,9 @@ export function useRobotModel(): UseRobotModelReturn {
             // total failure doesn't leave an empty robot cached for later mounts.
             globalCache = { ready: true, urdf, robot: loadedRobot };
 
-            const linkCount  = Object.keys(loadedRobot.links).length;
+            const linkCount = Object.keys(loadedRobot.links).length;
             const jointCount = Object.keys(loadedRobot.joints).length;
-            const actuated   = Object.values(loadedRobot.joints).filter(
+            const actuated = Object.values(loadedRobot.joints).filter(
                 j => j.jointType === 'revolute' || j.jointType === 'continuous',
             ).length;
             console.debug(
@@ -234,7 +234,7 @@ export function useRobotModel(): UseRobotModelReturn {
     const reload = useCallback(() => {
         // Re-running the hook alone would not touch the rosbridge subscription.
         RobotDescriptionHandler.getInstance().resubscribe();
-        globalCache           = { ready: false };
+        globalCache = { ready: false };
         loadedUrdfRef.current = null;
         setRobot(null);
         setLoading(true);

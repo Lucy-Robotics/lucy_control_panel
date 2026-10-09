@@ -224,7 +224,6 @@ export function useAutomationEngine({
         JointStateHandler.getInstance().publishJointStates(nextJoints);
       }
 
-      // Transition duration is handled by the robot / simulator
       const startMove = Date.now();
       while (Date.now() - startMove < 300) {
         if (cancelRef.current) return false;

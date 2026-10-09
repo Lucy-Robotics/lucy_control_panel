@@ -40,8 +40,6 @@ import { ManageRoutinesModal } from '../Components/Automation/ManageRoutinesModa
 import { Robot3DViewerModal } from '../Components/Robot3DViewerModal';
 import { useAutomationEngine } from '../Components/Automation/hooks/useAutomationEngine';
 
-import { FALLBACK_LUCY_JOINTS } from '../Components/Automation/data/defaultAutomations';
-
 import type {
   AutomationNodeData,
   AutomationNodeType,
@@ -58,29 +56,23 @@ export const AutomationPage: React.FC = () => {
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<Node<AutomationNodeData>, Edge> | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  // Flow State: Starts completely empty (no default preset)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AutomationNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [flowName, setFlowName] = useState<string>('New Routine');
   const [loop, setLoop] = useState<boolean>(false);
 
-  // Console closed by default
   const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
 
-  // 3D View Modal
   const [is3DViewOpen, setIs3DViewOpen] = useState<boolean>(false);
 
-  // Routine Save & Load Modal
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState<boolean>(false);
   const [routineModalTab, setRoutineModalTab] = useState<'save' | 'load'>('save');
   const [loadedRoutine, setLoadedRoutine] = useState<AutomationFlow | null>(null);
 
-  // Robot Joints & Saved Poses
-  const [joints, setJoints] = useState<JointControlState[]>(FALLBACK_LUCY_JOINTS);
+  const [joints, setJoints] = useState<JointControlState[]>([]);
   const [savedPoses, setSavedPoses] = useState<SavedPose[]>([]);
 
-  // Convert active hardware configs into JointControlState[]
   const buildJointsFromControllerConfig = useCallback(
     (configs: ControllerJointConfig[]): JointControlState[] => {
       const result: JointControlState[] = [];
@@ -114,24 +106,21 @@ export const AutomationPage: React.FC = () => {
     []
   );
 
-  // Sync joints from active hardware if connected
   useEffect(() => {
     if (isConnected && controllerConfigsFromActive && controllerConfigsFromActive.length > 0) {
       const activeJoints = buildJointsFromControllerConfig(controllerConfigsFromActive);
       setJoints(activeJoints);
     } else {
-      setJoints(FALLBACK_LUCY_JOINTS);
+      console.log('No active hardware controllers found');
     }
   }, [isConnected, controllerConfigsFromActive, buildJointsFromControllerConfig]);
 
-  // Load saved poses from storageService
   useEffect(() => {
     storageService.loadPoses().then((poses) => {
       setSavedPoses(poses);
     });
   }, []);
 
-  // Execution Engine Hook
   const {
     isRunning,
     isPaused,
@@ -153,13 +142,11 @@ export const AutomationPage: React.FC = () => {
     loop,
   });
 
-  // Track currently selected node
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
     return nodes.find((n) => n.id === selectedNodeId) ?? null;
   }, [nodes, selectedNodeId]);
 
-  // Connect nodes with deletable edges
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       const newEdge: Edge = {
@@ -178,7 +165,6 @@ export const AutomationPage: React.FC = () => {
     [setEdges]
   );
 
-  // Update node data from Config Panel
   const handleUpdateNodeData = useCallback(
     (nodeId: string, partialData: Partial<AutomationNodeData>) => {
       setNodes((nds) =>
@@ -199,7 +185,6 @@ export const AutomationPage: React.FC = () => {
     [setNodes]
   );
 
-  // Delete node
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
@@ -212,7 +197,6 @@ export const AutomationPage: React.FC = () => {
     [selectedNodeId, setNodes, setEdges]
   );
 
-  // Duplicate node
   const handleDuplicateNode = useCallback(
     (nodeId: string) => {
       const target = nodes.find((n) => n.id === nodeId);
@@ -241,7 +225,6 @@ export const AutomationPage: React.FC = () => {
     [nodes, setNodes]
   );
 
-  // Add node at reasonable position
   const handleAddNode = useCallback(
     (type: AutomationNodeType, position?: { x: number; y: number }) => {
       const newId = `node-${Date.now()}`;
@@ -272,7 +255,6 @@ export const AutomationPage: React.FC = () => {
         } as ResetNodeData;
       }
 
-      // Default position logic if not dropped
       const targetPos = position || {
         x: nodes.length > 0 ? Math.max(...nodes.map((n) => n.position.x)) + 300 : 120,
         y: 140,
@@ -291,7 +273,6 @@ export const AutomationPage: React.FC = () => {
     [joints, nodes, setNodes]
   );
 
-  // Drag and Drop from Left Library to React Flow Canvas
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -313,7 +294,6 @@ export const AutomationPage: React.FC = () => {
     [rfInstance, handleAddNode]
   );
 
-  // Clear Canvas
   const handleClearCanvas = useCallback(() => {
     setNodes([]);
     setEdges([]);
@@ -323,10 +303,8 @@ export const AutomationPage: React.FC = () => {
     message.info('Canvas cleared');
   }, [setNodes, setEdges]);
 
-  // Load Saved Routine
   const handleLoadRoutine = useCallback(
     (flow: AutomationFlow) => {
-      // Ensure all edges have deletable type
       const styledEdges = (flow.edges || []).map((e) => ({
         ...e,
         type: 'deletable',
@@ -341,7 +319,6 @@ export const AutomationPage: React.FC = () => {
     [setNodes, setEdges]
   );
 
-  // Auto Layout nodes sequentially
   const handleAutoLayout = useCallback(() => {
     setNodes((nds) => {
       return nds.map((node, index) => ({
@@ -352,7 +329,6 @@ export const AutomationPage: React.FC = () => {
         },
       }));
     });
-    // Auto-chain edges if there are multiple nodes
     setEdges(() => {
       const chained: Edge[] = [];
       for (let i = 0; i < nodes.length - 1; i++) {

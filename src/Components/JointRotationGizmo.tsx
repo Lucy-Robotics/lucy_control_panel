@@ -40,7 +40,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [displayDegrees, setDisplayDegrees] = useState<number>(0);
 
-    // Dynamic radius scaled to the joint's actuated child link
     const radius = useMemo(() => {
         if (!joint) return 0.16;
         let maxDim = 0.2;
@@ -55,7 +54,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         return THREE.MathUtils.clamp(maxDim * 0.42, 0.11, 0.32);
     }, [joint]);
 
-    // Current angle state
     useEffect(() => {
         if (!joint || isDraggingRef.current) return;
         const currentRad = joint.angle ?? joint.jointValue?.[0] ?? 0;
@@ -70,7 +68,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
     }, [joint, joints]);
 
-    // Keep OrbitControls enabled on unmount or on error
     useEffect(() => {
         const controls = controlsRef.current;
         return () => {
@@ -81,7 +78,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         };
     }, [controlsRef, onDraggingChange]);
 
-    // Cursor management
     useEffect(() => {
         if (isDragging) {
             gl.domElement.style.cursor = 'grabbing';
@@ -92,7 +88,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
     }, [isDragging, isHovered, gl]);
 
-    // Keep gizmo placed at joint world position and aligned with world rotation axis
     useFrame(() => {
         if (!joint || !groupRef.current || isDraggingRef.current) return;
 
@@ -100,13 +95,11 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const jointWorldPos = joint.getWorldPosition(new THREE.Vector3());
         const worldAxis = joint.axis.clone().transformDirection(joint.matrixWorld).normalize();
 
-        // Local Z of the group points along the joint's world rotation axis
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), worldAxis);
         groupRef.current.position.copy(jointWorldPos);
         groupRef.current.quaternion.copy(quat);
     });
 
-    // Drag tracking refs
     const startJointAngleRadRef = useRef<number>(0);
     const accumulatedAngleRef = useRef<number>(0);
     const jointCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
@@ -125,7 +118,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
-        // 1. Commit target angle to anti-rollback hold and dispatch to sliders / ROS
         if (lastEmittedValueRef.current) {
             const { name, value, targetRad } = lastEmittedValueRef.current;
             onJointCommit?.(name, targetRad);
@@ -139,7 +131,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         onDraggingChange?.(false);
     }, [controlsRef, onJointValueChange, onJointCommit, onDraggingChange]);
 
-    // Global pointerup to ensure OrbitControls is always restored even if mouse leaves window
     useEffect(() => {
         const handleGlobalPointerUp = () => {
             if (isDraggingRef.current) {
@@ -176,14 +167,12 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         jointCenterRef.current.copy(jointPos);
         jointAxisRef.current.copy(worldAxis);
 
-        // Rotation plane perpendicular to worldAxis passing through joint center
         rotationPlaneRef.current.setFromNormalAndCoplanarPoint(worldAxis, jointPos);
 
         const hitPoint = new THREE.Vector3();
         if (e.ray.intersectPlane(rotationPlaneRef.current, hitPoint)) {
             prevVectorRef.current.copy(hitPoint.sub(jointPos)).normalize();
         } else {
-            // Fallback: camera-facing plane
             const camDir = camera.getWorldDirection(new THREE.Vector3()).negate();
             rotationPlaneRef.current.setFromNormalAndCoplanarPoint(camDir, jointPos);
             if (e.ray.intersectPlane(rotationPlaneRef.current, hitPoint)) {
@@ -208,7 +197,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const currentVector = hitPoint.sub(jointCenterRef.current).normalize();
         const prevVector = prevVectorRef.current;
 
-        // Calculate signed rotation around joint axis
         const cross = new THREE.Vector3().crossVectors(prevVector, currentVector);
         const dot = THREE.MathUtils.clamp(prevVector.dot(currentVector), -1, 1);
         const deltaAngle = Math.atan2(cross.dot(jointAxisRef.current), dot);
@@ -220,16 +208,13 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         const targetAngleRad = startJointAngleRadRef.current + accumulatedAngleRef.current;
 
-        // Clamp to URDF joint limits if applicable
         let clampedRad = targetAngleRad;
         if (joint.jointType === 'revolute' && joint.limit) {
             clampedRad = THREE.MathUtils.clamp(targetAngleRad, joint.limit.lower, joint.limit.upper);
         }
 
-        // Live visual update directly on the 3D model with zero server/React overhead
         joint.setJointValue(clampedRad);
 
-        // Convert to slider values (actuator degrees if configured)
         const jointName = joint.urdfName || joint.name;
         const jointState = joints?.find(j => j.name === jointName);
         const meta = JointStateHandler.getInstance().getJointMeta(jointName);

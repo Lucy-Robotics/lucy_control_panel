@@ -87,6 +87,10 @@ export class JointStateHandler {
     this.initializeTopics();
   }
 
+  getJointMeta(name: string): JointConfigMeta | undefined {
+    return this.jointMetaByName.get(name);
+  }
+
   /** Return current actuated joints as JointControlState[] (from controller config). Used by Configuration page. */
   getJoints(): JointControlState[] {
     const defaultMin = 0;

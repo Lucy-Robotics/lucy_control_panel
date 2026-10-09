@@ -453,13 +453,17 @@ export const RobotControlPanel: React.FC = () => {
     }, [applyControlToggle]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
-        setJoints((prevJoints) =>
-            prevJoints.map((joint) =>
+        setJoints((prevJoints) => {
+            const nextJoints = prevJoints.map((joint) =>
                 joint.name === name
                     ? { ...joint, currentValue: value, targetValue: value }
                     : joint
-            )
-        );
+            );
+            if (isSendingRef.current) {
+                JointStateHandler.getInstance().publishJointStates(nextJoints);
+            }
+            return nextJoints;
+        });
     }, []);
 
     useEffect(() => {

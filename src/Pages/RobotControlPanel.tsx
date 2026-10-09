@@ -83,7 +83,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
-import { ReadOnlyHint } from '../Components/ControlPage/ReadOnlyHint.tsx';
+import { ReadOnlyHint, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
 import { CONTROL_OFF_HINT } from '../Constants/controlPanelCopy.ts';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
@@ -977,9 +977,12 @@ export const RobotControlPanel: React.FC = () => {
                                     borderBottom: `1px solid ${UI_BORDER_DIM}`,
                                 }}
                             >
-                                <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
-                                    WEBCAM
-                                </span>
+                                <Space size={8} align="center">
+                                    <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                                        WEBCAM
+                                    </span>
+                                    <ReadOnlyTag reason={readOnlyReason} />
+                                </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
                                 </Button>
@@ -1057,6 +1060,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
+                    header={<ReadOnlyTag reason={readOnlyReason} />}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}

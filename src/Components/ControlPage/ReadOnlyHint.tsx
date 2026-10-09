@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { Tooltip } from 'antd';
+import { Tag, Tooltip } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 
 interface ReadOnlyHintProps {
     /** Why the wrapped control is inert. Omit while it is usable: children then render untouched. */
@@ -40,6 +41,33 @@ export const ReadOnlyHint: React.FC<ReadOnlyHintProps> = ({
             >
                 {children}
             </span>
+        </Tooltip>
+    );
+};
+
+interface ReadOnlyTagProps {
+    /** Why the surrounding panel is inert. Omit while it is usable: the tag then renders nothing. */
+    reason?: string | undefined;
+}
+
+/**
+ * Badge for a panel that can be watched but not driven, so the state is
+ * readable without hovering anything. The tooltip carries the why.
+ */
+export const ReadOnlyTag: React.FC<ReadOnlyTagProps> = ({ reason }) => {
+    if (!reason) {
+        return null;
+    }
+
+    return (
+        <Tooltip title={reason}>
+            <Tag
+                icon={<EyeOutlined />}
+                color="warning"
+                style={{ margin: 0, cursor: 'help' }}
+            >
+                READ-ONLY
+            </Tag>
         </Tooltip>
     );
 };

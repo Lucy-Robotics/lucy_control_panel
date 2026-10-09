@@ -4,12 +4,12 @@
  */
 
 import React, { useCallback } from 'react';
-import { Card, Typography, Space, Button, Badge, Tag, Tooltip } from 'antd';
-import { ReloadOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Button, Badge } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { JointControl } from './JointControl.tsx';
 import { CONTROL_OFF_HINT } from '../../Constants/controlPanelCopy.ts';
-import { ReadOnlyHint } from './ReadOnlyHint.tsx';
+import { ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -102,17 +102,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         fontWeight: 'bold'
                     }}
                 />
-                {disabled && (
-                    <Tooltip title={CONTROL_OFF_HINT}>
-                        <Tag
-                            icon={<EyeOutlined />}
-                            color="warning"
-                            style={{ margin: 0, cursor: 'help' }}
-                        >
-                            READ-ONLY
-                        </Tag>
-                    </Tooltip>
-                )}
+                <ReadOnlyTag reason={disabled ? CONTROL_OFF_HINT : undefined} />
             </Space>
 
             <ReadOnlyHint reason={disabled ? CONTROL_OFF_HINT : undefined}>

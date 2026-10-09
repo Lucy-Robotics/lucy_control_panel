@@ -9,6 +9,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { JointControl } from './JointControl.tsx';
 import { CustomTitle } from '../CustomTitle.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
 import {
     SECONDARY_COLOR,
     TEXT_PRIMARY,
@@ -36,6 +37,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
     }, [onResetCategory, category]);
+
+    const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
     if (joints.length === 0) {
         return null;
@@ -71,29 +74,34 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2,
                 }}
             >
-                <CustomTitle
-                    title={category.toUpperCase()}
-                    subtitle={`${joints.length} JOINTS`}
-                    level={4}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CustomTitle
+                        title={category.toUpperCase()}
+                        subtitle={`${joints.length} JOINTS`}
+                        level={4}
+                    />
+                    <ReadOnlyTag reason={readOnlyReason} />
+                </div>
 
-                <Button
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    disabled={disabled}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleResetCategory();
-                    }}
-                    style={{
-                        backgroundColor: 'transparent',
-                        borderColor: SECONDARY_COLOR,
-                        color: TEXT_PRIMARY,
-                    }}
-                    title={`Reset all ${category} joints to their rest value`}
-                >
-                    Reset
-                </Button>
+                <ReadOnlyHint reason={readOnlyReason}>
+                    <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        disabled={disabled}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleResetCategory();
+                        }}
+                        style={{
+                            backgroundColor: 'transparent',
+                            borderColor: SECONDARY_COLOR,
+                            color: TEXT_PRIMARY,
+                        }}
+                        title={disabled ? undefined : `Reset all ${category} joints to their rest value`}
+                    >
+                        Reset
+                    </Button>
+                </ReadOnlyHint>
             </div>
 
             <div

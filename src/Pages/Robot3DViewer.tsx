@@ -28,6 +28,39 @@ import {
 
 const { Text } = Typography;
 
+const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
+const STORAGE_KEY_OPACITY = 'lucy_3d_opacity';
+
+const getInitialUnselectedOpacity = (): number => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_UNSELECTED_OPACITY);
+        if (saved !== null) {
+            const parsed = parseFloat(saved);
+            if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+                return parsed;
+            }
+        }
+    } catch {
+        // Fallback to default
+    }
+    return 0.25;
+};
+
+const getInitialOpacity = (): number => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_OPACITY);
+        if (saved !== null) {
+            const parsed = parseFloat(saved);
+            if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+                return parsed;
+            }
+        }
+    } catch {
+        // Fallback to default
+    }
+    return 0.85;
+};
+
 const SETTINGS_BOX_WIDTH = 150;
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -235,10 +268,28 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     // Default to DAE — matches the urdf-loader initial state before any material override
     const [useOriginalTexture, setUseOriginalTexture] = useState(true);
     const [showGrid, setShowGrid] = useState(true);
-    const [opacity, setOpacity] = useState(0.85);
+    const [opacity, setOpacity] = useState<number>(getInitialOpacity);
     const [wireframe, setWireframe] = useState(false);
     const [selectedPartName, setSelectedPartName] = useState<string | null>(null);
-    const [unselectedOpacity, setUnselectedOpacity] = useState(0.25);
+    const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
+
+    const handleUnselectedOpacityChange = (val: number) => {
+        setUnselectedOpacity(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_UNSELECTED_OPACITY, String(val));
+        } catch {
+            // Ignore localStorage errors
+        }
+    };
+
+    const handleOpacityChange = (val: number) => {
+        setOpacity(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_OPACITY, String(val));
+        } catch {
+            // Ignore localStorage errors
+        }
+    };
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
     const lastPartClickTimeRef = useRef<number>(0);
@@ -495,7 +546,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 max="1"
                                 step="0.05"
                                 value={unselectedOpacity}
-                                onChange={e => setUnselectedOpacity(parseFloat(e.target.value))}
+                                onChange={e => handleUnselectedOpacityChange(parseFloat(e.target.value))}
                                 style={{ width: '100%', cursor: 'pointer' }}
                                 title="Transparency of not selected parts"
                             />
@@ -510,7 +561,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                             <span style={{ color: 'var(--color-highlight)' }}>OPACITY {Math.round(opacity * 100)}%</span>
                             <input
                                 type="range" min="0.1" max="1" step="0.1" value={opacity}
-                                onChange={e => setOpacity(parseFloat(e.target.value))}
+                                onChange={e => handleOpacityChange(parseFloat(e.target.value))}
                                 style={{ width: '100%', cursor: 'pointer' }}
                             />
                         </div>

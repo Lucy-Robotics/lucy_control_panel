@@ -24,6 +24,7 @@
     "@react-three/fiber": "^9.1.2",
     "@types/crypto-js": "^4.2.2",
     "@types/react-router-dom": "^5.3.3",
+    "@xyflow/react": "^12.4.4",
     "antd": "^5.25.4",
     "axios": "^1.9.0",
     "crypto-js": "^4.2.0",

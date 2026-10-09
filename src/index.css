@@ -963,3 +963,73 @@ h6 {
 .joint-category-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-highlight);
 }
+
+/* ─── Automation Flow Workspace Styling ─────────────────────────────────────── */
+.automation-page-container {
+  background-color: var(--color-main);
+}
+
+.library-node-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.library-node-card:hover {
+  border-color: var(--color-highlight) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 8px rgba(0, 255, 65, 0.15);
+}
+
+.preset-item-card:hover {
+  border-color: var(--color-secondary-hover) !important;
+  background-color: rgba(43, 62, 80, 0.25) !important;
+}
+
+.sequence-overview-item:hover {
+  border-color: var(--color-highlight) !important;
+  background-color: rgba(0, 255, 65, 0.05) !important;
+}
+
+/* React Flow Dark Styling */
+.react-flow__controls {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid var(--color-secondary) !important;
+  background-color: var(--color-main) !important;
+  border-radius: 6px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background-color: var(--color-main) !important;
+  border-bottom: 1px solid var(--color-secondary-subtle, rgba(43, 62, 80, 0.4)) !important;
+  fill: var(--color-text-secondary) !important;
+  color: var(--color-text-secondary) !important;
+  transition: all 0.2s ease;
+}
+
+.react-flow__controls-button:hover {
+  background-color: rgba(43, 62, 80, 0.3) !important;
+  fill: var(--color-highlight) !important;
+  color: var(--color-highlight) !important;
+}
+
+.react-flow__minimap {
+  border: 1px solid var(--color-secondary) !important;
+  border-radius: 6px !important;
+  overflow: hidden;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-highlight) !important;
+  stroke-width: 2.5px !important;
+}
+
+.react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  transition: box-shadow 0.15s ease !important;
+}
+
+.react-flow__handle:hover {
+  box-shadow: 0 0 10px var(--color-highlight) !important;
+}

@@ -55,6 +55,9 @@ export interface RobotFKModelProps {
     selectedPartName?: string | null;
     unselectedOpacity?: number;
     onPartDoubleClick?: (partName: string) => void;
+    isSyncPaused?: boolean;
+    activeGizmoJointName?: string | null;
+    heldJointsRef?: React.RefObject<Map<string, { targetRad: number; timestamp: number }>>;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -66,6 +69,9 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     selectedPartName = null,
     unselectedOpacity = 0.25,
     onPartDoubleClick,
+    isSyncPaused = false,
+    activeGizmoJointName = null,
+    heldJointsRef,
 }) => {
     const { gl } = useThree();
     const temporaryMaterialsRef = useRef<THREE.Material[]>([]);
@@ -187,8 +193,35 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     useFrame((state) => {
         if (jointAngles.size > 0) {
             const values: Record<string, number> = {};
-            jointAngles.forEach((angle, name) => { values[name] = angle; });
-            robot.setJointValues(values);
+            const now = Date.now();
+            const held = heldJointsRef?.current;
+
+            jointAngles.forEach((serverAngle, name) => {
+                if (isSyncPaused && activeGizmoJointName === name) {
+                    return;
+                }
+
+                if (held && held.has(name)) {
+                    const info = held.get(name)!;
+                    const diff = Math.abs(serverAngle - info.targetRad);
+                    const elapsed = now - info.timestamp;
+
+                    // If motor caught up to within ~2 deg (0.035 rad) or after 3s timeout:
+                    if (diff < 0.035 || elapsed > 3000) {
+                        held.delete(name);
+                        values[name] = serverAngle;
+                    } else {
+                        // Hold target angle firmly to prevent rollback!
+                        values[name] = info.targetRad;
+                    }
+                } else {
+                    values[name] = serverAngle;
+                }
+            });
+
+            if (Object.keys(values).length > 0) {
+                robot.setJointValues(values);
+            }
         }
 
         if (selectedPartName && selectedMaterialsRef.current.length > 0) {

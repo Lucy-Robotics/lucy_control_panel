@@ -19,6 +19,8 @@ export interface JointRotationGizmoProps {
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    onJointCommit?: (name: string, targetRad: number) => void;
+    onDraggingChange?: (isDragging: boolean) => void;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
 }
 
@@ -27,6 +29,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     isControlOn,
     joints,
     onJointValueChange,
+    onJointCommit,
+    onDraggingChange,
     controlsRef,
 }) => {
     const { gl, camera } = useThree();
@@ -53,7 +57,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     // Current angle state
     useEffect(() => {
-        if (!joint) return;
+        if (!joint || isDraggingRef.current) return;
         const currentRad = joint.angle ?? joint.jointValue?.[0] ?? 0;
         const jointName = joint.urdfName || joint.name;
         const meta = JointStateHandler.getInstance().getJointMeta(jointName);
@@ -73,8 +77,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             if (controls) {
                 controls.enabled = true;
             }
+            onDraggingChange?.(false);
         };
-    }, [controlsRef]);
+    }, [controlsRef, onDraggingChange]);
 
     // Cursor management
     useEffect(() => {
@@ -109,8 +114,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const prevVectorRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
 
-    const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
-    const lastEmitTimeRef = useRef<number>(0);
+    const lastEmittedValueRef = useRef<{ name: string; value: number; targetRad: number } | null>(null);
 
     const finishDrag = useCallback(() => {
         if (!isDraggingRef.current) return;
@@ -121,15 +125,19 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
+        // 1. Commit target angle to anti-rollback hold and dispatch to sliders / ROS
         if (lastEmittedValueRef.current) {
-            const { name, value } = lastEmittedValueRef.current;
+            const { name, value, targetRad } = lastEmittedValueRef.current;
+            onJointCommit?.(name, targetRad);
             onJointValueChange?.(name, value);
             window.dispatchEvent(new CustomEvent('robotJointValueChange', {
                 detail: { name, value },
             }));
             lastEmittedValueRef.current = null;
         }
-    }, [controlsRef, onJointValueChange]);
+
+        onDraggingChange?.(false);
+    }, [controlsRef, onJointValueChange, onJointCommit, onDraggingChange]);
 
     // Global pointerup to ensure OrbitControls is always restored even if mouse leaves window
     useEffect(() => {
@@ -152,6 +160,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         isDraggingRef.current = true;
         setIsDragging(true);
+        onDraggingChange?.(true);
 
         if (controlsRef.current) {
             controlsRef.current.enabled = false;
@@ -217,7 +226,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             clampedRad = THREE.MathUtils.clamp(targetAngleRad, joint.limit.lower, joint.limit.upper);
         }
 
-        // Live visual update on the robot model
+        // Live visual update directly on the 3D model with zero server/React overhead
         joint.setJointValue(clampedRad);
 
         // Convert to slider values (actuator degrees if configured)
@@ -237,16 +246,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
 
         setDisplayDegrees(finalValue);
-        lastEmittedValueRef.current = { name: jointName, value: finalValue };
-
-        const now = Date.now();
-        if (now - lastEmitTimeRef.current >= 40) {
-            lastEmitTimeRef.current = now;
-            onJointValueChange?.(jointName, finalValue);
-            window.dispatchEvent(new CustomEvent('robotJointValueChange', {
-                detail: { name: jointName, value: finalValue },
-            }));
-        }
+        lastEmittedValueRef.current = { name: jointName, value: finalValue, targetRad: clampedRad };
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
@@ -289,25 +289,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                     side={THREE.DoubleSide}
                 />
             </mesh>
-
-            {/* Inner concentric ring */}
-            <mesh>
-                <torusGeometry args={[radius * 0.88, radius * 0.015, 16, 48]} />
-                <meshBasicMaterial
-                    color="#00E5FF"
-                    transparent
-                    opacity={0.45}
-                    side={THREE.DoubleSide}
-                />
-            </mesh>
-
-            {/* Direction accent markers along the ring */}
-            {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle, i) => (
-                <mesh key={i} position={[radius * Math.cos(angle), radius * Math.sin(angle), 0]}>
-                    <sphereGeometry args={[radius * 0.05, 12, 12]} />
-                    <meshBasicMaterial color="#00E5FF" />
-                </mesh>
-            ))}
 
             {/* Generous invisible hitbox for effortless clicking and hovering */}
             <mesh

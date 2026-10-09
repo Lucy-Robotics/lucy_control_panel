@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -32,11 +32,11 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     onAspectRatioChange
 }) => {
     type Point3D = { x: number; y: number; z: number };
-    type Finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string};
-    type Finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
-    type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
+    type Finger3D = { tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string };
+    type Finger3DSample = { point1: Point3D, point2: Point3D, point3: Point3D };
+    type Finger3DIndex = { TIP: number, DIP: number, PIP: number, MCP: number }
     type FingerIndex = { name: string, idx: Finger3DIndex }
-    
+
     const Fingers: Array<FingerIndex> = [
         {
             name: "i01.side.thumb_link_joint", idx: {
@@ -148,9 +148,9 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             for (let i = 0; i < 5; i++) {
 
                 const label: string =
-                handedness[handIndex].label === "Left"
-                ? "leftHand"
-                : "rightHand";
+                    handedness[handIndex].label === "Left"
+                        ? "leftHand"
+                        : "rightHand";
 
                 if (controlModeRef.current === ControlMode.Claw) {
                     processClaw(hand);
@@ -208,9 +208,9 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     }
 
     function processFinger(finger: Finger3D) {
-        const sample1: Finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
-        const sample2: Finger3DSample = {point1: finger.dip, point2: finger.pip, point3: finger.mcp};
-        const sample3: Finger3DSample = {point1: finger.pip, point2: finger.mcp, point3: finger.wrist};
+        const sample1: Finger3DSample = { point1: finger.tip, point2: finger.dip, point3: finger.pip };
+        const sample2: Finger3DSample = { point1: finger.dip, point2: finger.pip, point3: finger.mcp };
+        const sample3: Finger3DSample = { point1: finger.pip, point2: finger.mcp, point3: finger.wrist };
 
         const angle1: number = angleBetweenPoints3D(sample1);
         const angle2: number = angleBetweenPoints3D(sample2);
@@ -247,7 +247,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         // b: Point3D,
         // c: Point3D
         sample: Finger3DSample
-        ): number {
+    ): number {
         // Build vectors "BA" and "BC" for the math formula
         const v1x = sample.point1.x - sample.point2.x;
         const v1y = sample.point1.y - sample.point2.y;

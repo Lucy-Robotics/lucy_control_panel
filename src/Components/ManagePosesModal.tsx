@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -54,10 +54,11 @@ import {
 } from '../Services/storage.service.ts';
 import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
+import { CustomTitle } from './CustomTitle';
 import { ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
 import { CONTROL_OFF_HINT } from '../Constants/controlPanelCopy.ts';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface ManagePosesModalProps {
     joints: JointControlState[];
@@ -351,7 +352,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <section>
-                        <Title level={4} style={{ color: UI_ACCENT_GREEN, marginTop: 0 }}>Save</Title>
+                        <CustomTitle title="SAVE POSE" level={4} style={{ marginBottom: 12 }} />
                         <Space.Compact style={{ width: '100%' }}>
                             <Input
                                 value={poseName}
@@ -378,7 +379,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <Title level={4} style={{ color: UI_ACCENT_GREEN, marginTop: 0 }}>Load</Title>
+                        <CustomTitle title="LOAD POSE" level={4} style={{ marginBottom: 12 }} />
                         {poses.length === 0 ? <Empty description="No saved poses yet" /> : (
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                                 <Input.Search
@@ -449,7 +450,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <Title level={4} style={{ color: UI_ACCENT_GREEN, marginTop: 0 }}>Animations</Title>
+                        <CustomTitle title="ANIMATIONS" level={4} style={{ marginBottom: 12 }} />
                         {poses.length < 2 ? (
                             <Card style={{ backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
                                 <Text style={{ color: UI_TEXT_SUBTLE }}>Save at least two poses to create an animation.</Text>

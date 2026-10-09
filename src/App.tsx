@@ -1,10 +1,10 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 /* Layout */
-import { ConfigProvider, theme, Layout, Grid } from 'antd';
+import { ConfigProvider, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import type { ComponentType } from 'react';
@@ -19,6 +19,7 @@ import { NotFound } from './Pages/NotFound';
 /* Contexts */
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 import { PaginatedCategoriesProvider } from './contexts/PaginatedCategoriesContext';
+import { useTheme } from './contexts/ThemeContext';
 
 /* Components */
 import { AuthForm } from './Components/AuthForm';
@@ -28,18 +29,7 @@ import { GettingStartedModal } from './Components/GettingStartedModal';
 
 /* Constants */
 import { ROUTES } from './Constants/routes.ts';
-
-/* Theme */
-import {
-    PAGE_CONTENT_STYLE,
-    UI_ACCENT_GREEN,
-    UI_BG_BLACK,
-    UI_BORDER_STRONG,
-    UI_COLOR_TRANSPARENT,
-    UI_PANEL_BG,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SUBTLE,
-} from './Constants/uiTheme.ts';
+import { PAGE_CONTENT_STYLE } from './Constants/uiTheme.ts';
 
 const { useBreakpoint } = Grid;
 
@@ -111,6 +101,7 @@ const RoutedPage = () => {
 };
 
 function App() {
+    const { antdThemeConfig } = useTheme();
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -147,56 +138,18 @@ function App() {
 
     if (localPassword && localUsername && !isAuthenticated) {
         return (
-            <ConfigProvider
-                theme={{
-                    algorithm: theme.darkAlgorithm,
-                    token: {
-                        colorPrimary: UI_ACCENT_GREEN,
-                        colorBgBase: UI_BG_BLACK,
-                        colorBgContainer: UI_PANEL_BG,
-                        colorBorder: UI_BORDER_STRONG,
-                        colorText: UI_TEXT_PRIMARY_ON_DARK,
-                        colorTextSecondary: UI_TEXT_SUBTLE,
-                        fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
-                    },
-                }}
-            >
+            <ConfigProvider theme={antdThemeConfig}>
                 <AuthForm onLogin={handleLogin} error={authError} />
             </ConfigProvider>
         );
     }
 
     return (
-        <ConfigProvider
-            theme={{
-                algorithm: theme.darkAlgorithm,
-                token: {
-                    colorPrimary: UI_ACCENT_GREEN,
-                    colorBgBase: UI_BG_BLACK,
-                    colorBgContainer: UI_PANEL_BG,
-                    colorBorder: UI_BORDER_STRONG,
-                    colorText: UI_TEXT_PRIMARY_ON_DARK,
-                    colorTextSecondary: UI_TEXT_SUBTLE,
-                    fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
-                },
-                components: {
-                    Layout: {
-                        bodyBg: UI_BG_BLACK,
-                        headerBg: UI_PANEL_BG,
-                    },
-                    Card: {
-                        colorBgContainer: UI_PANEL_BG,
-                    },
-                    Button: {
-                        colorBgContainer: UI_COLOR_TRANSPARENT,
-                    },
-                },
-            }}
-        >
+        <ConfigProvider theme={antdThemeConfig}>
             <Router>
                 <PaginatedCategoriesProvider>
                     <ActiveHardwareRosProvider>
-                        <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
+                        <Layout style={{ minHeight: '100vh', backgroundColor: 'var(--color-main)' }}>
                             <RoutedPage />
                             <Navigation />
                             <GettingStartedModal />

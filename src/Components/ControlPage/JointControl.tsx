@@ -1,10 +1,10 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Tag, Button, Tooltip } from 'antd';
+import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT } from '../../Constants/controlPanelCopy.ts';
@@ -13,15 +13,13 @@ import { storageService } from '../../Services/storage.service.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
-    UI_ACCENT_BLUE,
-    UI_ACCENT_GREEN,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_COLOR_TRANSPARENT,
-    UI_INPUT_SURFACE,
-    UI_LIST_ROW_BG,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
+  UI_ACCENT_BLUE,
+  UI_ACCENT_GREEN,
+  UI_BORDER_SOFT,
+  UI_COLOR_TRANSPARENT,
+  UI_INPUT_SURFACE,
+  UI_TEXT_PRIMARY_ON_DARK,
+  UI_TEXT_SECONDARY_MUTED,
 } from '../../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -287,36 +285,34 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     return `${Math.round(value * 1000) / 1000} rad`;
   }, [actuatorValue, showDegrees]);
 
-  const getJointTypeColor = (type: string): string => {
-    switch (type) {
-      case 'revolute': return 'blue';
-      case 'continuous': return 'green';
-      case 'prismatic': return 'orange';
-      default: return 'default';
-    }
-  };
-
+  // Every control below is inert for the same reason: no command is being published.
   const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
   return (
     <Card
       size="small"
+      className="joint-control-card"
       style={{
         marginBottom: 8,
-        backgroundColor: UI_LIST_ROW_BG,
-        borderColor: UI_BORDER_MUTED,
-        color: UI_TEXT_PRIMARY_ON_DARK
       }}
-      bodyStyle={{ padding: 12 }}
+      styles={{ body: { padding: 12 } }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
             {joint.displayName ?? joint.name}
           </Text>
-          <Tag color={getJointTypeColor(joint.type)}>
+          <span
+            style={{
+              color: UI_TEXT_SECONDARY_MUTED,
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
             {joint.type}
-          </Tag>
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

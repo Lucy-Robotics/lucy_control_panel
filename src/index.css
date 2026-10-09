@@ -1,16 +1,965 @@
-/* ─── Ant Design Slider: kill the rectangular focus ring on mouse click ─────
-   rc-slider places a focusable div *inside* the handle that can't be reached
-   via the `styles` prop. `:focus:not(:focus-visible)` targets mouse/touch
-   focus only, leaving keyboard navigation outlines intact.                  */
-.ant-slider *:focus:not(:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/* ─── Baseline ────────────────────────────────────────────────────────────── */
+:root {
+  /* 75% Dominant: Dark Canvas & Surface */
+  --color-main: #141414;
+  --color-main-surface: #141414;
+  --color-main-elevated: #1e1e1e;
+  --color-main-deep: #0a0a0a;
+
+  /* 10% Secondary: Borders & Framing only */
+  --color-secondary: #2B3E50;
+  --color-secondary-border: #2B3E50;
+  --color-secondary-subtle: rgba(43, 62, 80, 0.4);
+  --color-secondary-hover: #3d5873;
+  --color-secondary-dark: #1b2834;
+  --color-secondary-text: #6C7D8E;
+
+  /* 15% Highlight: Brand Identifier & Active Cues */
+  --color-highlight: #00FF41;
+  --color-highlight-light: #33ff66;
+  --color-highlight-dark: #00cc33;
+  --color-highlight-glow: transparent;
+  --color-highlight-glow-strong: transparent;
+  --color-highlight-glow-subtle: transparent;
+
+  /* Text & Content (Warm parchment #F7F1E5, not white!) */
+  --color-text-primary: #F7F1E5;
+  --color-text-secondary: #6C7D8E;
+  --color-text-muted: #52677F;
+  --color-text-on-highlight: #141414;
+
+  /* Status Colors */
+  --color-status-error: #FF4343;
+  --color-status-warning: #FFAA00;
+  --color-status-info: #00D8FF;
+  --color-status-active: #00FF41;
+
+  /* Typography */
+  --font-graphical: 'Orbitron', sans-serif;
+  --font-title: 'IBM Plex Mono', monospace;
+  --font-content: 'IBM Plex Mono', monospace;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --font-size-graphical: 50px;
+  --font-size-title-36: 36px;
+  --font-size-title-web: 32px;
+  --font-size-content-20: 20px;
+  --font-size-content-web: 16px;
+  --font-size-small-web: 12px;
+
+  /* Layout Spacing */
+  --spacing-screen: 30px;
+  --spacing-standard: 20px;
+  --spacing-large: 40px;
+  --spacing-small: 12px;
+
+  /* Border & Chamfer Geometric Tokens */
+  --border-width: 1px;
+  --chamfer-sm: 6px;
+  --chamfer: 8px;
+  --chamfer-md: 10px;
+  --chamfer-lg: 12px;
+  --chamfer-modal: 14px;
+
+  /* Backward Compatibility Variables */
+  --ui-accent-green: var(--color-highlight);
+  --ui-text-on-accent: var(--color-text-on-highlight);
+  --ui-switch-disabled-bg: #334455;
+  --ui-switch-disabled-border: var(--color-secondary);
 }
 
-/* ─── Ant Design Slider: clean click feedback ────────────────────────────
-   The ::after disk (generated from colorPrimary) is replaced by a simple
-   scale-up of the solid handle dot on :active.                             */
+/* ─── Global Reset & Body ─────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
+  background-color: var(--color-main);
+  color: var(--color-text-primary);
+  font-family: var(--font-content);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-main);
+  color: var(--color-text-primary);
+  font-family: var(--font-content);
+  font-size: var(--font-size-content-web);
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.ant-layout,
+.ant-layout-header,
+.ant-layout-content,
+.lucy-page-header {
+  background-color: var(--color-main) !important;
+}
+
+/* ─── Custom Cybernetic Scrollbars ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-main);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-main-deep);
+  border-left: 1px solid var(--color-secondary-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-highlight);
+}
+
+/* ─── Brand Titles & Sub-titles ───────────────────────────────────────────── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-text-primary);
+  font-family: var(--font-title);
+  margin-top: 0;
+}
+
+.font-graphical {
+  font-family: var(--font-graphical) !important;
+  font-weight: 700 !important;
+  font-size: var(--font-size-graphical) !important;
+  letter-spacing: 2px !important;
+}
+
+.font-title {
+  font-family: var(--font-title) !important;
+  font-weight: 700 !important;
+  font-size: var(--font-size-title-web) !important;
+}
+
+.font-content {
+  font-family: var(--font-content) !important;
+  font-weight: 300 !important;
+  font-size: var(--font-size-content-web) !important;
+}
+
+.font-subtitle,
+.sub-title {
+  text-transform: uppercase !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--color-highlight) !important;
+  letter-spacing: 1px !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Terminal Title Styling */
+.terminal-title-container {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--font-title);
+  color: var(--color-text-primary);
+}
+
+.terminal-title-prefix {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+  margin-right: 4px;
+  user-select: none;
+}
+
+.terminal-title-separator {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+  margin: 0 6px;
+  user-select: none;
+}
+
+.terminal-title-subtitle {
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-color: var(--color-highlight);
+  color: var(--color-text-primary);
+}
+
+/* ─── Ant Design Core Overrides (Strict 75-10-15 & 0px Radius) ─────────────── */
+.ant-btn,
+.ant-btn-primary,
+.ant-btn-default,
+.ant-switch,
+.ant-slider,
+.ant-slider-rail,
+.ant-slider-track,
+.ant-slider-handle,
+.ant-input,
+.ant-input-number,
+.ant-select-selector,
+.ant-card,
+.ant-alert,
+.ant-modal-content,
+.ant-modal-header,
+.ant-spin-container,
+.ant-layout-header,
+.ant-layout-content,
+.ant-tag,
+.ant-dropdown-menu,
+.ant-col,
+.ant-row {
+  border-radius: 0 !important;
+}
+
+/* ─── Ant Design Tabs ──────────────────────────────────────────────────────── */
+.ant-tabs {
+  color: var(--color-text-primary);
+}
+
+.ant-tabs-nav {
+  margin-bottom: 16px !important;
+}
+
+.ant-tabs-nav::before {
+  border-bottom: 1px solid var(--color-secondary) !important;
+}
+
+.ant-tabs-nav-wrap {
+  overflow: visible !important;
+}
+
+.ant-tabs-tab {
+  font-family: var(--font-title) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.5px !important;
+  color: var(--color-text-secondary) !important;
+  padding: 8px 14px !important;
+  margin: 0 4px !important;
+  transition: all 0.2s ease !important;
+  border-radius: 0 !important;
+}
+
+.ant-tabs-tab:hover {
+  color: var(--color-highlight) !important;
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--color-highlight) !important;
+  height: 2px !important;
+}
+
+/* Buttons */
+.ant-btn {
+  font-family: var(--font-title) !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.25s ease !important;
+  position: relative !important;
+  border-color: var(--color-secondary) !important;
+  color: var(--color-text-primary) !important;
+  background-color: transparent !important;
+}
+
+.ant-btn:hover {
+  border-color: var(--color-highlight) !important;
+  color: var(--color-highlight) !important;
+  transform: translateY(-1px);
+}
+
+.ant-btn-primary {
+  background-color: var(--color-highlight) !important;
+  border-color: var(--color-highlight) !important;
+  color: var(--color-text-on-highlight) !important;
+  font-weight: 700 !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: var(--color-highlight-light) !important;
+  border-color: var(--color-highlight-light) !important;
+  color: var(--color-text-on-highlight) !important;
+  transform: translateY(-1px);
+}
+
+.ant-btn-primary:active {
+  transform: translateY(0);
+}
+
+.ant-btn-default {
+  background-color: transparent !important;
+  border-color: var(--color-secondary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ant-btn-default:hover {
+  background-color: rgba(0, 255, 65, 0.08) !important;
+  border-color: var(--color-highlight) !important;
+  color: var(--color-highlight) !important;
+}
+
+/* ─── Cards with Chamfered Corners ────────────────────────────────────────── */
+/* Chamfered top-right and bottom-left corners. The card background paints the
+   border colour; ::before fills the inside, its chamfer shortened so the
+   diagonal edges keep the exact same border width. */
+.ant-card {
+  --chamfer: var(--chamfer-md, 8px);
+  --card-border: var(--color-secondary);
+  --card-bg: var(--color-main);
+
+  position: relative !important;
+  isolation: isolate;
+  background: var(--card-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--color-text-primary) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+  transition: background 0.2s ease, filter 0.2s ease;
+}
+
+.ant-card::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--card-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid var(--color-secondary) !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  letter-spacing: 1px;
+  background: transparent !important;
+}
+
+.ant-card-head-title {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+}
+
+.ant-card-body {
+  background: transparent !important;
+}
+
+.ant-card-hoverable:hover {
+  --card-border: var(--color-highlight) !important;
+}
+
+/* Control Page Joint Category Card */
+.joint-category-card {
+  --chamfer: var(--chamfer-lg, 12px);
+  --card-border: var(--color-secondary);
+  --card-bg: var(--color-main);
+  height: 100%;
+}
+
+.joint-category-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  bottom: var(--chamfer);
+  background: var(--color-highlight);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Control Page Joint Control Card */
+.joint-control-card {
+  --chamfer: 7px;
+  --card-border: var(--color-secondary);
+  --card-bg: var(--color-main);
+  transition: all 0.2s ease;
+}
+
+.joint-control-card:hover {
+  --card-border: var(--color-highlight) !important;
+}
+
+/* Theme Modal Preset Card */
+.preset-card {
+  --chamfer: 8px;
+  --card-border: var(--color-secondary);
+  --card-bg: var(--color-main);
+  transition: all 0.2s ease;
+}
+
+.preset-card:hover {
+  --card-border: var(--color-highlight) !important;
+}
+
+.preset-card.preset-card-active {
+  --card-border: var(--color-highlight) !important;
+}
+
+/* Inputs & Numbers */
+.ant-input,
+.ant-input-number,
+.ant-input-affix-wrapper,
+.ant-select-selector {
+  background-color: var(--color-main) !important;
+  border: 1px solid var(--color-secondary) !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number:focus,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--color-highlight) !important;
+}
+
+.ant-input-number-input {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-input-number-handler-wrap {
+  background-color: var(--color-main-elevated) !important;
+  border-left: 1px solid var(--color-secondary) !important;
+}
+
+.ant-input-number-handler {
+  border-color: var(--color-secondary) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+.ant-input-number-handler:hover {
+  color: var(--color-highlight) !important;
+}
+
+/* Slider */
+.ant-slider-rail {
+  background-color: var(--color-secondary) !important;
+}
+
+.ant-slider-track {
+  background-color: var(--color-highlight) !important;
+}
+
+.ant-slider-handle {
+  border-color: var(--color-highlight) !important;
+  background-color: var(--color-highlight) !important;
+}
+
+.ant-slider *:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .ant-slider-handle:active {
-    transform: translateX(-50%) scale(1.2) !important;
-    transition: transform 0.08s ease !important;
+  transform: translateX(-50%) scale(1.2) !important;
+  transition: transform 0.08s ease !important;
+}
+
+/* Tables */
+.ant-table {
+  background: var(--color-main) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-secondary) !important;
+}
+
+.ant-table-thead>tr>th {
+  background: var(--color-main-deep) !important;
+  color: var(--color-text-primary) !important;
+  border-bottom: 1px solid var(--color-secondary) !important;
+  font-family: var(--font-title) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+
+.ant-table-tbody>tr>td {
+  border-bottom: 1px solid var(--color-secondary-subtle) !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-table-tbody>tr:hover>td {
+  background: rgba(43, 62, 80, 0.25) !important;
+}
+
+/* ─── Modals with Chamfered Corners ───────────────────────────────────────── */
+.ant-modal-content {
+  --chamfer: var(--chamfer-modal, 14px);
+  --modal-border: var(--color-secondary);
+  --modal-bg: var(--color-main);
+
+  position: relative !important;
+  isolation: isolate !important;
+  background: var(--modal-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--color-text-primary) !important;
+  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+}
+
+.ant-modal-content::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--modal-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+.ant-modal-header {
+  background-color: transparent !important;
+  border-bottom: 1px solid var(--color-secondary) !important;
+}
+
+.ant-modal-title {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+}
+
+.ant-modal-body {
+  background-color: transparent !important;
+}
+
+.ant-modal-footer {
+  background-color: transparent !important;
+  border-top: 1px solid var(--color-secondary) !important;
+}
+
+/* Movable Modal (Floating Control Panel Tools) */
+.lucy-movable-modal {
+  --chamfer: var(--chamfer-modal, 14px);
+  --modal-border: var(--color-secondary);
+  --modal-bg: var(--color-main);
+
+  isolation: isolate;
+  background: var(--modal-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+}
+
+.lucy-movable-modal::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--modal-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+/* Tags */
+.ant-tag {
+  font-family: var(--font-mono) !important;
+  border-color: var(--color-secondary) !important;
+  background-color: var(--color-main-deep) !important;
+  color: var(--color-text-primary) !important;
+  padding: 2px 8px !important;
+}
+
+/* Tooltips & Popovers */
+.ant-tooltip-inner {
+  background-color: var(--color-main-deep) !important;
+  border: 1px solid var(--color-secondary) !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 0 !important;
+}
+
+.ant-tooltip-arrow::before {
+  background-color: var(--color-main-deep) !important;
+  border: 1px solid var(--color-secondary) !important;
+}
+
+/* ─── Alerts with Chamfered Corners ───────────────────────────────────────── */
+.ant-alert {
+  --chamfer: var(--chamfer-sm, 6px);
+  --alert-border: var(--color-secondary);
+  --alert-bg: var(--color-main-deep);
+
+  position: relative !important;
+  isolation: isolate;
+  background: var(--alert-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--color-text-primary) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+}
+
+.ant-alert::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--alert-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+.ant-alert-error {
+  --alert-border: var(--color-status-error);
+}
+
+.ant-alert-warning {
+  --alert-border: var(--color-status-warning);
+}
+
+.ant-alert-info {
+  --alert-border: var(--color-secondary);
+}
+
+.ant-alert-success {
+  --alert-border: var(--color-highlight);
+}
+
+.ant-alert-message {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  font-weight: 700 !important;
+}
+
+.ant-alert-description {
+  color: var(--color-text-secondary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+/* ─── TUI Utility Classes & Chamfer Containers ────────────────────────────── */
+.tui-container,
+.tui-container-dark {
+  --chamfer: var(--chamfer-md, 10px);
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+
+  position: relative !important;
+  isolation: isolate;
+  background: var(--box-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: var(--spacing-standard);
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+}
+
+.tui-container::before,
+.tui-container-dark::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--box-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+.tui-container-dark {
+  --box-bg: var(--color-main);
+}
+
+/* Floating overlay panels in 3D viewer & pagination */
+.viewer-overlay-box {
+  --chamfer: 6px;
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+  backdrop-filter: blur(4px);
+}
+
+.category-pagination-anchor {
+  --chamfer: 8px;
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+  backdrop-filter: blur(6px);
+}
+
+/* ─── Universal Cybernetic Chamfer Utility ────────────────────────────────── */
+.chamfer-box {
+  --chamfer: var(--chamfer-md, 8px);
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+
+  position: relative;
+  isolation: isolate;
+  background: var(--box-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+}
+
+.chamfer-box::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--box-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+}
+
+.chamfer-box-sm {
+  --chamfer: var(--chamfer-sm, 6px);
+}
+
+.chamfer-box-md {
+  --chamfer: var(--chamfer-md, 10px);
+}
+
+.chamfer-box-lg {
+  --chamfer: var(--chamfer-lg, 12px);
+}
+
+.chamfer-box-modal {
+  --chamfer: var(--chamfer-modal, 14px);
+}
+
+/* ─── Navigation Bar & Nav Buttons Chamfer ───────────────────────────────── */
+.lucy-navigation-bar {
+  --chamfer: var(--chamfer-lg, 12px);
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+  backdrop-filter: blur(8px);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.7));
+}
+
+.nav-item-btn {
+  --chamfer: 6px;
+  --border-width: 1px;
+  --btn-border: var(--color-secondary);
+  --btn-bg: transparent;
+
+  position: relative !important;
+  isolation: isolate;
+  background: var(--btn-border) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+  font-weight: bold !important;
+  font-size: 11px !important;
+  letter-spacing: 0.5px !important;
+  height: 32px !important;
+  padding: 4px 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+  transition: all 0.2s ease !important;
+}
+
+.nav-item-btn::before {
+  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
+
+  content: "";
+  position: absolute;
+  inset: var(--border-width, 1px);
+  z-index: -1;
+  background: var(--btn-bg);
+  clip-path: polygon(0 0,
+      calc(100% - var(--inner-chamfer)) 0,
+      100% var(--inner-chamfer),
+      100% 100%,
+      var(--inner-chamfer) 100%,
+      0 calc(100% - var(--inner-chamfer)));
+  pointer-events: none;
+  transition: background 0.2s ease;
+}
+
+.nav-item-btn:hover:not(:disabled) {
+  --btn-border: var(--color-highlight) !important;
+  color: var(--color-highlight) !important;
+  transform: translateY(-1px);
+}
+
+.nav-item-btn.active {
+  --btn-border: var(--color-highlight) !important;
+  --btn-bg: var(--color-highlight) !important;
+  color: var(--color-text-on-highlight) !important;
+}
+
+.nav-item-btn.active:hover {
+  --btn-border: var(--color-highlight-light) !important;
+  --btn-bg: var(--color-highlight-light) !important;
+  color: var(--color-text-on-highlight) !important;
+}
+
+/* Header Status Indicators */
+.header-status-box {
+  --chamfer: 6px;
+  --box-border: var(--color-secondary);
+  --box-bg: var(--color-main);
+}
+
+.tui-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-secondary);
+  background-color: var(--color-main);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tui-toggle:hover {
+  border-color: var(--color-highlight);
+}
+
+.tui-toggle-button {
+  padding: 4px 12px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.tui-toggle-button:hover {
+  color: var(--color-highlight);
+}
+
+.tui-toggle-button.off {
+  background-color: var(--color-status-error);
+  color: var(--color-text-primary);
+}
+
+.tui-toggle-button.on {
+  background-color: var(--color-highlight);
+  color: var(--color-text-on-highlight);
+}
+
+.tui-toggle-divider {
+  width: 1px;
+  background-color: var(--color-secondary);
+}
+
+/* ─── Joint Category Scrollbar Styling with Spacing ───────────────────────── */
+.joint-category-scroll {
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary) transparent;
+}
+
+.joint-category-scroll::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+
+.joint-category-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.joint-category-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 3px;
+}
+
+.joint-category-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-highlight);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -137,7 +137,7 @@ export class JointStateHandler {
     callback: (positions: { name: string; value: number }[]) => void
   ): () => void {
     const ros = RosBridgeService.getInstance().rosConnection;
-    if (!ros) return () => {};
+    if (!ros) return () => { };
 
     const sub = new ROSLIB.Topic({
       ros,
@@ -171,7 +171,7 @@ export class JointStateHandler {
     callback: (updates: { name: string; value: number }[]) => void
   ): () => void {
     const ros = RosBridgeService.getInstance().rosConnection;
-    if (!ros || this.controllerConfigs.length === 0) return () => {};
+    if (!ros || this.controllerConfigs.length === 0) return () => { };
 
     const subs: ROSLIB.Topic[] = [];
     for (const cfg of this.controllerConfigs) {

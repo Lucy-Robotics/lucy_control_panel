@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2026 Sentience Robotics Team
+ * Copyright 2025-2026 Lucy Robotics Team
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -140,8 +140,8 @@ export class ControlModeHandler {
     // The resulting controller arrives on ACTIVE_CLIENT_TOPIC.
     service.callService(
       new ROSLIB.ServiceRequest({ client_id: CLIENT_ID, acquire }),
-      () => {},
-      () => {},
+      () => { },
+      () => { },
     );
   }
 

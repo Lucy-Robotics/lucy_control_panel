@@ -285,7 +285,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     return `${Math.round(value * 1000) / 1000} rad`;
   }, [actuatorValue, showDegrees]);
 
-  // Every control below is inert for the same reason: no command is being published.
   const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
   return (

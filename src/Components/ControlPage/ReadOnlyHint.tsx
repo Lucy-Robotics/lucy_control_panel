@@ -50,10 +50,6 @@ interface ReadOnlyTagProps {
     reason?: string | undefined;
 }
 
-/**
- * Badge for a panel that can be watched but not driven, so the state is
- * readable without hovering anything. The tooltip carries the why.
- */
 export const ReadOnlyTag: React.FC<ReadOnlyTagProps> = ({ reason }) => {
     if (!reason) {
         return null;

@@ -466,17 +466,6 @@ export const RobotControlPanel: React.FC = () => {
         });
     }, []);
 
-    useEffect(() => {
-        const handleGizmoChange = (e: Event) => {
-            const customEvent = e as CustomEvent<{ name: string; value: number }>;
-            if (customEvent.detail) {
-                handleJointValueChange(customEvent.detail.name, customEvent.detail.value);
-            }
-        };
-        window.addEventListener('robotJointValueChange', handleGizmoChange);
-        return () => window.removeEventListener('robotJointValueChange', handleGizmoChange);
-    }, [handleJointValueChange]);
-
     const handleTeleopJoint = (y: number, jointName: string) => {
         if (!isSendingRef.current) return;
         setJoints((prevJoints) =>

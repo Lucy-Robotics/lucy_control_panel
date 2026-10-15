@@ -77,25 +77,12 @@ export function getDirectJointForLink(
         curr = curr.parent;
     }
 
-    for (const child of link.children) {
-        if (isURDFJoint(child) && isActuatorJoint(child, actuatedJointNames)) {
-            return child;
-        }
-    }
-
     if (robot && 'joints' in robot && robot.joints && typeof robot.joints === 'object') {
         const jointMap = robot.joints as Record<string, URDFJoint>;
         for (const j of Object.values(jointMap)) {
             if (isActuatorJoint(j, actuatedJointNames)) {
                 const childLink = j.children.find(isURDFLink);
                 if (childLink && (childLink === link || childLink.urdfName === link.urdfName || childLink.name === link.name)) {
-                    return j;
-                }
-            }
-        }
-        for (const j of Object.values(jointMap)) {
-            if (isActuatorJoint(j, actuatedJointNames)) {
-                if (j.parent === link || (j.parent && (j.parent.name === link.name || (j.parent as URDFLink).urdfName === link.urdfName))) {
                     return j;
                 }
             }

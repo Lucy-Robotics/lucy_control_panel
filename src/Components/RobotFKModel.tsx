@@ -34,12 +34,101 @@ const robotOriginalMaterials = new WeakMap<
     Map<THREE.Mesh, THREE.Material | THREE.Material[]>
 >();
 
+export const DEFAULT_ROLLBACK_TOLERANCE_RAD = 0.035;
+
+export const DEFAULT_ROLLBACK_TIMEOUT_MS = 3000;
+
 function setMaterialEmissive(material: THREE.Material, color: THREE.Color, intensity: number) {
     if (material instanceof THREE.MeshStandardMaterial) {
         material.emissive.copy(color);
         material.emissiveIntensity = intensity;
     } else if (material instanceof THREE.MeshPhongMaterial) {
         material.emissive.copy(color);
+    }
+}
+
+interface ApplyMaterialParams {
+    mesh: THREE.Mesh;
+    origMat: THREE.Material | THREE.Material[];
+    isSelected: boolean;
+    isAnySelected: boolean;
+    useOriginalTexture: boolean;
+    unselectedOpacity: number;
+    opacity: number;
+    wireframe: boolean;
+    highlightColor: THREE.Color;
+    zeroColor: THREE.Color;
+    tempMaterials: THREE.Material[];
+    selectedMaterials: THREE.Material[];
+}
+
+function applyMeshMaterial({
+    mesh,
+    origMat,
+    isSelected,
+    isAnySelected,
+    useOriginalTexture,
+    unselectedOpacity,
+    opacity,
+    wireframe,
+    highlightColor,
+    zeroColor,
+    tempMaterials,
+    selectedMaterials,
+}: ApplyMaterialParams): void {
+    if (useOriginalTexture) {
+        if (!isAnySelected) {
+            mesh.material = origMat;
+            return;
+        }
+
+        const transformMat = (m: THREE.Material): THREE.Material => {
+            const copy = m.clone();
+            tempMaterials.push(copy);
+            if (isSelected) {
+                selectedMaterials.push(copy);
+                setMaterialEmissive(copy, highlightColor, 0.8);
+                copy.transparent = false;
+                copy.opacity = 1;
+            } else {
+                copy.transparent = unselectedOpacity < 1;
+                copy.opacity = unselectedOpacity;
+                setMaterialEmissive(copy, zeroColor, 0);
+            }
+            return copy;
+        };
+
+        mesh.material = Array.isArray(origMat) ? origMat.map(transformMat) : transformMat(origMat);
+    } else {
+        if (isSelected) {
+            const highlightMat = new THREE.MeshStandardMaterial({
+                color: '#00E5FF',
+                emissive: '#005577',
+                emissiveIntensity: 0.7,
+                transparent: false,
+                opacity: 1,
+                wireframe,
+                roughness: 0.2,
+                metalness: 0.8,
+                side: THREE.DoubleSide,
+            });
+            tempMaterials.push(highlightMat);
+            selectedMaterials.push(highlightMat);
+            mesh.material = highlightMat;
+        } else {
+            const effectiveOpacity = isAnySelected ? unselectedOpacity : opacity;
+            const greenMat = new THREE.MeshStandardMaterial({
+                color: UI_ACCENT_GREEN_HEX,
+                transparent: effectiveOpacity < 1,
+                opacity: effectiveOpacity,
+                wireframe,
+                roughness: 0.3,
+                metalness: 0.7,
+                side: THREE.DoubleSide,
+            });
+            tempMaterials.push(greenMat);
+            mesh.material = greenMat;
+        }
     }
 }
 
@@ -59,6 +148,8 @@ export interface RobotFKModelProps {
     activeGizmoJointName?: string | null;
     heldJointsRef?: React.RefObject<Map<string, { targetRad: number; timestamp: number }>>;
     actuatedJointNames?: Set<string>;
+    rollbackToleranceRad?: number;
+    rollbackTimeoutMs?: number;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -74,6 +165,8 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     activeGizmoJointName = null,
     heldJointsRef,
     actuatedJointNames,
+    rollbackToleranceRad = DEFAULT_ROLLBACK_TOLERANCE_RAD,
+    rollbackTimeoutMs = DEFAULT_ROLLBACK_TIMEOUT_MS,
 }) => {
     const { gl } = useThree();
     const temporaryMaterialsRef = useRef<THREE.Material[]>([]);
@@ -93,6 +186,10 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         const highlightColor = new THREE.Color('#00E5FF');
         const zeroColor = new THREE.Color(0x000000);
 
+        for (const joint of Object.values(robot.joints)) {
+            joint.ignoreLimits = true;
+        }
+
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
             if (!mesh.isMesh) return;
@@ -100,11 +197,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             // Capture pristine original material before any override
             if (!originals!.has(mesh)) {
                 originals!.set(mesh, mesh.material);
-            }
-
-            // Ignore URDF joint limits — real ROS angles may exceed them.
-            for (const joint of Object.values(robot.joints)) {
-                joint.ignoreLimits = true;
             }
 
             const origMat = originals!.get(mesh)!;
@@ -115,70 +207,20 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             const isSelected = Boolean(selectedPartName && (linkName === selectedPartName || resolvedName === selectedPartName));
             const isAnySelected = Boolean(selectedPartName);
 
-            if (useOriginalTexture) {
-                if (!isAnySelected) {
-                    mesh.material = origMat;
-                } else if (isSelected) {
-                    const cloneMat = (m: THREE.Material): THREE.Material => {
-                        const copy = m.clone();
-                        temporaryMaterialsRef.current.push(copy);
-                        selectedMaterialsRef.current.push(copy);
-                        setMaterialEmissive(copy, highlightColor, 0.8);
-                        copy.transparent = false;
-                        copy.opacity = 1;
-                        return copy;
-                    };
-                    if (Array.isArray(origMat)) {
-                        mesh.material = origMat.map(cloneMat);
-                    } else {
-                        mesh.material = cloneMat(origMat);
-                    }
-                } else {
-                    const dimMat = (m: THREE.Material): THREE.Material => {
-                        const copy = m.clone();
-                        temporaryMaterialsRef.current.push(copy);
-                        copy.transparent = unselectedOpacity < 1;
-                        copy.opacity = unselectedOpacity;
-                        setMaterialEmissive(copy, zeroColor, 0);
-                        return copy;
-                    };
-                    if (Array.isArray(origMat)) {
-                        mesh.material = origMat.map(dimMat);
-                    } else {
-                        mesh.material = dimMat(origMat);
-                    }
-                }
-            } else {
-                if (isSelected) {
-                    const highlightMat = new THREE.MeshStandardMaterial({
-                        color: '#00E5FF',
-                        emissive: '#005577',
-                        emissiveIntensity: 0.7,
-                        transparent: false,
-                        opacity: 1,
-                        wireframe,
-                        roughness: 0.2,
-                        metalness: 0.8,
-                        side: THREE.DoubleSide,
-                    });
-                    temporaryMaterialsRef.current.push(highlightMat);
-                    selectedMaterialsRef.current.push(highlightMat);
-                    mesh.material = highlightMat;
-                } else {
-                    const effectiveOpacity = isAnySelected ? unselectedOpacity : opacity;
-                    const greenMat = new THREE.MeshStandardMaterial({
-                        color: UI_ACCENT_GREEN_HEX,
-                        transparent: effectiveOpacity < 1,
-                        opacity: effectiveOpacity,
-                        wireframe,
-                        roughness: 0.3,
-                        metalness: 0.7,
-                        side: THREE.DoubleSide,
-                    });
-                    temporaryMaterialsRef.current.push(greenMat);
-                    mesh.material = greenMat;
-                }
-            }
+            applyMeshMaterial({
+                mesh,
+                origMat,
+                isSelected,
+                isAnySelected,
+                useOriginalTexture,
+                unselectedOpacity,
+                opacity,
+                wireframe,
+                highlightColor,
+                zeroColor,
+                tempMaterials: temporaryMaterialsRef.current,
+                selectedMaterials: selectedMaterialsRef.current,
+            });
         });
 
         return () => {
@@ -210,8 +252,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                     const diff = Math.abs(serverAngle - info.targetRad);
                     const elapsed = now - info.timestamp;
 
-                    // If motor caught up to within ~2 deg (0.035 rad) or after 3s timeout:
-                    if (diff < 0.035 || elapsed > 3000) {
+                    if (diff < rollbackToleranceRad || elapsed > rollbackTimeoutMs) {
                         held.delete(name);
                         values[name] = serverAngle;
                     } else {
@@ -240,6 +281,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
     const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
+        (e.nativeEvent as unknown as { _lucyPartClick?: boolean })._lucyPartClick = true;
         const hitMesh = e.object;
         const link = findParentLink(hitMesh, robot);
         if (!link) return;

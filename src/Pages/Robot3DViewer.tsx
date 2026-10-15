@@ -157,6 +157,27 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     const startTargetRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const desiredOffsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
+    const isUserInteractingRef = useRef<boolean>(false);
+
+    useEffect(() => {
+        const controls = controlsRef.current;
+        if (!controls) return;
+
+        const handleStart = () => {
+            isUserInteractingRef.current = true;
+        };
+        const handleEnd = () => {
+            isUserInteractingRef.current = false;
+        };
+
+        controls.addEventListener('start', handleStart);
+        controls.addEventListener('end', handleEnd);
+        return () => {
+            controls.removeEventListener('start', handleStart);
+            controls.removeEventListener('end', handleEnd);
+        };
+    }, [controlsRef]);
+
     useEffect(() => {
         if (!robot || !selectedPartName) {
             prevSelectedRef.current = null;
@@ -223,6 +244,11 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
                 lastWorldCenterRef.current.copy(currentWorldCenter);
             }
         } else {
+            if (isUserInteractingRef.current) {
+                lastWorldCenterRef.current.copy(currentWorldCenter);
+                return;
+            }
+
             const displacement = currentWorldCenter.clone().sub(lastWorldCenterRef.current);
             if (displacement.lengthSq() > 0.000001) {
                 controls.target.copy(currentWorldCenter);
@@ -293,7 +319,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
-    const lastPartClickTimeRef = useRef<number>(0);
     const heldJointsRef = useRef<Map<string, { targetRad: number; timestamp: number }>>(new Map());
 
     const handleJointCommit = useCallback((name: string, targetRad: number) => {
@@ -354,7 +379,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const handlePartDoubleClick = (partName: string) => {
-        lastPartClickTimeRef.current = Date.now();
         if (!robot) {
             setSelectedPartName(prev => (prev === partName ? null : partName));
             return;
@@ -365,9 +389,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         setSelectedPartName(prev => (prev === targetName ? null : targetName));
     };
 
-    const handleCanvasDoubleClick = () => {
-        // If the double click was on a part, ignore canvas background double-click
-        if (Date.now() - lastPartClickTimeRef.current < 150) return;
+    const handleCanvasDoubleClick = (e: React.MouseEvent) => {
+        if ((e.nativeEvent as unknown as { _lucyPartClick?: boolean })._lucyPartClick) return;
         setSelectedPartName(null);
     };
 

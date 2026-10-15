@@ -130,9 +130,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             const { name, value, targetRad } = lastEmittedValueRef.current;
             onJointCommit?.(name, targetRad);
             onJointValueChange?.(name, value);
-            window.dispatchEvent(new CustomEvent('robotJointValueChange', {
-                detail: { name, value },
-            }));
             lastEmittedValueRef.current = null;
         }
 

@@ -7,7 +7,7 @@ import type { ControllerJointConfig, JointLimitRad, JointMapping } from '../Cons
 import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
 
 function readMapping(row: Record<string, unknown>): JointMapping {
-    const offsetRad = Number(row.offset_rad);
+    const offsetRad = Number(row.offset);
     const direction = Number(row.direction);
     const scale = Number(row.scale);
     return {
@@ -73,9 +73,9 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                 jointDisplayNames[joint] = actuatorId;
             }
 
-            const minRad = Number(r.servo_min_rad);
-            const maxRad = Number(r.servo_max_rad);
-            const defaultRad = Number(r.servo_default_rad);
+            const minRad = Number(r.limit_min);
+            const maxRad = Number(r.limit_max);
+            const defaultRad = Number(r.default);
             if (Number.isFinite(minRad) && Number.isFinite(maxRad) && minRad < maxRad) {
                 jointLimits[joint] = {
                     minRad,

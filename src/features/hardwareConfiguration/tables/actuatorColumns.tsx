@@ -340,17 +340,17 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_min_rad');
+                const ao = actOpts(id, 'limit_min');
                 const commit = (rad: number) => {
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], servo_min_rad: rad };
+                    list[index] = { ...list[index], limit_min: rad };
                     patchDoc(next);
                 };
                 return (
                     <DegAngleInputNumber
-                        radValue={row.servo_min_rad}
+                        radValue={row.limit_min}
                         onCommitRad={commit}
                         minDeg={0}
                         maxDeg={360}
@@ -367,17 +367,17 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_default_rad');
+                const ao = actOpts(id, 'default');
                 const commit = (rad: number) => {
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], servo_default_rad: rad };
+                    list[index] = { ...list[index], default: rad };
                     patchDoc(next);
                 };
                 return (
                     <DegAngleInputNumber
-                        radValue={row.servo_default_rad}
+                        radValue={row.default}
                         onCommitRad={commit}
                         minDeg={0}
                         maxDeg={360}
@@ -394,17 +394,17 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_max_rad');
+                const ao = actOpts(id, 'limit_max');
                 const commit = (rad: number) => {
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], servo_max_rad: rad };
+                    list[index] = { ...list[index], limit_max: rad };
                     patchDoc(next);
                 };
                 return (
                     <DegAngleInputNumber
-                        radValue={row.servo_max_rad}
+                        radValue={row.limit_max}
                         onCommitRad={commit}
                         minDeg={0}
                         maxDeg={360}
@@ -416,22 +416,22 @@ export function buildActuatorColumns({
         },
         {
             title: 'OFFSET°',
-            key: 'offset_rad',
+            key: 'offset',
             width: 110,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'offset_rad');
+                const ao = actOpts(id, 'offset');
                 const commit = (rad: number) => {
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], offset_rad: rad };
+                    list[index] = { ...list[index], offset: rad };
                     patchDoc(next);
                 };
                 return (
                     <DegAngleInputNumber
-                        radValue={row.offset_rad}
+                        radValue={row.offset}
                         onCommitRad={commit}
                         style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}

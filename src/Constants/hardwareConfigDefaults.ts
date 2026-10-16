@@ -22,12 +22,12 @@ export const DEFAULT_ACTUATOR_TYPE_FALLBACK = '270';
 /** Field defaults applied to a freshly-added actuator row in the editor (YAML radian keys). */
 export const DEFAULT_NEW_ACTUATOR_VALUES = {
     servo_type: '180',
-    offset_rad: 0,
+    offset: 0,
     direction: 1,
     scale: 1,
-    servo_min_rad: 0,
-    servo_max_rad: degreeToRadian(180),
-    servo_default_rad: degreeToRadian(90),
+    limit_min: 0,
+    limit_max: degreeToRadian(180),
+    default: degreeToRadian(90),
     enabled: false,
 } as const;
 

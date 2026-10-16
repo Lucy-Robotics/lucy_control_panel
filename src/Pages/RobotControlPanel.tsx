@@ -80,6 +80,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
@@ -557,7 +558,20 @@ export const RobotControlPanel: React.FC = () => {
         message.info('Animation stopped');
     }, []);
 
+    // An animation must not outlive our control: the toggle can go OFF on its own
+    // when another client takes over.
+    useEffect(() => {
+        if (!isSending && isAnimating) {
+            handleStopAnimation();
+        }
+    }, [isSending, isAnimating, handleStopAnimation]);
+
     const handlePlayAnimation = useCallback(async (animation: SavedAnimation) => {
+        // Playback drives the sliders, which only reach the robot while we publish.
+        if (!isSendingRef.current) {
+            message.info(CONTROL_OFF_HINT);
+            return;
+        }
         if (isAnimating) {
             handleStopAnimation();
         }
@@ -682,6 +696,9 @@ export const RobotControlPanel: React.FC = () => {
         />
     );
 
+    // Control Robot OFF publishes nothing, so every command control is inert.
+    const readOnlyReason = isSending ? undefined : CONTROL_OFF_HINT;
+
     const switches = () => (
         <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
             <span style={{ display: 'inline-flex', cursor: 'help' }}>
@@ -721,6 +738,7 @@ export const RobotControlPanel: React.FC = () => {
             label: 'TELEOPERATION',
             icon: <EyeOutlined />,
             onClick: () => setIsWebcamActive(v => !v),
+            title: isSending ? undefined : CONTROL_OFF_HINT,
             style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
         },
     ];
@@ -745,6 +763,7 @@ export const RobotControlPanel: React.FC = () => {
 
             <ManagePosesModal
                 joints={joints}
+                controlEnabled={isSending}
                 onLoadPose={handleLoadPose}
                 onPlayAnimation={handlePlayAnimation}
                 isAnimating={isAnimating}
@@ -804,22 +823,26 @@ export const RobotControlPanel: React.FC = () => {
                         >
                             {(!isMobile || showHeaderActions) && (
                                 <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                                    <Button
-                                        icon={<ReloadOutlined />}
-                                        onClick={handleResetAll}
-                                        disabled={!isSending}
-                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                    >
-                                        RESET ALL
-                                    </Button>
-                                    <Button
-                                        icon={<ExperimentOutlined />}
-                                        onClick={handleRandomPose}
-                                        disabled={!isSending}
-                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                    >
-                                        RANDOM POSE
-                                    </Button>
+                                    <ReadOnlyHint reason={readOnlyReason}>
+                                        <Button
+                                            icon={<ReloadOutlined />}
+                                            onClick={handleResetAll}
+                                            disabled={!isSending}
+                                            style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                        >
+                                            RESET ALL
+                                        </Button>
+                                    </ReadOnlyHint>
+                                    <ReadOnlyHint reason={readOnlyReason}>
+                                        <Button
+                                            icon={<ExperimentOutlined />}
+                                            onClick={handleRandomPose}
+                                            disabled={!isSending}
+                                            style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                        >
+                                            RANDOM POSE
+                                        </Button>
+                                    </ReadOnlyHint>
                                     <Button
                                         icon={<SettingOutlined />}
                                         onClick={() => setIsManagePosesVisible(true)}
@@ -947,9 +970,12 @@ export const RobotControlPanel: React.FC = () => {
                                     borderBottom: `1px solid ${UI_BORDER_DIM}`,
                                 }}
                             >
-                                <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
-                                    WEBCAM
-                                </span>
+                                <Space size={8} align="center">
+                                    <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                                        WEBCAM
+                                    </span>
+                                    <ReadOnlyTag reason={readOnlyReason} />
+                                </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
                                 </Button>
@@ -1027,6 +1053,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
+                    header={<ReadOnlyTag reason={readOnlyReason} />}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}

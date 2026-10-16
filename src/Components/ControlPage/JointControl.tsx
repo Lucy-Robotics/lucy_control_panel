@@ -7,6 +7,7 @@ import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
+import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { storageService } from '../../Services/storage.service.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
@@ -283,6 +284,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     return `${Math.round(value * 1000) / 1000} rad`;
   }, [actuatorValue, showDegrees]);
 
+  const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
+
   return (
     <Card
       size="small"
@@ -312,20 +315,22 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
-            <Slider
-              min={minDisplay}
-              max={maxDisplay}
-              step={showDegrees ? 0.1 : 0.001}
-              value={currentDisplay}
-              onChange={(value) => handleSliderChange(convertInputValue(value))}
-              onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
-              disabled={disabled}
-              style={{ margin: 0 }}
-              tooltip={{
-                formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
-                placement: 'top'
-              }}
-            />
+            <ReadOnlyHint reason={readOnlyReason} block>
+              <Slider
+                min={minDisplay}
+                max={maxDisplay}
+                step={showDegrees ? 0.1 : 0.001}
+                value={currentDisplay}
+                onChange={(value) => handleSliderChange(convertInputValue(value))}
+                onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+                disabled={disabled}
+                style={{ margin: 0 }}
+                tooltip={{
+                  formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
+                  placement: 'top'
+                }}
+              />
+            </ReadOnlyHint>
             {restBarPercent !== undefined && (
               <TrackMarker
                 percent={restBarPercent}
@@ -350,38 +355,44 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             )}
           </div>
 
-          <InputNumber
-            min={minDisplay}
-            max={maxDisplay}
-            step={showDegrees ? 0.1 : 0.001}
-            value={currentDisplay}
-            onChange={(value) => handleInputChange(convertInputValue(value || 0))}
-            disabled={disabled}
-            size="small"
-            style={{
-              width: 100,
-              backgroundColor: UI_INPUT_SURFACE,
-              borderColor: UI_BORDER_SOFT
-            }}
-            addonAfter={showDegrees ? '°' : 'rad'}
-          />
+          <ReadOnlyHint reason={readOnlyReason}>
+            <InputNumber
+              min={minDisplay}
+              max={maxDisplay}
+              step={showDegrees ? 0.1 : 0.001}
+              value={currentDisplay}
+              onChange={(value) => handleInputChange(convertInputValue(value || 0))}
+              disabled={disabled}
+              size="small"
+              style={{
+                width: 100,
+                backgroundColor: UI_INPUT_SURFACE,
+                borderColor: UI_BORDER_SOFT
+              }}
+              addonAfter={showDegrees ? '°' : 'rad'}
+            />
+          </ReadOnlyHint>
 
           {onReset && (
-            <Button
-              size="small"
-              icon={<ReloadOutlined />}
-              disabled={disabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReset();
-              }}
-              style={{
-                backgroundColor: UI_COLOR_TRANSPARENT,
-                borderColor: UI_BORDER_SOFT,
-                color: UI_TEXT_PRIMARY_ON_DARK
-              }}
-              title={`Reset ${joint.displayName ?? joint.name} to its rest value`}
-            />
+            <ReadOnlyHint reason={readOnlyReason}>
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReset();
+                }}
+                style={{
+                  backgroundColor: UI_COLOR_TRANSPARENT,
+                  borderColor: UI_BORDER_SOFT,
+                  color: UI_TEXT_PRIMARY_ON_DARK
+                }}
+                title={disabled
+                  ? undefined
+                  : `Reset ${joint.displayName ?? joint.name} to its rest value`}
+              />
+            </ReadOnlyHint>
           )}
         </div>
 

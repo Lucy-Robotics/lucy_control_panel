@@ -13,6 +13,7 @@ import type { ComponentType } from 'react';
 import { RobotControlPanel } from './Pages/RobotControlPanel';
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
+const AutomationPage = lazy(() => import('./Pages/AutomationPage').then(module => ({ default: module.default })));
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 
@@ -57,6 +58,12 @@ const PAGE_CONFIG: Record<string, {
         loadingLabel: 'LOADING SENSORS',
         loadingDetail: 'Preparing the sensor display.',
     },
+    [ROUTES.automation]: {
+        component: AutomationPage,
+        removeScrollbars: true,
+        loadingLabel: 'LOADING AUTOMATION',
+        loadingDetail: 'Preparing the automation workflow board.',
+    },
 };
 
 const RoutedPage = () => {
@@ -72,6 +79,8 @@ const RoutedPage = () => {
         removeScrollbars = false;
     }
 
+    const isAutomation = pathname === ROUTES.automation;
+
     return (
         <Page
             showHeader
@@ -79,7 +88,16 @@ const RoutedPage = () => {
             removeScrollbars={removeScrollbars}
             contentStyle={{
                 ...PAGE_CONTENT_STYLE,
-                paddingBottom: !screens.md ? 72 : PAGE_CONTENT_STYLE.padding,
+                padding: isAutomation ? 0 : (!screens.md ? 12 : PAGE_CONTENT_STYLE.padding),
+                paddingBottom: isAutomation ? (!screens.md ? 72 : 0) : (!screens.md ? 72 : PAGE_CONTENT_STYLE.padding),
+                ...(isAutomation && {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: 'calc(100vh - 49px)',
+                    minHeight: 'calc(100vh - 49px)',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                }),
             }}
         >
             {page ? (

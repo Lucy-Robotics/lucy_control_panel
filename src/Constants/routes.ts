@@ -7,4 +7,6 @@ export const ROUTES = {
     control: '/',
     sensors: '/sensors',
     robotConfiguration: '/robot-configuration',
+    automation: '/automation',
 } as const;
+

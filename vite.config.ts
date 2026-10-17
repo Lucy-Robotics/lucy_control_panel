@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     if (!env.VITE_SSL_KEY_PATH || !env.VITE_SSL_CERT_PATH) {
       throw new Error(
         "[vite] VITE_HTTPS=true but VITE_SSL_KEY_PATH / VITE_SSL_CERT_PATH are not set. " +
-          "Set both to your cert/key paths, or set VITE_HTTPS=false."
+        "Set both to your cert/key paths, or set VITE_HTTPS=false."
       );
     }
     try {
@@ -23,8 +23,8 @@ export default defineConfig(({ mode }) => {
     } catch {
       throw new Error(
         `[vite] VITE_HTTPS=true but the cert/key files could not be read ` +
-          `(cert: ${env.VITE_SSL_CERT_PATH}, key: ${env.VITE_SSL_KEY_PATH}). ` +
-          "Add the certificates, or set VITE_HTTPS=false."
+        `(cert: ${env.VITE_SSL_CERT_PATH}, key: ${env.VITE_SSL_KEY_PATH}). ` +
+        "Add the certificates, or set VITE_HTTPS=false."
       );
     }
   }
@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    optimizeDeps: {
+      include: ["@xyflow/react"],
+    },
     server: {
       https,
       host: true,

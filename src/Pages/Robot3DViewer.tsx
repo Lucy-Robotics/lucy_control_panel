@@ -12,6 +12,8 @@ import type { URDFRobot } from 'urdf-loader';
 import { Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
+import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { getLinkBoundingBox, isURDFVisual, findJointForLink, findLinkWithJoint } from '../Utils/robotModel.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
@@ -30,7 +32,6 @@ import {
 const { Text } = Typography;
 
 const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
-const STORAGE_KEY_OPACITY = 'lucy_3d_opacity';
 
 const getInitialUnselectedOpacity = (): number => {
     try {
@@ -47,29 +48,17 @@ const getInitialUnselectedOpacity = (): number => {
     return 0.25;
 };
 
-const getInitialOpacity = (): number => {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY_OPACITY);
-        if (saved !== null) {
-            const parsed = parseFloat(saved);
-            if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
-                return parsed;
-            }
-        }
-    } catch {
-        // Fallback to default
-    }
-    return 0.85;
-};
-
 const SETTINGS_BOX_WIDTH = 150;
+/** Grace period letting the pointer travel from a part onto its gizmo ring. */
+const HOVER_CLEAR_DELAY_MS = 300;
 const MOUSE_HINTS = [
     'L-drag · rotate',
     'scroll · zoom',
     'R-drag · pan',
     'dbl-click part · focus & follow',
     'dbl-click space · unfocus',
-    'gizmo drag · rotate joint',
+    'hover part · joint gizmo (control on)',
+    'drag ring · set joint target',
 ];
 
 type Vec3 = [number, number, number];
@@ -275,8 +264,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
-    const [isGizmoDragging, setIsGizmoDragging] = useState(false);
-    const jointAngles = useThrottledJointAngles(isConnected && !isGizmoDragging);
+    const jointAngles = useThrottledJointAngles(isConnected);
+    const themeColors = useThemeColors3D();
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
         const handler = ControlModeHandler.getInstance();
@@ -292,10 +281,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const effectiveControlOn = isControlOnProp !== undefined ? isControlOnProp : hasRosControl;
 
-    // Default to DAE — matches the urdf-loader initial state before any material override
-    const [useOriginalTexture, setUseOriginalTexture] = useState(true);
     const [showGrid, setShowGrid] = useState(true);
-    const [opacity, setOpacity] = useState<number>(getInitialOpacity);
     const [wireframe, setWireframe] = useState(false);
     const [selectedPartName, setSelectedPartName] = useState<string | null>(null);
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
@@ -309,21 +295,119 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         }
     };
 
-    const handleOpacityChange = (val: number) => {
-        setOpacity(val);
-        try {
-            localStorage.setItem(STORAGE_KEY_OPACITY, String(val));
-        } catch {
-            // Ignore localStorage errors
-        }
-    };
-
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
-    const heldJointsRef = useRef<Map<string, { targetRad: number; timestamp: number }>>(new Map());
 
-    const handleJointCommit = useCallback((name: string, targetRad: number) => {
-        heldJointsRef.current.set(name, { targetRad, timestamp: Date.now() });
+    // In-flight gizmo targets: values live in a ref (updated per pointer move),
+    // React state only tracks which joints currently have a ghost.
+    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
+    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
+
+    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
+        // A single ghost at a time: a new move supersedes any other in-flight one
+        if (dragging) {
+            ghostTargetsRef.current.forEach((entry, other) => {
+                if (other !== name) entry.cancelled = true;
+            });
+        }
+        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
+        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
     }, []);
+
+    // The command behind a ghost was overridden (joint/category reset, slider move…):
+    // the ghost no longer represents where the joint is heading.
+    useEffect(() => {
+        if (!joints) return;
+        ghostTargetsRef.current.forEach((entry, name) => {
+            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
+            const state = joints.find(j => j.name === name);
+            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
+                entry.cancelled = true;
+            }
+        });
+    }, [joints]);
+
+    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
+
+    const handleGhostDone = useCallback((name: string) => {
+        if (ghostTargetsRef.current.get(name)?.dragging) return;
+        ghostTargetsRef.current.delete(name);
+        setGhostJointNames(prev => prev.filter(n => n !== name));
+    }, []);
+
+    // Hover-driven gizmo target
+    const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
+    const isGizmoHoveredRef = useRef(false);
+    const isGizmoDraggingRef = useRef(false);
+    const hoverClearTimerRef = useRef<number | null>(null);
+    // Part under the pointer, tracked even while the gizmo locks the hover target
+    const lastPartHoverRef = useRef<string | null>(null);
+
+    const cancelHoverClear = useCallback(() => {
+        if (hoverClearTimerRef.current !== null) {
+            window.clearTimeout(hoverClearTimerRef.current);
+            hoverClearTimerRef.current = null;
+        }
+    }, []);
+
+    const scheduleHoverClear = useCallback(() => {
+        cancelHoverClear();
+        hoverClearTimerRef.current = window.setTimeout(() => {
+            hoverClearTimerRef.current = null;
+            if (!isGizmoHoveredRef.current && !isGizmoDraggingRef.current) {
+                setHoveredPartName(null);
+            }
+        }, HOVER_CLEAR_DELAY_MS);
+    }, [cancelHoverClear]);
+
+    const handlePartHover = useCallback((name: string | null) => {
+        lastPartHoverRef.current = name;
+        // While the ring is hovered or dragged, crossing other links must not switch joints
+        if (!effectiveControlOn || isGizmoHoveredRef.current || isGizmoDraggingRef.current) return;
+        if (name) {
+            cancelHoverClear();
+            setHoveredPartName(name);
+        } else {
+            scheduleHoverClear();
+        }
+    }, [effectiveControlOn, cancelHoverClear, scheduleHoverClear]);
+
+    /** Gizmo released its hover lock: follow the part now under the pointer, if any. */
+    const releaseGizmoLock = useCallback(() => {
+        if (lastPartHoverRef.current) {
+            cancelHoverClear();
+            setHoveredPartName(lastPartHoverRef.current);
+        } else {
+            scheduleHoverClear();
+        }
+    }, [cancelHoverClear, scheduleHoverClear]);
+
+    const handleGizmoHoverChange = useCallback((hovered: boolean) => {
+        isGizmoHoveredRef.current = hovered;
+        if (hovered) {
+            cancelHoverClear();
+        } else if (!isGizmoDraggingRef.current) {
+            releaseGizmoLock();
+        }
+    }, [cancelHoverClear, releaseGizmoLock]);
+
+    const handleGizmoDraggingChange = useCallback((dragging: boolean) => {
+        isGizmoDraggingRef.current = dragging;
+        if (!dragging && !isGizmoHoveredRef.current) {
+            releaseGizmoLock();
+        }
+    }, [releaseGizmoLock]);
+
+    useEffect(() => {
+        if (effectiveControlOn) return;
+        cancelHoverClear();
+        isGizmoHoveredRef.current = false;
+        lastPartHoverRef.current = null;
+        setHoveredPartName(null);
+        ghostTargetsRef.current.clear();
+        setGhostJointNames([]);
+    }, [effectiveControlOn, cancelHoverClear]);
+
+    useEffect(() => cancelHoverClear, [cancelHoverClear]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -360,6 +444,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (!link) return null;
         return findJointForLink(link, robot, actuatedJointNames);
     }, [robot, selectedPartName, actuatedJointNames]);
+
+    const hoveredJoint = useMemo(() => {
+        if (!robot || !hoveredPartName) return null;
+        const link = robot.links[hoveredPartName];
+        if (!link) return null;
+        const joint = findJointForLink(link, robot, actuatedJointNames);
+        return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
+    }, [robot, hoveredPartName, actuatedJointNames]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -448,27 +540,33 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     <RobotFKModel
                         robot={robot}
                         jointAngles={jointAngles}
-                        opacity={opacity}
                         wireframe={wireframe}
-                        useOriginalTexture={useOriginalTexture}
                         selectedPartName={selectedPartName}
                         unselectedOpacity={unselectedOpacity}
                         onPartDoubleClick={handlePartDoubleClick}
-                        isSyncPaused={isGizmoDragging}
-                        activeGizmoJointName={isGizmoDragging ? (focusedJoint?.urdfName || focusedJoint?.name) : null}
-                        heldJointsRef={heldJointsRef}
+                        onPartHover={handlePartHover}
                         actuatedJointNames={actuatedJointNames}
                     />
                 )}
 
+                {robot && ghostJointNames.map(name => {
+                    const joint = robot.joints[name];
+                    return joint ? (
+                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
+                    ) : null;
+                })}
+
                 <JointRotationGizmo
-                    joint={focusedJoint}
+                    joint={effectiveControlOn ? hoveredJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onJointCommit={handleJointCommit}
-                    onDraggingChange={setIsGizmoDragging}
+                    onTargetChange={handleTargetChange}
+                    getPendingTarget={getPendingTarget}
+                    onDraggingChange={handleGizmoDraggingChange}
+                    onHoverChange={handleGizmoHoverChange}
                     controlsRef={controlsRef}
+                    colors={themeColors}
                 />
 
                 <CameraFollowController
@@ -612,21 +710,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </div>
                 )}
 
-                {/* Opacity & wireframe only affect the green override */}
-                {!useOriginalTexture && (
-                    <>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span style={{ color: 'var(--color-highlight)' }}>OPACITY {Math.round(opacity * 100)}%</span>
-                            <input
-                                type="range" min="0.1" max="1" step="0.1" value={opacity}
-                                onChange={e => handleOpacityChange(parseFloat(e.target.value))}
-                                style={{ width: '100%', cursor: 'pointer' }}
-                            />
-                        </div>
-                        <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
-                    </>
-                )}
-                <SwitchRow label="TEXTURE" value={useOriginalTexture} onChange={setUseOriginalTexture} />
+                <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
 
                 <button

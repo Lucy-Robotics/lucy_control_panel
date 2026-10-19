@@ -19,6 +19,16 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
     return 'isURDFJoint' in obj && Boolean((obj as { isURDFJoint?: boolean }).isURDFJoint);
 }
 
+/** A joint is considered at its commanded target within this error. */
+export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
+
+/** Signed angular error (target − actual), wrapped for continuous joints. */
+export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
+    const diff = target - actual;
+    if (joint.jointType !== 'continuous') return diff;
+    return Math.atan2(Math.sin(diff), Math.cos(diff));
+}
+
 export function isActuatorJoint(
     joint: URDFJoint | null,
     actuatedJointNames?: Set<string> | string[] | null,

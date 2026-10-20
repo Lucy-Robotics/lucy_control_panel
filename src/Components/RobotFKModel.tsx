@@ -29,17 +29,11 @@ import {
     type ActuatedJointNames,
 } from '../Utils/robotModel.utils';
 
-// Pristine DAE/mesh materials, captured per robot instance and kept at module
-// level so they survive remounts (the robot itself is module-cached in
-// useRobotModel). Capture happens before any override is applied, so a
-// wireframe/highlight clone can never be mistaken for the original.
 const robotOriginalMaterials = new WeakMap<
     URDFRobot,
     Map<THREE.Mesh, THREE.Material | THREE.Material[]>
 >();
 
-// Exponential smoothing rate (1/s) applied to displayed joint angles, so the
-// 10 Hz /joint_states drain renders as continuous motion instead of steps.
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
 const SELECTED_EMISSIVE_INTENSITY = 0.8;
@@ -56,7 +50,6 @@ function setMaterialEmissive(material: THREE.Material, color: THREE.Color, inten
 
 function setMaterialOpacity(material: THREE.Material, opacity: number) {
     const transparent = opacity < 1;
-    // Toggling transparency switches the shader program
     if (material.transparent !== transparent) {
         material.transparent = transparent;
         material.needsUpdate = true;
@@ -66,16 +59,12 @@ function setMaterialOpacity(material: THREE.Material, opacity: number) {
 
 export interface RobotFKModelProps {
     robot: URDFRobot;
-    /** URDF joint name → current angle (rad). */
     jointAngles: Map<string, number>;
     wireframe?: boolean;
-    /** Currently selected/highlighted link name. */
     selectedPartName?: string | null;
     unselectedOpacity?: number;
-    /** Emissive color of the selected part. */
     focusColor: string;
     onPartDoubleClick?: (partName: string) => void;
-    /** Hovered part (resolved to its actuated link), or null when the pointer leaves the robot. */
     onPartHover?: (partName: string | null) => void;
     actuatedJointNames?: ActuatedJointNames;
 }
@@ -102,7 +91,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             robotOriginalMaterials.set(robot, originals);
         }
 
-        // Ignore URDF joint limits — real ROS angles may exceed them.
         for (const joint of Object.values(robot.joints)) {
             joint.ignoreLimits = true;
         }
@@ -116,7 +104,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             const mesh = child as THREE.Mesh;
             if (!mesh.isMesh) return;
 
-            // Capture pristine original material before any override
             if (!originals!.has(mesh)) {
                 originals!.set(mesh, mesh.material);
             }
@@ -164,15 +151,11 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         };
     }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
 
-    // Applied in place (and re-applied whenever the clones above are rebuilt),
-    // so dragging the opacity slider never re-clones the robot's materials.
     useEffect(() => {
         unselectedMaterialsRef.current.forEach(m => setMaterialOpacity(m, unselectedOpacity));
     }, [unselectedOpacity, robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
 
     useFrame((_state, delta) => {
-        // The solid model always shows the real robot state; in-flight gizmo
-        // targets are rendered separately as ghosts (see JointGhost).
         if (jointAngles.size === 0) return;
         const displayed = displayedAnglesRef.current;
         const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
@@ -213,8 +196,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     };
 
     const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
-        // Let the joint gizmo (drawn on top, without depth test) win the hover
-        // even when its hitbox sits behind a robot mesh.
         if (e.intersections.some(i => i.object.userData?.isGizmoHit)) return;
         e.stopPropagation();
         gl.domElement.style.cursor = 'pointer';

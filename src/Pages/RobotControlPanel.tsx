@@ -178,7 +178,6 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    // Gizmo drag previews shown on the sliders, kept out of `joints` so they are never published
     const [jointPreviewStore] = useState(createJointPreviewStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
@@ -462,7 +461,6 @@ export const RobotControlPanel: React.FC = () => {
         setJoints((prevJoints) => withJointValue(prevJoints, name, value));
     }, []);
 
-    // A gizmo release is a one-shot command: send it now instead of waiting for the next publish tick
     const handleGizmoJointCommit = useCallback((name: string, value: number) => {
         handleJointValueChange(name, value);
         if (!isSendingRef.current) return;

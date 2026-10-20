@@ -101,7 +101,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
-  // Live value while the joint is dragged in the 3D view (display only, never sent)
   const previewValue = useJointPreview(joint.name);
   const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
   const currentValueRef = useRef(joint.currentValue);

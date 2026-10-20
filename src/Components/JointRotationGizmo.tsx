@@ -3,16 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * Hover-driven rotation gizmo for a single revolute/continuous joint.
- *
- * The gizmo's local frame is anchored to the joint's zero pose: local Z is the
- * rotation axis and local +X points toward the child part at angle 0, so an
- * angle θ maps directly to (cos θ, sin θ, 0) on the ring. Dragging never moves
- * the real model — it feeds a commanded target that is rendered as a ghost
- * (see JointGhost) and sent to the robot on release.
- */
-
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
@@ -20,7 +10,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFJoint } from 'urdf-loader';
 import type { JointControlState } from '../Constants/robotTypes';
-import { DEFAULT_ACTUATOR_MAPPING, jointRadToActuatorDeg, clampActuatorDeg } from '../Utils/actuatorJointMapping';
+import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../Utils/actuatorJointMapping';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import {
@@ -47,12 +37,9 @@ function overlayMaterial(opacity: number) {
     });
 }
 
-/** Rotation mapping gizmo-local axes (X: zero direction, Z: joint axis) into the joint's parent-origin frame. */
 function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
     const axis = joint.axis.clone().normalize();
 
-    // Direction toward the child part, expressed in the joint frame. At angle 0
-    // the joint frame equals the zero frame, so this is the part's zero direction.
     let ref: THREE.Vector3 | null = null;
     for (const child of joint.children) {
         if (!isURDFLink(child)) continue;
@@ -61,7 +48,6 @@ function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
         const local = joint.worldToLocal(worldCenter);
         local.addScaledVector(axis, -local.dot(axis));
         if (local.lengthSq() > 1e-8) {
-            // Undo the current rotation so the reference matches angle 0.
             ref = local.applyAxisAngle(axis, getJointAngle(joint)).normalize();
         }
         break;
@@ -74,7 +60,6 @@ function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
     return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ref, v, axis));
 }
 
-/** World-space plane the gizmo ring lies in (normal: the joint axis, local Z). */
 function ringPlaneOf(group: THREE.Object3D, out: THREE.Plane): THREE.Plane {
     const worldAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
     return out.setFromNormalAndCoplanarPoint(worldAxis, group.getWorldPosition(new THREE.Vector3()));
@@ -85,11 +70,8 @@ export interface JointRotationGizmoProps {
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    /** Display-only slider value while dragging (never sent); `null` once the drag ends. */
     onValuePreview?: (name: string, value: number | null) => void;
-    /** Commanded target for the ghost. `dragging` is false on release, with the slider value sent. */
     onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
-    /** Pending (in-flight) target for a joint, if any. */
     getPendingTarget?: (name: string) => number | undefined;
     onDraggingChange?: (isDragging: boolean) => void;
     onHoverChange?: (isHovered: boolean) => void;
@@ -120,7 +102,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     const jointName = joint ? urdfNameOf(joint) : '';
 
-    // Dynamic radius scaled to the joint's actuated child link
     const radius = useMemo(() => {
         if (!joint) return 0.16;
         let maxDim = 0.2;
@@ -144,22 +125,12 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         return { lower, upper };
     }, [joint]);
 
-    /* ---------- Slider value conversion (actuator degrees if configured) ---------- */
-
-    const toSliderValue = useCallback((rad: number): { value: number; unit: string } => {
+    const toSliderValue = useCallback((rad: number): number => {
+        const mapping = JointStateHandler.getInstance().getJointMeta(jointName)?.mapping ?? DEFAULT_ACTUATOR_MAPPING;
+        const servoRad = jointRadToServoRad(rad, mapping);
         const jointState = joints?.find(j => j.name === jointName);
-        const meta = JointStateHandler.getInstance().getJointMeta(jointName);
-        const mapping = meta?.mapping ?? DEFAULT_ACTUATOR_MAPPING;
-        if (jointState?.valueInActuatorDegrees) {
-            return { value: clampActuatorDeg(jointRadToActuatorDeg(rad, mapping), jointState.minValue, jointState.maxValue), unit: '°' };
-        }
-        if (jointState) {
-            return { value: THREE.MathUtils.clamp(rad, jointState.minValue, jointState.maxValue), unit: ' rad' };
-        }
-        return { value: jointRadToActuatorDeg(rad, mapping), unit: '°' };
+        return jointState ? clampServoRad(servoRad, jointState.minValue, jointState.maxValue) : servoRad;
     }, [joints, jointName]);
-
-    /* ---------- Materials & geometries ---------- */
 
     const mats = useMemo(() => ({
         ring: overlayMaterial(0.55),
@@ -178,9 +149,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     useEffect(() => () => Object.values(geos).forEach(g => g.dispose()), [geos]);
 
-    /* ---------- Lifecycle ---------- */
-
-    // Keep OrbitControls enabled on unmount or on error
     useEffect(() => {
         const controls = controlsRef.current;
         return () => {
@@ -198,7 +166,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         onHoverChange?.(hovered);
     }, [onHoverChange]);
 
-    // Cursor management — only reset the cursor when we were the ones who set it
     const ownsCursorRef = useRef(false);
     useEffect(() => {
         if (isDragging) {
@@ -213,8 +180,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
     }, [isDragging, isHovered, gl]);
 
-    /* ---------- Drag state ---------- */
-
     const startTargetRadRef = useRef<number>(0);
     const currentTargetRadRef = useRef<number>(0);
     const accumulatedAngleRef = useRef<number>(0);
@@ -223,7 +188,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
     const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
 
-    /** Drops the in-flight slider value and its preview. */
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
         lastEmittedValueRef.current = null;
@@ -232,7 +196,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     useEffect(() => clearEmittedValue, [clearEmittedValue]);
 
-    /** Angle of a world point around the gizmo axis, in gizmo-local (zero-anchored) coordinates. */
     const localAngleOf = (worldPoint: THREE.Vector3): number | null => {
         const group = groupRef.current;
         if (!group) return null;
@@ -250,9 +213,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
-        // Keep the ghost at the final target and dispatch to sliders / ROS
         onTargetChange?.(jointName, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
-        // Commit before clearing the preview so the slider never flashes back to the old value
         if (lastEmittedValueRef.current) {
             const { name, value } = lastEmittedValueRef.current;
             onJointValueChange?.(name, value);
@@ -263,8 +224,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         if (!pointerInsideRef.current) setHovered(false);
     }, [controlsRef, jointName, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
 
-    // Gizmo hidden (control off / joint gone): abort any drag without sending
-    // its target, and release the hover lock
     useEffect(() => {
         if (joint && isControlOn) return;
         if (isDraggingRef.current) {
@@ -280,7 +239,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         setHovered(false);
     }, [joint, isControlOn, controlsRef, clearEmittedValue, onDraggingChange, setHovered]);
 
-    // Global pointerup to ensure OrbitControls is always restored even if mouse leaves window
     useEffect(() => {
         const handleGlobalPointerUp = () => {
             if (isDraggingRef.current) {
@@ -313,7 +271,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = false;
         }
 
-        // Successive drags compound on the in-flight target rather than the lagging actual angle
         const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
         startTargetRadRef.current = start;
         currentTargetRadRef.current = start;
@@ -334,7 +291,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         if (!joint) return;
 
         if (!isDraggingRef.current) {
-            // Idle hover: the handle knob follows the pointer around the ring
             const group = groupRef.current;
             if (!group) return;
             const plane = ringPlaneOf(group, new THREE.Plane());
@@ -359,7 +315,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
         currentTargetRadRef.current = targetRad;
         onTargetChange?.(jointName, targetRad, true);
-        const value = toSliderValue(targetRad).value;
+        const value = toSliderValue(targetRad);
         lastEmittedValueRef.current = { name: jointName, value };
         onValuePreview?.(jointName, value);
     };
@@ -387,8 +343,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
     };
 
-    /* ---------- Per-frame placement & indicators ---------- */
-
     const fadeRef = useRef(0);
     useEffect(() => {
         fadeRef.current = 0;
@@ -410,7 +364,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const dragging = isDraggingRef.current;
         const hovered = isHoveredRef.current;
 
-        // Placement: frozen while dragging so the drag frame stays stable
         if (!dragging && joint.parent) {
             joint.updateWorldMatrix(true, false);
             joint.getWorldPosition(tmp.pos);
@@ -437,7 +390,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             knobRef.current.position.set(Math.cos(pointerAngleRef.current) * radius, Math.sin(pointerAngleRef.current) * radius, 0);
         }
 
-        // Hollow dot where an in-flight command is heading
         const actual = getJointAngle(joint);
         const pending = dragging ? undefined : getPendingTarget?.(jointName);
         if (targetRef.current) {
@@ -449,7 +401,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         if (badgeValueRef.current) {
             const shown = toSliderValue(dragging ? currentTargetRadRef.current : (pending ?? actual));
-            const text = `${shown.value.toFixed(1)}${shown.unit}`;
+            const text = `${THREE.MathUtils.radToDeg(shown).toFixed(1)}°`;
             if (badgeValueRef.current.textContent !== text) badgeValueRef.current.textContent = text;
         }
     });
@@ -467,7 +419,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
                 <mesh ref={knobRef} geometry={geos.knob} material={mats.knob} renderOrder={RENDER_ORDER + 2} visible={false} />
 
-                {/* Generous invisible hitbox for effortless clicking and hovering */}
                 <mesh
                     geometry={geos.hitbox}
                     userData={{ isGizmoHit: true }}

@@ -20,7 +20,6 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
     return 'isURDFJoint' in obj && Boolean((obj as { isURDFJoint?: boolean }).isURDFJoint);
 }
 
-/** A joint is considered at its commanded target within this error. */
 export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
 
 export type ActuatedJointNames = ReadonlySet<string>;
@@ -30,26 +29,19 @@ export function wrapAngle(angle: number): number {
     return Math.atan2(Math.sin(angle), Math.cos(angle));
 }
 
-/** Current angle of a joint as rendered by urdf-loader. */
 export function getJointAngle(joint: URDFJoint): number {
     return joint.angle ?? joint.jointValue?.[0] ?? 0;
 }
 
-/** Signed angular error (target − actual), wrapped for continuous joints. */
 export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
     const diff = target - actual;
     return joint.jointType === 'continuous' ? wrapAngle(diff) : diff;
 }
 
-/** URDF name of a link or joint, falling back to its Three.js name. */
 export function urdfNameOf(obj: URDFLink | URDFJoint): string {
     return obj.urdfName || obj.name;
 }
 
-/**
- * Names of the joints driven by the controller: the given control states if any,
- * otherwise the controller config. Undefined when neither is known yet.
- */
 export function getActuatedJointNames(joints?: JointControlState[]): ActuatedJointNames | undefined {
     if (joints && joints.length > 0) {
         return new Set(joints.map(j => j.name));
@@ -68,7 +60,6 @@ export function isActuatorJoint(joint: URDFJoint | null, actuatedJointNames?: Ac
     return joint.jointType === 'revolute' || joint.jointType === 'continuous' || joint.jointType === 'prismatic';
 }
 
-/** Actuated joint directly driving a link, if any. */
 export function findJointForLink(
     link: URDFLink,
     robot?: THREE.Object3D | null,
@@ -103,7 +94,6 @@ export function findJointForLink(
     return null;
 }
 
-/** Closest link (the link itself or an ancestor) driven by an actuated joint; the link itself if none. */
 export function findLinkWithJoint(
     link: URDFLink,
     robot: THREE.Object3D,
@@ -119,7 +109,6 @@ export function findLinkWithJoint(
     return link;
 }
 
-/** Name of the part a link belongs to, i.e. its closest actuated link. */
 export function resolveActuatedLinkName(
     link: URDFLink,
     robot: THREE.Object3D,

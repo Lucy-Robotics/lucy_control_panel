@@ -56,9 +56,7 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const SETTINGS_BOX_WIDTH = 150;
-/** Focused-part accent, shared with the 3D highlight (see useThemeColors3D). */
 const FOCUS_COLOR = 'var(--color-status-info)';
-/** Grace period letting the pointer travel from a part onto its gizmo ring. */
 const HOVER_CLEAR_DELAY_MS = 300;
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -312,13 +310,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    // In-flight gizmo targets: values live in a ref (updated per pointer move),
-    // React state only tracks which joints currently have a ghost.
     const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
     const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
 
     const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        // A single ghost at a time: a new move supersedes any other in-flight one
         if (dragging) {
             ghostTargetsRef.current.forEach((entry, other) => {
                 if (other !== name) entry.cancelled = true;
@@ -328,8 +323,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
     }, []);
 
-    // The command behind a ghost was overridden (joint/category reset, slider move…):
-    // the ghost no longer represents where the joint is heading.
     useEffect(() => {
         if (!joints) return;
         ghostTargetsRef.current.forEach((entry, name) => {
@@ -349,12 +342,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         setGhostJointNames(prev => prev.filter(n => n !== name));
     }, []);
 
-    // Hover-driven gizmo target
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const isGizmoHoveredRef = useRef(false);
     const isGizmoDraggingRef = useRef(false);
     const hoverClearTimerRef = useRef<number | null>(null);
-    // Part under the pointer, tracked even while the gizmo locks the hover target
     const lastPartHoverRef = useRef<string | null>(null);
 
     const cancelHoverClear = useCallback(() => {
@@ -376,7 +367,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const handlePartHover = useCallback((name: string | null) => {
         lastPartHoverRef.current = name;
-        // While the ring is hovered or dragged, crossing other links must not switch joints
         if (!effectiveControlOn || isGizmoHoveredRef.current || isGizmoDraggingRef.current) return;
         if (name) {
             cancelHoverClear();
@@ -386,7 +376,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         }
     }, [effectiveControlOn, cancelHoverClear, scheduleHoverClear]);
 
-    /** Gizmo released its hover lock: follow the part now under the pointer, if any. */
     const releaseGizmoLock = useCallback(() => {
         if (lastPartHoverRef.current) {
             cancelHoverClear();
@@ -454,7 +443,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
     }, [robot, hoveredPartName, actuatedJointNames]);
 
-    // Escape only unfocuses the viewer under the pointer (dock and modal can both be open)
     const isPointerInsideRef = useRef(false);
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -473,18 +461,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         savedCamera.target = controls.target.toArray() as Vec3;
     };
 
-    /** Part selector entries are raw links: focus the actuated part they belong to. */
     const handlePartSelect = (linkName: string) => {
         const link = linkName && robot ? robot.links[linkName] : undefined;
         setSelectedPartName(link && robot ? resolveActuatedLinkName(link, robot, actuatedJointNames) : linkName || null);
     };
 
-    // Names from RobotFKModel are already resolved to their actuated part
     const handlePartDoubleClick = (partName: string) => {
         setSelectedPartName(prev => (prev === partName ? null : partName));
     };
 
-    // Double-click on empty space (not on overlays, which live outside the canvas)
     const handlePointerMissed = (e: MouseEvent) => {
         if (e.type === 'dblclick') setSelectedPartName(null);
     };

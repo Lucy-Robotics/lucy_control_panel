@@ -3,16 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * Translucent "ghost" of a joint subtree posed at a commanded target angle.
- *
- * The solid robot model always mirrors /joint_states. While a gizmo command is
- * in flight (the actuator is still travelling), the ghost shows where the part
- * was asked to go. It fades out once the real joint reaches the target, or
- * flashes amber and fades if the actuator stops making progress (stall,
- * collision, gravity…), so the view never snaps or shows a fake pose.
- */
-
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -22,11 +12,8 @@ import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 
 export interface GhostTarget {
     targetRad: number;
-    /** True while the gizmo is being dragged: lifecycle checks are paused. */
     dragging: boolean;
-    /** Slider value sent on release; a different commanded value later supersedes this ghost. */
     commandValue?: number;
-    /** Superseded (new move, slider change, reset…): fade out quickly. */
     cancelled?: boolean;
 }
 
@@ -34,7 +21,6 @@ export type GhostTargetMap = Map<string, GhostTarget>;
 
 const GHOST_OPACITY = 0.38;
 
-/** The error must shrink by at least this much to count as progress toward the target. */
 const PROGRESS_EPSILON_RAD = 0.005;
 const STALL_WINDOW_MS = 1500;
 const MAX_TRACKING_MS = 20000;
@@ -66,13 +52,10 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
             side: THREE.DoubleSide,
         });
 
-        // Geometry is shared with the real model; only the material is swapped.
         const clone = joint.clone(true) as URDFJoint;
         const ghostJoints: URDFJoint[] = [];
         clone.traverse(obj => {
             if (isURDFJoint(obj)) {
-                // copy() keeps references to the *real* mimic joints — detach them
-                // so posing the ghost can never move the actual robot.
                 obj.mimicJoints = [];
                 obj.ignoreLimits = true;
                 ghostJoints.push(obj);
@@ -92,7 +75,6 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
             if (isURDFJoint(obj)) realJoints.push(obj);
         });
 
-        // Same structure → same traversal order. Descendant joints mirror the real ones.
         const jointPairs: Array<[URDFJoint, URDFJoint]> = [];
         for (let i = 1; i < ghostJoints.length && i < realJoints.length; i++) {
             jointPairs.push([ghostJoints[i], realJoints[i]]);
@@ -158,7 +140,6 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
         }
 
         if (wasDraggingRef.current) {
-            // Just released: start tracking the real joint toward the target.
             wasDraggingRef.current = false;
             trackingStartRef.current = now;
             lastProgressTimeRef.current = now;
@@ -174,8 +155,6 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
             if (error < TARGET_REACHED_TOLERANCE_RAD) {
                 enterPhase('reached', now);
             } else {
-                // Progress = the error actually shrinking. Jitter or moving away
-                // (e.g. toward another command) does not keep the ghost alive.
                 if (error < bestErrorRef.current - PROGRESS_EPSILON_RAD) {
                     bestErrorRef.current = error;
                     lastProgressTimeRef.current = now;

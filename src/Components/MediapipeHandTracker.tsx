@@ -39,7 +39,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
     const Fingers: Array<FingerIndex> = [
         {
-            name: "i01.side.thumb_link_joint", idx: {
+            name: "i02_side_ThumbMid_joint", idx: {
                 TIP: 4,
                 DIP: 3,
                 PIP: 2,
@@ -47,7 +47,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.index_link_joint", idx: {
+            name: "i02_side_indexPhal_joint", idx: {
                 TIP: 8,
                 DIP: 7,
                 PIP: 6,
@@ -55,7 +55,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.majeure_link_joint", idx: {
+            name: "i02_side_majeurePhal_joint", idx: {
                 TIP: 12,
                 DIP: 11,
                 PIP: 10,
@@ -63,7 +63,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.ringFinger_link_joint", idx: {
+            name: "i02_side_ringFingerPhal_joint", idx: {
                 TIP: 16,
                 DIP: 15,
                 PIP: 14,
@@ -71,7 +71,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.pinky_link_joint", idx: {
+            name: "i02_side_pinkyPhal_joint", idx: {
                 TIP: 20,
                 DIP: 19,
                 PIP: 18,

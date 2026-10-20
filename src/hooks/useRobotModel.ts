@@ -145,7 +145,8 @@ export function useRobotModel(): UseRobotModelReturn {
                                 materials.preload();
                                 objLoader.setMaterials(materials);
                             }
-                            done(objLoader.parse(payload.data));
+                            // Drop loose-edge `l` records: one turns OBJLoader's whole object into line segments (wireframe jaw).
+                            done(objLoader.parse(payload.data.replace(/^l\s.*$/gm, '')));
                         } else {
                             throw new Error(`unsupported mesh type: ${path}`);
                         }

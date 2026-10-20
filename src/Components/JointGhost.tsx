@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFJoint } from 'urdf-loader';
-import { isURDFJoint, jointAngleError, TARGET_REACHED_TOLERANCE_RAD } from '../Utils/robotModel.utils';
+import { getJointAngle, isURDFJoint, jointAngleError, urdfNameOf, TARGET_REACHED_TOLERANCE_RAD } from '../Utils/robotModel.utils';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 
 export interface GhostTarget {
@@ -53,7 +53,7 @@ export interface JointGhostProps {
 }
 
 export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, colors, onDone }) => {
-    const jointName = joint.urdfName || joint.name;
+    const jointName = urdfNameOf(joint);
 
     const { root, ghostJoint, pairs, material } = useMemo(() => {
         const mat = new THREE.MeshStandardMaterial({
@@ -146,7 +146,7 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
         }
 
         const now = performance.now();
-        const actual = joint.angle ?? joint.jointValue?.[0] ?? 0;
+        const actual = getJointAngle(joint);
 
         if (entry.dragging) {
             phaseRef.current = 'tracking';
@@ -182,9 +182,6 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
                 }
                 if (now - lastProgressTimeRef.current > STALL_WINDOW_MS || now - trackingStartRef.current > MAX_TRACKING_MS) {
                     enterPhase('stalled', now);
-                    console.debug(
-                        `[3DViewer] joint ${jointName} stopped ${THREE.MathUtils.radToDeg(error).toFixed(1)}° short of its target`,
-                    );
                 }
             }
             if (phaseRef.current === 'tracking') {

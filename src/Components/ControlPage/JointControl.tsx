@@ -9,6 +9,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { storageService } from '../../Services/storage.service.ts';
+import { useJointPreview } from '../../hooks/useJointPreview.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -100,6 +101,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
+  // Live value while the joint is dragged in the 3D view (display only, never sent)
+  const previewValue = useJointPreview(joint.name);
   const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
   const currentValueRef = useRef(joint.currentValue);
   const loadedPositionKeyRef = useRef<string | null>(null);
@@ -233,10 +236,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const [minDisplay, maxDisplay] = getDisplayRange();
-    const currentDisplay = getDisplayValue(localValue);
+    const currentDisplay = getDisplayValue(previewValue ?? localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorValue]);
+  }, [joint.minValue, joint.maxValue, localValue, previewValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
     if (actuatorValue) {

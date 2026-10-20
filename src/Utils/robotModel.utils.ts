@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { URDFLink, URDFVisual, URDFJoint } from 'urdf-loader';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
+import type { JointControlState } from '../Constants/robotTypes';
 
 export function isURDFLink(obj: THREE.Object3D): obj is URDFLink {
     return 'isURDFLink' in obj && Boolean((obj as { isURDFLink?: boolean }).isURDFLink);
@@ -22,56 +23,56 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
 /** A joint is considered at its commanded target within this error. */
 export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
 
+export type ActuatedJointNames = ReadonlySet<string>;
+
+/** Wraps an angle into (−π, π]. */
+export function wrapAngle(angle: number): number {
+    return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+/** Current angle of a joint as rendered by urdf-loader. */
+export function getJointAngle(joint: URDFJoint): number {
+    return joint.angle ?? joint.jointValue?.[0] ?? 0;
+}
+
 /** Signed angular error (target − actual), wrapped for continuous joints. */
 export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
     const diff = target - actual;
-    if (joint.jointType !== 'continuous') return diff;
-    return Math.atan2(Math.sin(diff), Math.cos(diff));
+    return joint.jointType === 'continuous' ? wrapAngle(diff) : diff;
 }
 
-export function isActuatorJoint(
-    joint: URDFJoint | null,
-    actuatedJointNames?: Set<string> | string[] | null,
-): boolean {
-    if (!joint) return false;
-    if (joint.jointType === 'fixed') {
-        return false;
-    }
-    if ('mimicJoint' in joint && Boolean((joint as { mimicJoint?: string }).mimicJoint)) {
-        return false;
-    }
+/** URDF name of a link or joint, falling back to its Three.js name. */
+export function urdfNameOf(obj: URDFLink | URDFJoint): string {
+    return obj.urdfName || obj.name;
+}
 
-    const name = joint.urdfName || joint.name;
-
-    if (actuatedJointNames) {
-        const count = Array.isArray(actuatedJointNames) ? actuatedJointNames.length : actuatedJointNames.size;
-        if (count > 0) {
-            return Array.isArray(actuatedJointNames)
-                ? actuatedJointNames.includes(name)
-                : actuatedJointNames.has(name);
-        }
+/**
+ * Names of the joints driven by the controller: the given control states if any,
+ * otherwise the controller config. Undefined when neither is known yet.
+ */
+export function getActuatedJointNames(joints?: JointControlState[]): ActuatedJointNames | undefined {
+    if (joints && joints.length > 0) {
+        return new Set(joints.map(j => j.name));
     }
+    const handlerJoints = JointStateHandler.getInstance().getJoints();
+    return handlerJoints.length > 0 ? new Set(handlerJoints.map(j => j.name)) : undefined;
+}
 
-    try {
-        const handler = JointStateHandler.getInstance();
-        const handlerJoints = handler.getJoints();
-        if (handlerJoints && handlerJoints.length > 0) {
-            return handlerJoints.some(j => j.name === name);
-        }
-        if (handler.getJointMeta(name)) {
-            return true;
-        }
-    } catch {
-        // ignore
+export function isActuatorJoint(joint: URDFJoint | null, actuatedJointNames?: ActuatedJointNames): boolean {
+    if (!joint || joint.jointType === 'fixed') return false;
+    if ('mimicJoint' in joint && Boolean((joint as { mimicJoint?: string }).mimicJoint)) return false;
+
+    if (actuatedJointNames && actuatedJointNames.size > 0) {
+        return actuatedJointNames.has(urdfNameOf(joint));
     }
-
     return joint.jointType === 'revolute' || joint.jointType === 'continuous' || joint.jointType === 'prismatic';
 }
 
-export function getDirectJointForLink(
+/** Actuated joint directly driving a link, if any. */
+export function findJointForLink(
     link: URDFLink,
     robot?: THREE.Object3D | null,
-    actuatedJointNames?: Set<string> | string[] | null,
+    actuatedJointNames?: ActuatedJointNames,
 ): URDFJoint | null {
     let curr: THREE.Object3D | null = link.parent;
     while (curr && curr !== robot) {
@@ -92,7 +93,7 @@ export function getDirectJointForLink(
         for (const j of Object.values(jointMap)) {
             if (isActuatorJoint(j, actuatedJointNames)) {
                 const childLink = j.children.find(isURDFLink);
-                if (childLink && (childLink === link || childLink.urdfName === link.urdfName || childLink.name === link.name)) {
+                if (childLink && (childLink === link || urdfNameOf(childLink) === urdfNameOf(link))) {
                     return j;
                 }
             }
@@ -102,15 +103,15 @@ export function getDirectJointForLink(
     return null;
 }
 
+/** Closest link (the link itself or an ancestor) driven by an actuated joint; the link itself if none. */
 export function findLinkWithJoint(
     link: URDFLink,
     robot: THREE.Object3D,
-    actuatedJointNames?: Set<string> | string[] | null,
+    actuatedJointNames?: ActuatedJointNames,
 ): URDFLink {
     let curr: URDFLink | null = link;
     while (curr && curr !== robot) {
-        const directJoint = getDirectJointForLink(curr, robot, actuatedJointNames);
-        if (directJoint) {
+        if (findJointForLink(curr, robot, actuatedJointNames)) {
             return curr;
         }
         curr = findParentLink(curr.parent, robot);
@@ -118,12 +119,13 @@ export function findLinkWithJoint(
     return link;
 }
 
-export function findJointForLink(
+/** Name of the part a link belongs to, i.e. its closest actuated link. */
+export function resolveActuatedLinkName(
     link: URDFLink,
-    robot?: THREE.Object3D | null,
-    actuatedJointNames?: Set<string> | string[] | null,
-): URDFJoint | null {
-    return getDirectJointForLink(link, robot, actuatedJointNames);
+    robot: THREE.Object3D,
+    actuatedJointNames?: ActuatedJointNames,
+): string {
+    return urdfNameOf(findLinkWithJoint(link, robot, actuatedJointNames));
 }
 
 export function findParentLink(obj: THREE.Object3D | null, robot: THREE.Object3D): URDFLink | null {

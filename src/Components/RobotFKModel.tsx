@@ -21,7 +21,13 @@ import React, { useEffect, useRef } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { findParentLink, findLinkWithJoint } from '../Utils/robotModel.utils';
+import {
+    findParentLink,
+    resolveActuatedLinkName,
+    urdfNameOf,
+    wrapAngle,
+    type ActuatedJointNames,
+} from '../Utils/robotModel.utils';
 
 // Pristine DAE/mesh materials, captured per robot instance and kept at module
 // level so they survive remounts (the robot itself is module-cached in
@@ -36,6 +42,8 @@ const robotOriginalMaterials = new WeakMap<
 // 10 Hz /joint_states drain renders as continuous motion instead of steps.
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
+const SELECTED_EMISSIVE_INTENSITY = 0.8;
+const NO_EMISSIVE = new THREE.Color(0x000000);
 
 function setMaterialEmissive(material: THREE.Material, color: THREE.Color, intensity: number) {
     if (material instanceof THREE.MeshStandardMaterial) {
@@ -46,54 +54,14 @@ function setMaterialEmissive(material: THREE.Material, color: THREE.Color, inten
     }
 }
 
-interface ApplyMaterialParams {
-    mesh: THREE.Mesh;
-    origMat: THREE.Material | THREE.Material[];
-    isSelected: boolean;
-    isAnySelected: boolean;
-    unselectedOpacity: number;
-    wireframe: boolean;
-    highlightColor: THREE.Color;
-    zeroColor: THREE.Color;
-    tempMaterials: THREE.Material[];
-}
-
-function applyMeshMaterial({
-    mesh,
-    origMat,
-    isSelected,
-    isAnySelected,
-    unselectedOpacity,
-    wireframe,
-    highlightColor,
-    zeroColor,
-    tempMaterials,
-}: ApplyMaterialParams): void {
-    if (!isAnySelected && !wireframe) {
-        mesh.material = origMat;
-        return;
+function setMaterialOpacity(material: THREE.Material, opacity: number) {
+    const transparent = opacity < 1;
+    // Toggling transparency switches the shader program
+    if (material.transparent !== transparent) {
+        material.transparent = transparent;
+        material.needsUpdate = true;
     }
-
-    const transformMat = (m: THREE.Material): THREE.Material => {
-        const copy = m.clone();
-        tempMaterials.push(copy);
-        if ('wireframe' in copy) {
-            (copy as THREE.MeshStandardMaterial).wireframe = wireframe;
-        }
-        if (!isAnySelected) return copy;
-        if (isSelected) {
-            setMaterialEmissive(copy, highlightColor, 0.8);
-            copy.transparent = false;
-            copy.opacity = 1;
-        } else {
-            copy.transparent = unselectedOpacity < 1;
-            copy.opacity = unselectedOpacity;
-            setMaterialEmissive(copy, zeroColor, 0);
-        }
-        return copy;
-    };
-
-    mesh.material = Array.isArray(origMat) ? origMat.map(transformMat) : transformMat(origMat);
+    material.opacity = opacity;
 }
 
 export interface RobotFKModelProps {
@@ -104,10 +72,12 @@ export interface RobotFKModelProps {
     /** Currently selected/highlighted link name. */
     selectedPartName?: string | null;
     unselectedOpacity?: number;
+    /** Emissive color of the selected part. */
+    focusColor: string;
     onPartDoubleClick?: (partName: string) => void;
     /** Hovered part (resolved to its actuated link), or null when the pointer leaves the robot. */
     onPartHover?: (partName: string | null) => void;
-    actuatedJointNames?: Set<string>;
+    actuatedJointNames?: ActuatedJointNames;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -116,12 +86,13 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     wireframe = false,
     selectedPartName = null,
     unselectedOpacity = 0.25,
+    focusColor,
     onPartDoubleClick,
     onPartHover,
     actuatedJointNames,
 }) => {
     const { gl } = useThree();
-    const temporaryMaterialsRef = useRef<THREE.Material[]>([]);
+    const unselectedMaterialsRef = useRef<THREE.Material[]>([]);
     const displayedAnglesRef = useRef<Map<string, number>>(new Map());
 
     useEffect(() => {
@@ -131,15 +102,15 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             robotOriginalMaterials.set(robot, originals);
         }
 
-        temporaryMaterialsRef.current.forEach(m => m.dispose());
-        temporaryMaterialsRef.current = [];
-
-        const highlightColor = new THREE.Color('#00E5FF');
-        const zeroColor = new THREE.Color(0x000000);
-
+        // Ignore URDF joint limits — real ROS angles may exceed them.
         for (const joint of Object.values(robot.joints)) {
             joint.ignoreLimits = true;
         }
+
+        const focus = new THREE.Color(focusColor);
+        const isAnySelected = selectedPartName !== null;
+        const temporaryMaterials: THREE.Material[] = [];
+        const unselectedMaterials: THREE.Material[] = [];
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
@@ -149,27 +120,37 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             if (!originals!.has(mesh)) {
                 originals!.set(mesh, mesh.material);
             }
-
             const origMat = originals!.get(mesh)!;
-            const parentLink = findParentLink(mesh, robot);
-            const linkName = parentLink?.urdfName || parentLink?.name;
-            const resolvedLink = parentLink ? findLinkWithJoint(parentLink, robot, actuatedJointNames) : null;
-            const resolvedName = resolvedLink?.urdfName || resolvedLink?.name || linkName;
-            const isSelected = Boolean(selectedPartName && (linkName === selectedPartName || resolvedName === selectedPartName));
-            const isAnySelected = Boolean(selectedPartName);
 
-            applyMeshMaterial({
-                mesh,
-                origMat,
-                isSelected,
-                isAnySelected,
-                unselectedOpacity,
-                wireframe,
-                highlightColor,
-                zeroColor,
-                tempMaterials: temporaryMaterialsRef.current,
-            });
+            if (!isAnySelected && !wireframe) {
+                mesh.material = origMat;
+                return;
+            }
+
+            const link = isAnySelected ? findParentLink(mesh, robot) : null;
+            const isSelected = link !== null && (
+                urdfNameOf(link) === selectedPartName
+                || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
+            );
+
+            const transform = (m: THREE.Material): THREE.Material => {
+                const copy = m.clone();
+                temporaryMaterials.push(copy);
+                if ('wireframe' in copy) {
+                    (copy as THREE.MeshStandardMaterial).wireframe = wireframe;
+                }
+                if (isSelected) {
+                    setMaterialEmissive(copy, focus, SELECTED_EMISSIVE_INTENSITY);
+                    setMaterialOpacity(copy, 1);
+                } else if (isAnySelected) {
+                    setMaterialEmissive(copy, NO_EMISSIVE, 0);
+                    unselectedMaterials.push(copy);
+                }
+                return copy;
+            };
+            mesh.material = Array.isArray(origMat) ? origMat.map(transform) : transform(origMat);
         });
+        unselectedMaterialsRef.current = unselectedMaterials;
 
         return () => {
             robot.traverse(child => {
@@ -178,48 +159,57 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 const orig = originals!.get(mesh);
                 if (orig) mesh.material = orig;
             });
-            temporaryMaterialsRef.current.forEach(m => m.dispose());
-            temporaryMaterialsRef.current = [];
-            };
-    }, [robot, wireframe, selectedPartName, unselectedOpacity, actuatedJointNames]);
+            temporaryMaterials.forEach(m => m.dispose());
+            unselectedMaterialsRef.current = [];
+        };
+    }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
+
+    // Applied in place (and re-applied whenever the clones above are rebuilt),
+    // so dragging the opacity slider never re-clones the robot's materials.
+    useEffect(() => {
+        unselectedMaterialsRef.current.forEach(m => setMaterialOpacity(m, unselectedOpacity));
+    }, [unselectedOpacity, robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
 
     useFrame((_state, delta) => {
         // The solid model always shows the real robot state; in-flight gizmo
         // targets are rendered separately as ghosts (see JointGhost).
-        if (jointAngles.size > 0) {
-            const displayed = displayedAnglesRef.current;
-            const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
-            const values: Record<string, number> = {};
+        if (jointAngles.size === 0) return;
+        const displayed = displayedAnglesRef.current;
+        const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
+        const values: Record<string, number> = {};
 
-            jointAngles.forEach((serverAngle, name) => {
-                const prev = displayed.get(name);
-                let next = serverAngle;
-                if (prev !== undefined && Math.abs(serverAngle - prev) > ANGLE_SNAP_EPSILON) {
-                    next = prev + (serverAngle - prev) * alpha;
+        jointAngles.forEach((serverAngle, name) => {
+            const prev = displayed.get(name);
+            let next = serverAngle;
+            if (prev !== undefined) {
+                // Continuous joints take the short way around a ±π wrap
+                const diff = robot.joints[name]?.jointType === 'continuous'
+                    ? wrapAngle(serverAngle - prev)
+                    : serverAngle - prev;
+                if (Math.abs(diff) > ANGLE_SNAP_EPSILON) {
+                    next = prev + diff * alpha;
                 }
-                if (next !== prev) {
-                    displayed.set(name, next);
-                    values[name] = next;
-                }
-            });
-
-            if (Object.keys(values).length > 0) {
-                robot.setJointValues(values);
             }
+            if (next !== prev) {
+                displayed.set(name, next);
+                values[name] = next;
+            }
+        });
+
+        if (Object.keys(values).length > 0) {
+            robot.setJointValues(values);
         }
     });
 
+    const partNameOf = (object: THREE.Object3D): string | null => {
+        const link = findParentLink(object, robot);
+        return link ? resolveActuatedLinkName(link, robot, actuatedJointNames) : null;
+    };
+
     const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
-        (e.nativeEvent as unknown as { _lucyPartClick?: boolean })._lucyPartClick = true;
-        const hitMesh = e.object;
-        const link = findParentLink(hitMesh, robot);
-        if (!link) return;
-        const targetLink = findLinkWithJoint(link, robot, actuatedJointNames);
-        const name = targetLink?.urdfName || targetLink?.name;
-        if (name && onPartDoubleClick) {
-            onPartDoubleClick(name);
-        }
+        const name = partNameOf(e.object);
+        if (name) onPartDoubleClick?.(name);
     };
 
     const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
@@ -229,10 +219,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         e.stopPropagation();
         gl.domElement.style.cursor = 'pointer';
         if (!onPartHover) return;
-        const link = findParentLink(e.object, robot);
-        if (!link) return;
-        const targetLink = findLinkWithJoint(link, robot, actuatedJointNames);
-        const name = targetLink?.urdfName || targetLink?.name;
+        const name = partNameOf(e.object);
         if (name) onPartHover(name);
     };
 

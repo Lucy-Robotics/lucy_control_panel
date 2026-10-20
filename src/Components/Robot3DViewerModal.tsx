@@ -42,4 +42,3 @@ export function Robot3DViewerModal({
         </FloatingViewerModal>
     );
 }
-

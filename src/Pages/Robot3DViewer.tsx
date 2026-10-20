@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -14,13 +14,20 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { getLinkBoundingBox, isURDFVisual, findJointForLink, findLinkWithJoint } from '../Utils/robotModel.utils';
+import { JointPreviewContext } from '../hooks/useJointPreview';
+import {
+    findJointForLink,
+    getActuatedJointNames,
+    getLinkBoundingBox,
+    isURDFVisual,
+    resolveActuatedLinkName,
+    urdfNameOf,
+} from '../Utils/robotModel.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
-import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     UI_ACCENT_GREEN_HEX,
@@ -49,6 +56,8 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const SETTINGS_BOX_WIDTH = 150;
+/** Focused-part accent, shared with the 3D highlight (see useThemeColors3D). */
+const FOCUS_COLOR = 'var(--color-status-info)';
 /** Grace period letting the pointer travel from a part onto its gizmo ring. */
 const HOVER_CLEAR_DELAY_MS = 300;
 const MOUSE_HINTS = [
@@ -63,10 +72,19 @@ const MOUSE_HINTS = [
 
 type Vec3 = [number, number, number];
 
-const savedCamera: { position: Vec3; target: Vec3 } = {
+const DEFAULT_CAMERA: { readonly position: Vec3; readonly target: Vec3 } = {
     position: [0, 2, 3],
     target: [0, 1, 0],
 };
+
+const savedCamera: { position: Vec3; target: Vec3 } = {
+    position: [...DEFAULT_CAMERA.position],
+    target: [...DEFAULT_CAMERA.target],
+};
+
+const isEditableTarget = (target: EventTarget | null): boolean =>
+    target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -137,7 +155,6 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     controlsRef,
 }) => {
     const { camera } = useThree();
-    const prevSelectedRef = useRef<string | null>(null);
     const localCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const lastWorldCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const isTransitioningRef = useRef<boolean>(false);
@@ -169,15 +186,12 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
 
     useEffect(() => {
         if (!robot || !selectedPartName) {
-            prevSelectedRef.current = null;
             isTransitioningRef.current = false;
             return;
         }
 
         const link = robot.links[selectedPartName];
         if (!link) return;
-
-        prevSelectedRef.current = selectedPartName;
 
         robot.updateMatrixWorld(true);
         link.updateWorldMatrix(true, false);
@@ -266,6 +280,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
+    const jointPreview = useContext(JointPreviewContext);
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
         const handler = ControlModeHandler.getInstance();
@@ -414,21 +429,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         target: [...savedCamera.target] as Vec3,
     }).current;
 
-    const actuatedJointNames = useMemo(() => {
-        if (joints && joints.length > 0) {
-            return new Set(joints.map(j => j.name));
-        }
-        try {
-            const handler = JointStateHandler.getInstance();
-            const handlerJoints = handler.getJoints();
-            if (handlerJoints.length > 0) {
-                return new Set(handlerJoints.map(j => j.name));
-            }
-        } catch {
-            // ignore
-        }
-        return undefined;
-    }, [joints]);
+    const actuatedJointNames = useMemo(() => getActuatedJointNames(joints), [joints]);
 
     const availableParts = useMemo(() => {
         if (!robot) return [];
@@ -453,9 +454,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
     }, [robot, hoveredPartName, actuatedJointNames]);
 
+    // Escape only unfocuses the viewer under the pointer (dock and modal can both be open)
+    const isPointerInsideRef = useRef(false);
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && isPointerInsideRef.current && !isEditableTarget(e.target)) {
                 setSelectedPartName(null);
             }
         };
@@ -470,28 +473,28 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         savedCamera.target = controls.target.toArray() as Vec3;
     };
 
-    const handlePartDoubleClick = (partName: string) => {
-        if (!robot) {
-            setSelectedPartName(prev => (prev === partName ? null : partName));
-            return;
-        }
-        const link = robot.links[partName];
-        const targetLink = link ? findLinkWithJoint(link, robot, actuatedJointNames) : null;
-        const targetName = targetLink ? (targetLink.urdfName || targetLink.name) : partName;
-        setSelectedPartName(prev => (prev === targetName ? null : targetName));
+    /** Part selector entries are raw links: focus the actuated part they belong to. */
+    const handlePartSelect = (linkName: string) => {
+        const link = linkName && robot ? robot.links[linkName] : undefined;
+        setSelectedPartName(link && robot ? resolveActuatedLinkName(link, robot, actuatedJointNames) : linkName || null);
     };
 
-    const handleCanvasDoubleClick = (e: React.MouseEvent) => {
-        if ((e.nativeEvent as unknown as { _lucyPartClick?: boolean })._lucyPartClick) return;
-        setSelectedPartName(null);
+    // Names from RobotFKModel are already resolved to their actuated part
+    const handlePartDoubleClick = (partName: string) => {
+        setSelectedPartName(prev => (prev === partName ? null : partName));
+    };
+
+    // Double-click on empty space (not on overlays, which live outside the canvas)
+    const handlePointerMissed = (e: MouseEvent) => {
+        if (e.type === 'dblclick') setSelectedPartName(null);
     };
 
     const handleResetCamera = () => {
         setSelectedPartName(null);
         const controls = controlsRef.current;
         if (!controls) return;
-        controls.target.set(0, 1, 0);
-        controls.object.position.set(0, 2, 3);
+        controls.target.set(...DEFAULT_CAMERA.target);
+        controls.object.position.set(...DEFAULT_CAMERA.position);
         controls.update();
     };
 
@@ -511,12 +514,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     return (
         <div
             style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-secondary)' }}
-            onDoubleClick={handleCanvasDoubleClick}
+            onPointerEnter={() => { isPointerInsideRef.current = true; }}
+            onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
+                onPointerMissed={handlePointerMissed}
             >
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
@@ -543,6 +548,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         wireframe={wireframe}
                         selectedPartName={selectedPartName}
                         unselectedOpacity={unselectedOpacity}
+                        focusColor={themeColors.focus}
                         onPartDoubleClick={handlePartDoubleClick}
                         onPartHover={handlePartHover}
                         actuatedJointNames={actuatedJointNames}
@@ -561,6 +567,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
+                    onValuePreview={jointPreview?.set}
                     onTargetChange={handleTargetChange}
                     getPendingTarget={getPendingTarget}
                     onDraggingChange={handleGizmoDraggingChange}
@@ -613,17 +620,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         alignItems: 'center',
                         gap: 10,
                         zIndex: 10,
-                        background: 'rgba(20, 20, 20, 0.88)',
-                        border: '1px solid #00E5FF',
-                        boxShadow: '0 0 14px rgba(0, 229, 255, 0.3)',
-                    }}
+                        // chamfer-box draws its border from this variable
+                        '--box-border': FOCUS_COLOR,
+                    } as React.CSSProperties}
                 >
                     <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>FOLLOWING:</span>
-                    <span style={{ color: '#00E5FF', fontWeight: 'bold' }}>{selectedPartName}</span>
+                    <span style={{ color: FOCUS_COLOR, fontWeight: 'bold' }}>{selectedPartName}</span>
                     {focusedJoint && (
                         <>
                             <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
-                            <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{focusedJoint.urdfName || focusedJoint.name}</span>
+                            <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{urdfNameOf(focusedJoint)}</span>
                         </>
                     )}
                     <button
@@ -631,9 +637,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         style={{
                             marginLeft: 4,
                             padding: '2px 8px',
-                            background: 'rgba(0, 229, 255, 0.12)',
-                            border: '1px solid rgba(0, 229, 255, 0.5)',
-                            color: '#00E5FF',
+                            background: 'transparent',
+                            border: `1px solid ${FOCUS_COLOR}`,
+                            color: FOCUS_COLOR,
                             cursor: 'pointer',
                             fontSize: 10,
                             fontFamily: 'monospace',
@@ -656,22 +662,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                             <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9 }}>PART FOCUS</span>
                             <select
                                 value={selectedPartName || ''}
-                                onChange={e => {
-                                    const val = e.target.value;
-                                    if (!val || !robot) {
-                                        setSelectedPartName(val || null);
-                                        return;
-                                    }
-                                    const link = robot.links[val];
-                                    const targetLink = link ? findLinkWithJoint(link, robot, actuatedJointNames) : null;
-                                    const targetName = targetLink ? (targetLink.urdfName || targetLink.name) : val;
-                                    setSelectedPartName(targetName);
-                                }}
+                                onChange={e => handlePartSelect(e.target.value)}
                                 style={{
                                     width: '100%',
                                     background: 'var(--color-main)',
                                     border: '1px solid var(--color-secondary)',
-                                    color: selectedPartName ? '#00E5FF' : UI_TEXT_PRIMARY_ON_DARK,
+                                    color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
                                     fontFamily: 'monospace',
                                     fontSize: 9,
                                     padding: '2px 4px',

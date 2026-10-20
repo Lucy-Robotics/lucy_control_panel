@@ -23,12 +23,18 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { DEFAULT_ACTUATOR_MAPPING, jointRadToActuatorDeg, clampActuatorDeg } from '../Utils/actuatorJointMapping';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
-import { getLinkBoundingBox, isURDFLink, jointAngleError, TARGET_REACHED_TOLERANCE_RAD } from '../Utils/robotModel.utils';
+import {
+    getJointAngle,
+    getLinkBoundingBox,
+    isURDFLink,
+    jointAngleError,
+    urdfNameOf,
+    wrapAngle,
+    TARGET_REACHED_TOLERANCE_RAD,
+} from '../Utils/robotModel.utils';
 
 const RENDER_ORDER = 1000;
 const FADE_IN_S = 0.12;
-
-const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 function overlayMaterial(opacity: number) {
     return new THREE.MeshBasicMaterial({
@@ -56,8 +62,7 @@ function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
         local.addScaledVector(axis, -local.dot(axis));
         if (local.lengthSq() > 1e-8) {
             // Undo the current rotation so the reference matches angle 0.
-            const angle = joint.angle ?? joint.jointValue?.[0] ?? 0;
-            ref = local.applyAxisAngle(axis, angle).normalize();
+            ref = local.applyAxisAngle(axis, getJointAngle(joint)).normalize();
         }
         break;
     }
@@ -69,11 +74,19 @@ function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
     return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ref, v, axis));
 }
 
+/** World-space plane the gizmo ring lies in (normal: the joint axis, local Z). */
+function ringPlaneOf(group: THREE.Object3D, out: THREE.Plane): THREE.Plane {
+    const worldAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
+    return out.setFromNormalAndCoplanarPoint(worldAxis, group.getWorldPosition(new THREE.Vector3()));
+}
+
 export interface JointRotationGizmoProps {
     joint: URDFJoint | null;
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    /** Display-only slider value while dragging (never sent); `null` once the drag ends. */
+    onValuePreview?: (name: string, value: number | null) => void;
     /** Commanded target for the ghost. `dragging` is false on release, with the slider value sent. */
     onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
     /** Pending (in-flight) target for a joint, if any. */
@@ -89,6 +102,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     isControlOn,
     joints,
     onJointValueChange,
+    onValuePreview,
     onTargetChange,
     getPendingTarget,
     onDraggingChange,
@@ -104,7 +118,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const [isHovered, setIsHovered] = useState<boolean>(false);
     const [isDragging, setIsDragging] = useState<boolean>(false);
 
-    const jointName = joint ? (joint.urdfName || joint.name) : '';
+    const jointName = joint ? urdfNameOf(joint) : '';
 
     // Dynamic radius scaled to the joint's actuated child link
     const radius = useMemo(() => {
@@ -184,14 +198,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         onHoverChange?.(hovered);
     }, [onHoverChange]);
 
-    // Gizmo hidden (control off / joint gone) while hovered: release the hover lock
-    useEffect(() => {
-        if (!joint || !isControlOn) {
-            pointerInsideRef.current = false;
-            setHovered(false);
-        }
-    }, [joint, isControlOn, setHovered]);
-
     // Cursor management — only reset the cursor when we were the ones who set it
     const ownsCursorRef = useRef(false);
     useEffect(() => {
@@ -217,6 +223,15 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
     const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
 
+    /** Drops the in-flight slider value and its preview. */
+    const clearEmittedValue = useCallback(() => {
+        const emitted = lastEmittedValueRef.current;
+        lastEmittedValueRef.current = null;
+        if (emitted) onValuePreview?.(emitted.name, null);
+    }, [onValuePreview]);
+
+    useEffect(() => clearEmittedValue, [clearEmittedValue]);
+
     /** Angle of a world point around the gizmo axis, in gizmo-local (zero-anchored) coordinates. */
     const localAngleOf = (worldPoint: THREE.Vector3): number | null => {
         const group = groupRef.current;
@@ -237,15 +252,33 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         // Keep the ghost at the final target and dispatch to sliders / ROS
         onTargetChange?.(jointName, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
+        // Commit before clearing the preview so the slider never flashes back to the old value
         if (lastEmittedValueRef.current) {
             const { name, value } = lastEmittedValueRef.current;
             onJointValueChange?.(name, value);
-            lastEmittedValueRef.current = null;
         }
+        clearEmittedValue();
 
         onDraggingChange?.(false);
         if (!pointerInsideRef.current) setHovered(false);
-    }, [controlsRef, jointName, onTargetChange, onJointValueChange, onDraggingChange, setHovered]);
+    }, [controlsRef, jointName, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
+
+    // Gizmo hidden (control off / joint gone): abort any drag without sending
+    // its target, and release the hover lock
+    useEffect(() => {
+        if (joint && isControlOn) return;
+        if (isDraggingRef.current) {
+            isDraggingRef.current = false;
+            clearEmittedValue();
+            setIsDragging(false);
+            if (controlsRef.current) {
+                controlsRef.current.enabled = true;
+            }
+            onDraggingChange?.(false);
+        }
+        pointerInsideRef.current = false;
+        setHovered(false);
+    }, [joint, isControlOn, controlsRef, clearEmittedValue, onDraggingChange, setHovered]);
 
     // Global pointerup to ensure OrbitControls is always restored even if mouse leaves window
     useEffect(() => {
@@ -267,10 +300,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         if (!joint || !isControlOn || e.button !== 0 || !group) return;
         e.stopPropagation();
 
-        const worldAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
-        const center = group.getWorldPosition(new THREE.Vector3());
-        rotationPlaneRef.current.setFromNormalAndCoplanarPoint(worldAxis, center);
-
+        ringPlaneOf(group, rotationPlaneRef.current);
         const grabPoint = rotationPlaneRef.current.projectPoint(e.point, new THREE.Vector3());
         const grabAngle = localAngleOf(grabPoint);
         if (grabAngle === null) return;
@@ -284,8 +314,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
 
         // Successive drags compound on the in-flight target rather than the lagging actual angle
-        const actual = joint.angle ?? joint.jointValue?.[0] ?? 0;
-        const start = getPendingTarget?.(jointName) ?? actual;
+        const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
         startTargetRadRef.current = start;
         currentTargetRadRef.current = start;
         accumulatedAngleRef.current = 0;
@@ -308,8 +337,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             // Idle hover: the handle knob follows the pointer around the ring
             const group = groupRef.current;
             if (!group) return;
-            const worldAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
-            const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(worldAxis, group.getWorldPosition(new THREE.Vector3()));
+            const plane = ringPlaneOf(group, new THREE.Plane());
             const angle = localAngleOf(plane.projectPoint(e.point, new THREE.Vector3()));
             if (angle !== null) pointerAngleRef.current = angle;
             return;
@@ -331,7 +359,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
         currentTargetRadRef.current = targetRad;
         onTargetChange?.(jointName, targetRad, true);
-        lastEmittedValueRef.current = { name: jointName, value: toSliderValue(targetRad).value };
+        const value = toSliderValue(targetRad).value;
+        lastEmittedValueRef.current = { name: jointName, value };
+        onValuePreview?.(jointName, value);
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
@@ -408,7 +438,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
 
         // Hollow dot where an in-flight command is heading
-        const actual = joint.angle ?? joint.jointValue?.[0] ?? 0;
+        const actual = getJointAngle(joint);
         const pending = dragging ? undefined : getPendingTarget?.(jointName);
         if (targetRef.current) {
             const show = pending !== undefined

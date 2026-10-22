@@ -55,7 +55,7 @@ const getInitialUnselectedOpacity = (): number => {
     return 0.25;
 };
 
-const SETTINGS_BOX_WIDTH = 150;
+const SETTINGS_BOX_WIDTH = 165;
 const FOCUS_COLOR = 'var(--color-status-info)';
 const HOVER_CLEAR_DELAY_MS = 300;
 const MOUSE_HINTS = [
@@ -97,7 +97,7 @@ const OVERLAY_BOX: React.CSSProperties = {
     left: 10,
     padding: '8px 12px',
     fontFamily: 'monospace',
-    fontSize: 10,
+    fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
     display: 'flex',
     flexDirection: 'column',
@@ -117,6 +117,47 @@ const SwitchRow: React.FC<{
         <StreamSwitch value={value} onChange={onChange} />
     </div>
 );
+
+/** Overlay panel that starts collapsed to its title and expands on click. */
+const CollapsibleOverlay: React.FC<{
+    title: string;
+    style: React.CSSProperties;
+    gap?: number;
+    children: React.ReactNode;
+}> = ({ title, style, gap = 4, children }) => {
+    const [expanded, setExpanded] = useState(false);
+    const toggle = () => setExpanded(prev => !prev);
+
+    return (
+        <div
+            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}`}
+            style={{ ...OVERLAY_BOX, ...style }}
+        >
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
+                className="collapsible-header"
+                onClick={toggle}
+                onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggle();
+                    }
+                }}
+                title={expanded ? `Collapse ${title.toLowerCase()}` : `Expand ${title.toLowerCase()}`}
+            >
+                <span className="collapsible-chevron">▸</span>
+                <span className="collapsible-title">{title}</span>
+            </div>
+            <div className="collapsible-body">
+                <div className="collapsible-body-inner" style={{ gap }}>
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     const indeterminate = progress <= 0;
@@ -516,8 +557,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     <Grid
                         args={[30, 30]}
                         cellSize={1}
-                        cellThickness={1}
-                        cellColor={UI_ACCENT_GREEN_HEX}
+                        cellThickness={0}
                         sectionSize={2}
                         sectionThickness={1}
                         sectionColor={TEXT_PRIMARY}
@@ -582,12 +622,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             </Canvas>
 
             {/* Controls hint — top-left */}
-            <div className="chamfer-box viewer-overlay-box" style={{ ...OVERLAY_BOX, top: 10, gap: 4, pointerEvents: 'none', userSelect: 'none' }}>
-                <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold', letterSpacing: 1 }}>CONTROLS:</span>
-                <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9, lineHeight: 1.6 }}>
+            <CollapsibleOverlay title="CONTROLS" style={{ top: 10, userSelect: 'none' }}>
+                <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
-            </div>
+            </CollapsibleOverlay>
 
             {/* Floating active follow badge — bottom-center */}
             {selectedPartName && (
@@ -639,12 +678,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             )}
 
             {/* Settings */}
-            <div className="chamfer-box viewer-overlay-box" style={{ ...OVERLAY_BOX, top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
+            <CollapsibleOverlay
+                title="SETTINGS"
+                style={{ top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH }}
+                gap={6}
+            >
                 {/* Part selector & transparency of unselected parts */}
                 {availableParts.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9 }}>PART FOCUS</span>
+                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUS</span>
                             <select
                                 value={selectedPartName || ''}
                                 onChange={e => handlePartSelect(e.target.value)}
@@ -654,7 +697,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                     border: '1px solid var(--color-secondary)',
                                     color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
                                     fontFamily: 'monospace',
-                                    fontSize: 9,
+                                    fontSize: 10,
                                     padding: '2px 4px',
                                     borderRadius: 2,
                                     cursor: 'pointer',
@@ -670,10 +713,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         {/* Transparency of unselected parts slider */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 9 }}>
+                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>
                                     OTHER OPACITY
                                 </span>
-                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 9 }}>
+                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>
                                     {Math.round(unselectedOpacity * 100)}%
                                 </span>
                             </div>
@@ -703,7 +746,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         border: '1px solid var(--color-secondary)',
                         color: UI_TEXT_SECONDARY_MUTED,
                         cursor: 'pointer',
-                        fontSize: 9,
+                        fontSize: 10,
                         fontFamily: 'monospace',
                         borderRadius: 2,
                         marginTop: 2,
@@ -713,7 +756,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 >
                     RESET CAMERA
                 </button>
-            </div>
+            </CollapsibleOverlay>
         </div>
     );
 };

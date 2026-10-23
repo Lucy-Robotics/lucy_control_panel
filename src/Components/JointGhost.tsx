@@ -100,6 +100,7 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
     const bestErrorRef = useRef(Infinity);
     const lastProgressTimeRef = useRef(0);
     const wasDraggingRef = useRef(true);
+    const lastEntryRef = useRef<GhostTarget | undefined>(undefined);
     const baseColor = useMemo(() => new THREE.Color(colors.accent), [colors.accent]);
     const stallColor = useMemo(() => new THREE.Color(colors.warning), [colors.warning]);
 
@@ -111,6 +112,17 @@ export const JointGhost: React.FC<JointGhostProps> = ({ joint, targetsRef, color
     useFrame(() => {
         const entry = targetsRef.current?.get(jointName);
         const parent = joint.parent;
+        // A new target can land after this ghost finished but before React
+        // unmounted it (same key re-added in one batch): re-arm instead of
+        // staying hidden on a live entry.
+        if (entry && entry !== lastEntryRef.current) {
+            lastEntryRef.current = entry;
+            if (phaseRef.current !== 'tracking') {
+                phaseRef.current = 'tracking';
+                wasDraggingRef.current = true;
+                material.opacity = GHOST_OPACITY;
+            }
+        }
         if (entry?.dragging) phaseRef.current = 'tracking';
         if (!entry || !parent || phaseRef.current === 'done') {
             root.visible = false;

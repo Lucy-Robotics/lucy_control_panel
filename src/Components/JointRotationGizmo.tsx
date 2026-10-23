@@ -72,6 +72,8 @@ export interface JointRotationGizmoProps {
     onJointValueChange?: (name: string, value: number) => void;
     onValuePreview?: (name: string, value: number | null) => void;
     onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
+    /** A drag on `name` was aborted without committing (joint switched, control disabled). */
+    onTargetCancel?: (name: string) => void;
     getPendingTarget?: (name: string) => number | undefined;
     onDraggingChange?: (isDragging: boolean) => void;
     onHoverChange?: (isHovered: boolean) => void;
@@ -86,6 +88,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     onJointValueChange,
     onValuePreview,
     onTargetChange,
+    onTargetCancel,
     getPendingTarget,
     onDraggingChange,
     onHoverChange,
@@ -187,6 +190,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const pointerAngleRef = useRef<number>(0);
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
     const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
+    // Joint the current drag started on: `joint` can change mid-drag, and every
+    // emission of that drag must stay attributed to the same ghost entry.
+    const dragJointNameRef = useRef<string>('');
 
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
@@ -213,7 +219,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
-        onTargetChange?.(jointName, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
+        onTargetChange?.(dragJointNameRef.current, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
         if (lastEmittedValueRef.current) {
             const { name, value } = lastEmittedValueRef.current;
             onJointValueChange?.(name, value);
@@ -222,10 +228,11 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         onDraggingChange?.(false);
         if (!pointerInsideRef.current) setHovered(false);
-    }, [controlsRef, jointName, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
+    }, [controlsRef, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
 
     useEffect(() => {
-        if (joint && isControlOn) return;
+        const switchedJoint = isDraggingRef.current && dragJointNameRef.current !== jointName;
+        if (joint && isControlOn && !switchedJoint) return;
         if (isDraggingRef.current) {
             isDraggingRef.current = false;
             clearEmittedValue();
@@ -233,11 +240,13 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             if (controlsRef.current) {
                 controlsRef.current.enabled = true;
             }
+            onTargetCancel?.(dragJointNameRef.current);
             onDraggingChange?.(false);
         }
+        if (joint && isControlOn) return;
         pointerInsideRef.current = false;
         setHovered(false);
-    }, [joint, isControlOn, controlsRef, clearEmittedValue, onDraggingChange, setHovered]);
+    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onTargetCancel, onDraggingChange, setHovered]);
 
     useEffect(() => {
         const handleGlobalPointerUp = () => {
@@ -278,6 +287,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         prevPointerAngleRef.current = grabAngle;
         pointerAngleRef.current = grabAngle;
         lastEmittedValueRef.current = null;
+        dragJointNameRef.current = jointName;
         onTargetChange?.(jointName, start, true);
 
         try {
@@ -314,10 +324,11 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             targetRad = THREE.MathUtils.clamp(targetRad, limits.lower, limits.upper);
         }
         currentTargetRadRef.current = targetRad;
-        onTargetChange?.(jointName, targetRad, true);
+        const name = dragJointNameRef.current;
+        onTargetChange?.(name, targetRad, true);
         const value = toSliderValue(targetRad);
-        lastEmittedValueRef.current = { name: jointName, value };
-        onValuePreview?.(jointName, value);
+        lastEmittedValueRef.current = { name, value };
+        onValuePreview?.(name, value);
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {

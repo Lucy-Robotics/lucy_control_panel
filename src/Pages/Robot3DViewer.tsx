@@ -356,12 +356,23 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
         if (dragging) {
+            // Only one drag can be live: an entry still flagged as dragging here
+            // lost its release event, and would otherwise never fade out.
             ghostTargetsRef.current.forEach((entry, other) => {
-                if (other !== name) entry.cancelled = true;
+                if (other === name) return;
+                entry.dragging = false;
+                entry.cancelled = true;
             });
         }
         ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
         setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
+    }, []);
+
+    const handleTargetCancel = useCallback((name: string) => {
+        const entry = ghostTargetsRef.current.get(name);
+        if (!entry) return;
+        entry.dragging = false;
+        entry.cancelled = true;
     }, []);
 
     useEffect(() => {
@@ -594,6 +605,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     onJointValueChange={onJointValueChange}
                     onValuePreview={jointPreview?.set}
                     onTargetChange={handleTargetChange}
+                    onTargetCancel={handleTargetCancel}
                     getPendingTarget={getPendingTarget}
                     onDraggingChange={handleGizmoDraggingChange}
                     onHoverChange={handleGizmoHoverChange}

@@ -29,32 +29,67 @@ import {
     type ActuatedJointNames,
 } from '../Utils/robotModel.utils';
 
-const robotOriginalMaterials = new WeakMap<
-    URDFRobot,
-    Map<THREE.Mesh, THREE.Material | THREE.Material[]>
->();
+interface RobotMaterialState {
+    originals: Map<THREE.Mesh, THREE.Material | THREE.Material[]>;
+    displays: Map<THREE.Mesh, THREE.Material[]>;
+}
+
+const robotMaterialStates = new WeakMap<URDFRobot, RobotMaterialState>();
+
+function getMaterialState(robot: URDFRobot): RobotMaterialState {
+    let state = robotMaterialStates.get(robot);
+    if (!state) {
+        state = { originals: new Map(), displays: new Map() };
+        robotMaterialStates.set(robot, state);
+    }
+    return state;
+}
 
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
 const SELECTED_EMISSIVE_INTENSITY = 0.8;
 const NO_EMISSIVE = new THREE.Color(0x000000);
 
-function setMaterialEmissive(material: THREE.Material, color: THREE.Color, intensity: number) {
-    if (material instanceof THREE.MeshStandardMaterial) {
-        material.emissive.copy(color);
-        material.emissiveIntensity = intensity;
-    } else if (material instanceof THREE.MeshPhongMaterial) {
-        material.emissive.copy(color);
-    }
+type PartStyle = 'normal' | 'selected' | 'unselected';
+
+function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
+    return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
 }
 
-function setMaterialOpacity(material: THREE.Material, opacity: number) {
-    const transparent = opacity < 1;
-    if (material.transparent !== transparent) {
-        material.transparent = transparent;
-        material.needsUpdate = true;
+function applyStyle(
+    display: THREE.Material,
+    orig: THREE.Material,
+    style: PartStyle,
+    wireframe: boolean,
+    focus: THREE.Color,
+    unselectedOpacity: number,
+) {
+    if ('wireframe' in display) {
+        (display as THREE.MeshStandardMaterial).wireframe = wireframe;
     }
-    material.opacity = opacity;
+
+    if (hasEmissive(display) && hasEmissive(orig)) {
+        if (style === 'selected') {
+            display.emissive.copy(focus);
+        } else if (style === 'unselected') {
+            display.emissive.copy(NO_EMISSIVE);
+        } else {
+            display.emissive.copy(orig.emissive);
+        }
+        if (display instanceof THREE.MeshStandardMaterial && orig instanceof THREE.MeshStandardMaterial) {
+            display.emissiveIntensity = style === 'selected' ? SELECTED_EMISSIVE_INTENSITY
+                : style === 'unselected' ? 0
+                : orig.emissiveIntensity;
+        }
+    }
+
+    const opacity = style === 'unselected' ? unselectedOpacity : orig.opacity;
+    const transparent = style === 'unselected' ? unselectedOpacity < 1 : orig.transparent;
+    if (display.transparent !== transparent) {
+        display.transparent = transparent;
+        display.needsUpdate = true;
+    }
+    display.opacity = opacity;
 }
 
 export interface RobotFKModelProps {
@@ -81,33 +116,37 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     actuatedJointNames,
 }) => {
     const { gl } = useThree();
-    const unselectedMaterialsRef = useRef<THREE.Material[]>([]);
     const displayedAnglesRef = useRef<Map<string, number>>(new Map());
 
     useEffect(() => {
-        let originals = robotOriginalMaterials.get(robot);
-        if (!originals) {
-            originals = new Map();
-            robotOriginalMaterials.set(robot, originals);
-        }
-
         for (const joint of Object.values(robot.joints)) {
             joint.ignoreLimits = true;
         }
 
+        // Display clones live as long as the robot: restore every mesh and
+        // free them only when the robot changes or the view unmounts.
+        return () => {
+            const state = robotMaterialStates.get(robot);
+            if (!state) return;
+            state.originals.forEach((orig, mesh) => { mesh.material = orig; });
+            state.displays.forEach(mats => mats.forEach(m => m.dispose()));
+            robotMaterialStates.delete(robot);
+        };
+    }, [robot]);
+
+    useEffect(() => {
+        const { originals, displays } = getMaterialState(robot);
         const focus = new THREE.Color(focusColor);
         const isAnySelected = selectedPartName !== null;
-        const temporaryMaterials: THREE.Material[] = [];
-        const unselectedMaterials: THREE.Material[] = [];
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
             if (!mesh.isMesh) return;
 
-            if (!originals!.has(mesh)) {
-                originals!.set(mesh, mesh.material);
+            if (!originals.has(mesh)) {
+                originals.set(mesh, mesh.material);
             }
-            const origMat = originals!.get(mesh)!;
+            const origMat = originals.get(mesh)!;
 
             if (!isAnySelected && !wireframe) {
                 mesh.material = origMat;
@@ -119,41 +158,23 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 urdfNameOf(link) === selectedPartName
                 || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
             );
+            const style: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
 
-            const transform = (m: THREE.Material): THREE.Material => {
-                const copy = m.clone();
-                temporaryMaterials.push(copy);
-                if ('wireframe' in copy) {
-                    (copy as THREE.MeshStandardMaterial).wireframe = wireframe;
-                }
-                if (isSelected) {
-                    setMaterialEmissive(copy, focus, SELECTED_EMISSIVE_INTENSITY);
-                    setMaterialOpacity(copy, 1);
-                } else if (isAnySelected) {
-                    setMaterialEmissive(copy, NO_EMISSIVE, 0);
-                    unselectedMaterials.push(copy);
-                }
-                return copy;
+            let slots = displays.get(mesh);
+            if (!slots) {
+                slots = [];
+                displays.set(mesh, slots);
+            }
+            const restyle = (m: THREE.Material, slot: number): THREE.Material => {
+                const display = slots[slot] ??= m.clone();
+                applyStyle(display, m, style, wireframe, focus, unselectedOpacity);
+                return display;
             };
-            mesh.material = Array.isArray(origMat) ? origMat.map(transform) : transform(origMat);
+            mesh.material = Array.isArray(origMat)
+                ? origMat.map(restyle)
+                : restyle(origMat, 0);
         });
-        unselectedMaterialsRef.current = unselectedMaterials;
-
-        return () => {
-            robot.traverse(child => {
-                const mesh = child as THREE.Mesh;
-                if (!mesh.isMesh) return;
-                const orig = originals!.get(mesh);
-                if (orig) mesh.material = orig;
-            });
-            temporaryMaterials.forEach(m => m.dispose());
-            unselectedMaterialsRef.current = [];
-        };
-    }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
-
-    useEffect(() => {
-        unselectedMaterialsRef.current.forEach(m => setMaterialOpacity(m, unselectedOpacity));
-    }, [unselectedOpacity, robot, wireframe, selectedPartName, actuatedJointNames, focusColor]);
+    }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor, unselectedOpacity]);
 
     useFrame((_state, delta) => {
         if (jointAngles.size === 0) return;

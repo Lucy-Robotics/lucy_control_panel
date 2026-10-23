@@ -32,14 +32,15 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     onAspectRatioChange
 }) => {
     type Point3D = { x: number; y: number; z: number };
-    type Finger3D = { tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string };
+    type Finger3D = { tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointNames: string[] };
     type Finger3DSample = { point1: Point3D, point2: Point3D, point3: Point3D };
     type Finger3DIndex = { TIP: number, DIP: number, PIP: number, MCP: number }
-    type FingerIndex = { name: string, idx: Finger3DIndex }
+    // i1 (inmoov_urdf) and i2 (inmoov_i2_urdf) joint per finger; only the loaded robot has one, the other is a no-op.
+    type FingerIndex = { names: string[], idx: Finger3DIndex }
 
     const Fingers: Array<FingerIndex> = [
         {
-            name: "i02_side_ThumbMid_joint", idx: {
+            names: ["i01.side.thumb_link_joint", "i02_side_ThumbMid_joint"], idx: {
                 TIP: 4,
                 DIP: 3,
                 PIP: 2,
@@ -47,7 +48,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i02_side_indexPhal_joint", idx: {
+            names: ["i01.side.index_link_joint", "i02_side_indexPhal_joint"], idx: {
                 TIP: 8,
                 DIP: 7,
                 PIP: 6,
@@ -55,7 +56,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i02_side_majeurePhal_joint", idx: {
+            names: ["i01.side.majeure_link_joint", "i02_side_majeurePhal_joint"], idx: {
                 TIP: 12,
                 DIP: 11,
                 PIP: 10,
@@ -63,7 +64,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i02_side_ringFingerPhal_joint", idx: {
+            names: ["i01.side.ringFinger_link_joint", "i02_side_ringFingerPhal_joint"], idx: {
                 TIP: 16,
                 DIP: 15,
                 PIP: 14,
@@ -71,7 +72,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i02_side_pinkyPhal_joint", idx: {
+            names: ["i01.side.pinky_link_joint", "i02_side_pinkyPhal_joint"], idx: {
                 TIP: 20,
                 DIP: 19,
                 PIP: 18,
@@ -163,7 +164,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", label)
+                    jointNames: Fingers[i].names.map((name) => name.replace("side", label))
                 });
             }
         });
@@ -217,7 +218,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const angle3: number = angleBetweenPoints3D(sample3);
         const flex: number = flexingPercentage(angle1, angle2, angle3);
 
-        moveRobotIndex(flex, finger.jointName);
+        finger.jointNames.forEach((name) => moveRobotIndex(flex, name));
     };
 
     // Returns a value between O (fully relaxed) and 1 (fully flexed) using the 3 joint angles in a finger

@@ -4,7 +4,7 @@
  */
 
 /**
- * Loads the robot model via urdf-loader (full FK, DAE/STL loading, visual origins
+ * Loads the robot model via urdf-loader (full FK, DAE/STL/OBJ loading, visual origins
  * and joint transforms).
  *
  * Both the model and its meshes come over ROS, so the viewer needs no
@@ -19,7 +19,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { isWebGLAvailable, ColladaLoader, STLLoader } from 'three-stdlib';
+import { isWebGLAvailable, ColladaLoader, STLLoader, OBJLoader, MTLLoader } from 'three-stdlib';
 import URDFLoader from 'urdf-loader';
 import type { URDFRobot } from 'urdf-loader';
 import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
@@ -33,7 +33,7 @@ import { decodeStlPayload } from '../Utils/mesh.utils';
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
 /** Concurrent mesh fetches for STL — keep low; multi-MB responses share one websocket. */
 const MESH_FETCH_CONCURRENCY_STL = 2;
-/** Concurrent mesh fetches for DAE — small payloads; allow more parallelism than STL. */
+/** Concurrent mesh fetches for DAE/OBJ — small text payloads; allow more parallelism than STL. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 
 // ---------------------------------------------------------------------------
@@ -94,6 +94,7 @@ export function useRobotModel(): UseRobotModelReturn {
             // pooled after parse() returns.
             const colladaLoader = new ColladaLoader();
             const stlLoader = new STLLoader();
+            const mtlLoader = new MTLLoader();
             const meshCache = new Map<string, Promise<MeshPayload>>(); // dedupe shared meshes
             const tasks: Array<() => Promise<void>> = [];
             let total = 0;
@@ -127,6 +128,25 @@ export function useRobotModel(): UseRobotModelReturn {
                                 new THREE.MeshPhongMaterial({ color: 0xb0b0b0 }),
                             );
                             done(stlMesh);
+                        } else if (lower.endsWith('.obj')) {
+                            if (payload.encoding !== 'utf8') {
+                                throw new Error(
+                                    `expected utf8 OBJ payload, got '${payload.encoding}' for ${path}`,
+                                );
+                            }
+                            // Colours live in the sibling .mtl (`mtllib`); without it the mesh still loads, untinted.
+                            const mtllib = /^mtllib\s+(.+?)\s*$/m.exec(payload.data)?.[1];
+                            const mtl = mtllib
+                                ? await MeshHandler.getMesh(path.slice(0, path.lastIndexOf('/') + 1) + mtllib).catch(() => null)
+                                : null;
+                            const objLoader = new OBJLoader();
+                            if (mtl) {
+                                const materials = mtlLoader.parse(mtl.data, '');
+                                materials.preload();
+                                objLoader.setMaterials(materials);
+                            }
+                            // Drop loose-edge `l` records: one turns OBJLoader's whole object into line segments (wireframe jaw).
+                            done(objLoader.parse(payload.data.replace(/^l\s.*$/gm, '')));
                         } else {
                             throw new Error(`unsupported mesh type: ${path}`);
                         }

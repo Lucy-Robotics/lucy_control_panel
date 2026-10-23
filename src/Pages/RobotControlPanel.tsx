@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -94,6 +95,9 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
+
+const withJointValue = (joints: JointControlState[], name: string, value: number): JointControlState[] =>
+    joints.map((joint) => (joint.name === name ? { ...joint, currentValue: value, targetValue: value } : joint));
 const BASE_ANIMATION_INTERVAL = 1000;
 
 interface ControlTakenModalProps {
@@ -174,6 +178,7 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
+    const [jointPreviewStore] = useState(createJointPreviewStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -453,14 +458,14 @@ export const RobotControlPanel: React.FC = () => {
     }, [applyControlToggle]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
-        setJoints((prevJoints) =>
-            prevJoints.map((joint) =>
-                joint.name === name
-                    ? { ...joint, currentValue: value, targetValue: value }
-                    : joint
-            )
-        );
+        setJoints((prevJoints) => withJointValue(prevJoints, name, value));
     }, []);
+
+    const handleGizmoJointCommit = useCallback((name: string, value: number) => {
+        handleJointValueChange(name, value);
+        if (!isSendingRef.current) return;
+        JointStateHandler.getInstance().publishJointStates(withJointValue(jointsRef.current, name, value));
+    }, [handleJointValueChange]);
 
     const handleTeleopJoint = (y: number, jointName: string) => {
         if (!isSendingRef.current) return;
@@ -681,7 +686,13 @@ export const RobotControlPanel: React.FC = () => {
     const dockContent = (
         <Dock
             childrens={{
-                '3D_VIEW': <Robot3DViewer />,
+                '3D_VIEW': (
+                    <Robot3DViewer
+                        isControlOn={isSending}
+                        joints={joints}
+                        onJointValueChange={handleGizmoJointCommit}
+                    />
+                ),
                 'STREAM': <StreamPlayer />,
                 'TELEOPERATION': (
                     <Suspense fallback={<Spin size="large" />}>
@@ -749,10 +760,13 @@ export const RobotControlPanel: React.FC = () => {
     };
 
     return (
-        <>
+        <JointPreviewContext.Provider value={jointPreviewStore}>
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
+                isControlOn={isSending}
+                joints={joints}
+                onJointValueChange={handleGizmoJointCommit}
             />
 
             <StreamPlayerModal
@@ -1129,6 +1143,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </>
+        </JointPreviewContext.Provider>
     );
 };

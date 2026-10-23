@@ -748,6 +748,82 @@ h6 {
   backdrop-filter: blur(4px);
 }
 
+/* Collapsible overlay panels: collapsed to their title, expand on click */
+.viewer-overlay-box.collapsible {
+  transition: transform 0.2s ease;
+}
+
+.viewer-overlay-box.collapsible:hover {
+  transform: translateY(-1px);
+}
+
+.viewer-overlay-box .collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: margin-bottom 0.25s ease;
+}
+
+.viewer-overlay-box.expanded .collapsible-header {
+  margin-bottom: 6px;
+}
+
+.viewer-overlay-box .collapsible-title {
+  color: var(--color-highlight);
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: filter 0.2s ease;
+}
+
+.viewer-overlay-box.collapsible:hover .collapsible-title,
+.viewer-overlay-box .collapsible-header:focus-visible .collapsible-title {
+  filter: brightness(1.3);
+}
+
+.viewer-overlay-box .collapsible-chevron {
+  display: inline-block;
+  color: var(--color-highlight);
+  transition: transform 0.25s ease;
+}
+
+.viewer-overlay-box.expanded .collapsible-chevron {
+  transform: rotate(90deg);
+}
+
+.viewer-overlay-box.collapsible:not(.expanded):hover .collapsible-chevron {
+  animation: overlayChevronNudge 0.9s ease-in-out infinite;
+}
+
+@keyframes overlayChevronNudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.viewer-overlay-box .collapsible-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
+}
+
+.viewer-overlay-box.expanded .collapsible-body {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease 0.05s, visibility 0s;
+}
+
+.viewer-overlay-box .collapsible-body-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .category-pagination-anchor {
   --chamfer: 8px;
   --box-border: var(--color-secondary);

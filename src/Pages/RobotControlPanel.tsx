@@ -43,6 +43,7 @@ import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { usePublishDisabledJoints } from '../hooks/useDisabledJoints';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -200,6 +201,7 @@ export const RobotControlPanel: React.FC = () => {
         serverRobotPackage,
     } = useActiveHardwareRos();
 
+    usePublishDisabledJoints(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 

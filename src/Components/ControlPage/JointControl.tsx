@@ -3,13 +3,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect, useRef, useContext } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
-import { storageService } from '../../Services/storage.service.ts';
-import { JointMoveContext, useMovingValue } from '../../hooks/useJointMove.ts';
+import { useJointPreview } from '../../hooks/useJointPreview.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -43,8 +42,6 @@ interface TrackMarkerProps {
 }
 
 const MARKER_HIT_SIZE = 12;
-const SLIDER_RAIL_CENTER_PX = 6;
-const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
@@ -91,6 +88,7 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
           height: 4,
           backgroundColor: color,
           borderRadius: 2,
+          boxShadow: `0 0 4px ${color}`,
           pointerEvents: 'none',
         }}
       />
@@ -107,90 +105,21 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
-  const movingValue = useMovingValue(joint.name);
-  const jointMove = useContext(JointMoveContext);
-  const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
-  const currentValueRef = useRef(joint.currentValue);
-  const loadedPositionKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    currentValueRef.current = joint.currentValue;
-  }, [joint.currentValue]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    loadedPositionKeyRef.current = null;
-    setPositionStorageLoaded(false);
-
-    const loadStoredPosition = async () => {
-      try {
-        const storedValue = await storageService.loadData(
-          storageKey,
-          'session'
-        );
-        const parsedValue = storedValue === null ? NaN : Number(storedValue);
-
-        if (!cancelled && Number.isFinite(parsedValue)) {
-          const clampedValue = Math.max(
-            joint.minValue,
-            Math.min(joint.maxValue, parsedValue)
-          );
-          if (clampedValue !== currentValueRef.current) {
-            onValueChange(joint.name, clampedValue);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to load position for joint ${joint.name}:`, error);
-      } finally {
-        if (!cancelled) {
-          loadedPositionKeyRef.current = storageKey;
-          setPositionStorageLoaded(true);
-        }
-      }
-    };
-
-    void loadStoredPosition();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
-
-  useEffect(() => {
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    if (
-      !positionStorageLoaded ||
-      loadedPositionKeyRef.current !== storageKey ||
-      !Number.isFinite(joint.currentValue)
-    ) {
-      return;
-    }
-
-    void storageService
-      .saveData(
-        String(joint.currentValue),
-        storageKey,
-        'session'
-      )
-      .catch((error) => {
-        console.warn(`Failed to save position for joint ${joint.name}:`, error);
-      });
-  }, [joint.name, joint.currentValue, positionStorageLoaded]);
+  const previewValue = useJointPreview(joint.name);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);
   }, [joint.currentValue]);
 
-  const handleSliderChange = useCallback((value: number) => {
-    setLocalValue(value);
-    jointMove?.move(joint.name, value);
-  }, [joint.name, jointMove]);
+  const handleSliderChange = useCallback((value: number | null) => {
+    if (value !== null) {
+      setLocalValue(value);
+    }
+  }, []);
 
   const handleSliderAfterChange = useCallback((value: number) => {
     onValueChange(joint.name, value);
-    jointMove?.release();
-  }, [joint.name, onValueChange, jointMove]);
+  }, [joint.name, onValueChange]);
 
   const handleInputChange = useCallback((value: number | null) => {
     if (value !== null) {
@@ -242,10 +171,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const [minDisplay, maxDisplay] = getDisplayRange();
-    const currentDisplay = getDisplayValue(movingValue ?? localValue);
+    const currentDisplay = getDisplayValue(previewValue ?? localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, movingValue, showDegrees, actuatorValue]);
+  }, [joint.minValue, joint.maxValue, localValue, previewValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
     if (actuatorValue) {
@@ -335,7 +264,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
-                className={movingValue === undefined ? undefined : 'joint-slider-moving'}
                 style={{ margin: 0 }}
                 tooltip={{
                   formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,

@@ -258,8 +258,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.actualValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
@@ -271,8 +271,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.restValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
     if (actuatorValue) {
@@ -310,7 +310,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               textTransform: 'uppercase',
             }}
           >
-            {joint.type}
+            {joint.inverted ? 'inverted · ' : ''}{joint.type}
           </span>
         </div>
 
@@ -322,6 +322,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 max={maxDisplay}
                 step={showDegrees ? 0.1 : 0.001}
                 value={currentDisplay}
+                // Inverted servo in servo angles: max on the left so it moves like the others.
+                reverse={joint.inverted}
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
@@ -393,7 +395,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: joint.inverted ? 'row-reverse' : 'row',
+            justifyContent: 'space-between',
+            fontSize: '10px',
+            color: UI_TEXT_SECONDARY_MUTED,
+          }}
+        >
           <Text type="secondary" style={{ fontSize: '10px' }}>
             Min: {minDisplay}{showDegrees ? '°' : 'rad'}
           </Text>

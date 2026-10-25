@@ -9,7 +9,7 @@
     "quickbuild": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types test/run-security-tests.ts"
+    "test": "node --experimental-strip-types test/run-security-tests.ts && node --experimental-strip-types test/run-calibration-tests.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

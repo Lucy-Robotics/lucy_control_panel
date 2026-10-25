@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo, useCallback, useState, useEffect, useContext } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
+import { Card, Slider, InputNumber, Typography, Space, Button, Switch, Tooltip } from 'antd';
+import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
@@ -184,6 +185,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   }, [showDegrees, actuatorValue]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
+  const torqueOn = !useDisabledJoints().has(joint.name);
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
@@ -256,6 +258,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
             {joint.displayName ?? joint.name}
           </Text>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {joint.inverted && (
             <span
               style={{
@@ -269,6 +272,17 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               inverted
             </span>
           )}
+            <Tooltip title={torqueOn
+              ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+              : 'Torque off: stays limp even while Control Robot is ON.'}>
+              <Switch
+                size="small"
+                checked={torqueOn}
+                onChange={(on) => setJointTorqueEnabled(joint.name, on)}
+                aria-label={`Torque on ${joint.displayName ?? joint.name}`}
+              />
+            </Tooltip>
+          </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>

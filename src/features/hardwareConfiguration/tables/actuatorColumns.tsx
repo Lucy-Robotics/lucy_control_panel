@@ -28,6 +28,8 @@ import {
     appendPassiveUrdfJointIfUnassigned,
     removePassiveUrdfJoint,
 } from '../model/passiveUrdf.ts';
+import type { UrdfJointLimitRad } from '../../../hooks/useUrdfJointLimits.ts';
+import { withUrdfCalibration } from '../model/calibration.ts';
 import { DegAngleInputNumber } from './DegAngleInputNumber.tsx';
 
 export type ActuatorColumnsArgs = {
@@ -38,6 +40,8 @@ export type ActuatorColumnsArgs = {
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
+    /** URDF joint ranges: editing travel, inversion or joint recomputes SCALE / OFFSET from them. */
+    urdfJointLimits: Map<string, UrdfJointLimitRad>;
 };
 
 export function buildActuatorColumns({
@@ -48,6 +52,7 @@ export function buildActuatorColumns({
     patchDoc,
     actuatorIdOnFocusRef,
     deleteActuatorAt,
+    urdfJointLimits,
 }: ActuatorColumnsArgs): ColumnsType<ActuatorTableRecord> {
     return [
         {
@@ -160,7 +165,10 @@ export function buildActuatorColumns({
                                 const nextJoint = typeof j === 'string' ? j.trim() : '';
                                 const next = structuredClone(yamlDoc);
                                 const actuators = next.actuators as Record<string, unknown>[];
-                                actuators[index] = { ...actuators[index], urdf_joint: nextJoint };
+                                actuators[index] = withUrdfCalibration(
+                                    { ...actuators[index], urdf_joint: nextJoint },
+                                    urdfJointLimits,
+                                );
                                 // Keep passive_urdf_joints consistent with the assignment delta:
                                 //   - chosen joint leaves the passive pool (it's now mapped),
                                 //   - previous joint (if any) re-enters the pool when no row claims it.
@@ -345,7 +353,7 @@ export function buildActuatorColumns({
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], limit_min: rad };
+                    list[index] = withUrdfCalibration({ ...list[index], limit_min: rad }, urdfJointLimits);
                     patchDoc(next);
                 };
                 return (
@@ -399,7 +407,7 @@ export function buildActuatorColumns({
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = { ...list[index], limit_max: rad };
+                    list[index] = withUrdfCalibration({ ...list[index], limit_max: rad }, urdfJointLimits);
                     patchDoc(next);
                 };
                 return (
@@ -464,7 +472,7 @@ export function buildActuatorColumns({
                             const dir = val === 'yes' ? -1 : 1;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], direction: dir };
+                            list[index] = withUrdfCalibration({ ...list[index], direction: dir }, urdfJointLimits);
                             patchDoc(next);
                         }}
                     />

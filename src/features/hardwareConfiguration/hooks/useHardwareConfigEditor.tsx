@@ -4,6 +4,7 @@
  */
 
 import { useRosConnection } from '../../../hooks/useRosConnection.hook.ts';
+import { useUrdfJointLimits } from '../../../hooks/useUrdfJointLimits.ts';
 import type { HardwareConfigEditorParams } from './hardwareConfigEditorParams.ts';
 import { useHardwareConfigEditorColumns } from './useHardwareConfigEditorColumns.tsx';
 import { useHardwareConfigMutations } from './useHardwareConfigMutations.ts';
@@ -18,6 +19,7 @@ export type { HardwareConfigEditorParams } from './hardwareConfigEditorParams.ts
  */
 export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
     const { isConnected } = useRosConnection();
+    const urdfJointLimits = useUrdfJointLimits(isConnected);
 
     const yaml = useHardwareYamlEditorState({
         isConnected,
@@ -68,6 +70,7 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         actuatorIdOnFocusRef: yaml.actuatorIdOnFocusRef,
         deleteActuatorAt: mutations.deleteActuatorAt,
         deletePressureSensorAt: mutations.deletePressureSensorAt,
+        urdfJointLimits,
     });
 
     return {

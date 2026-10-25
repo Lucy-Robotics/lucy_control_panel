@@ -11,6 +11,7 @@ import {
     UNPARSED_VALIDATION_KEY,
 } from '../../../Utils/hardwareConfigServerErrors.ts';
 import { hardwareOutlineBorders } from '../model/outline.ts';
+import type { UrdfJointLimitRad } from '../../../hooks/useUrdfJointLimits.ts';
 import { buildActuatorColumns } from '../tables/actuatorColumns.tsx';
 import { buildBoardColumns } from '../tables/boardColumns.tsx';
 import { buildPressureSensorColumns } from '../tables/pressureSensorColumns.tsx';
@@ -23,6 +24,7 @@ export interface HardwareConfigEditorColumnsParams {
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
     deletePressureSensorAt: (index: number) => void;
+    urdfJointLimits: Map<string, UrdfJointLimitRad>;
 }
 
 export function useHardwareConfigEditorColumns({
@@ -33,6 +35,7 @@ export function useHardwareConfigEditorColumns({
     actuatorIdOnFocusRef,
     deleteActuatorAt,
     deletePressureSensorAt,
+    urdfJointLimits,
 }: HardwareConfigEditorColumnsParams) {
     const outlineBorders = useMemo(() => hardwareOutlineBorders(), []);
 
@@ -58,6 +61,7 @@ export function useHardwareConfigEditorColumns({
                 patchDoc,
                 actuatorIdOnFocusRef,
                 deleteActuatorAt,
+                urdfJointLimits,
             }),
         [
             yamlDoc,
@@ -67,6 +71,7 @@ export function useHardwareConfigEditorColumns({
             patchDoc,
             actuatorIdOnFocusRef,
             deleteActuatorAt,
+            urdfJointLimits,
         ],
     );
 

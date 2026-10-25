@@ -37,6 +37,7 @@ import { useSensorSources } from '../hooks/useSensorSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { usePublishDisabledJoints } from '../hooks/useDisabledJoints';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
 import type { Dock as DockName } from '../contexts/DockContext.tsx';
@@ -184,6 +185,7 @@ export const RobotControlPanel: React.FC = () => {
         refetchActiveHardware,
     } = useActiveHardwareRos();
 
+    usePublishDisabledJoints(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 

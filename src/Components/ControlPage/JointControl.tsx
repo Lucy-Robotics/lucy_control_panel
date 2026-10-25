@@ -266,8 +266,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.actualValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
@@ -279,8 +279,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.restValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
     if (actuatorValue) {
@@ -305,9 +305,22 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       styles={{ body: { padding: 12 } }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
-        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-          {joint.displayName ?? joint.name}
-        </Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+            {joint.displayName ?? joint.name}
+          </Text>
+          <span
+            style={{
+              color: UI_TEXT_SECONDARY_MUTED,
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
+            {joint.inverted ? 'inverted · ' : ''}{joint.type}
+          </span>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative', containerType: 'inline-size' }}>
@@ -317,6 +330,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 max={maxDisplay}
                 step={showDegrees ? 0.1 : 0.001}
                 value={currentDisplay}
+                // Inverted servo in servo angles: max on the left so it moves like the others.
+                reverse={joint.inverted}
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
@@ -391,14 +406,21 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           )}
           </div>
 
-          <div style={{ gridColumn: 1, display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
-            <Text type="secondary" style={{ fontSize: '10px' }}>
-              {minDisplay}{showDegrees ? '°' : 'rad'}
-            </Text>
-            <Text type="secondary" style={{ fontSize: '10px' }}>
-              {maxDisplay}{showDegrees ? '°' : 'rad'}
-            </Text>
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: joint.inverted ? 'row-reverse' : 'row',
+            justifyContent: 'space-between',
+            fontSize: '10px',
+            color: UI_TEXT_SECONDARY_MUTED,
+          }}
+        >
+          <Text type="secondary" style={{ fontSize: '10px' }}>
+            Min: {minDisplay}{showDegrees ? '°' : 'rad'}
+          </Text>
+          <Text type="secondary" style={{ fontSize: '10px' }}>
+            Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
+          </Text>
         </div>
       </Space>
     </Card>

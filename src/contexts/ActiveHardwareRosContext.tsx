@@ -18,6 +18,8 @@ import { Diagnostics } from '../Services/diagnostics.service';
 import { parseHardwareConfigYaml } from '../Utils/hardwareConfigYaml';
 import { parseMotorSpecs, type MotorSpecs } from '../Utils/motorSpecs';
 import { controllerJointConfigsFromHardwareYaml } from '../Utils/hardwareControllersFromYaml.ts';
+import { useUrdfJointLimits } from '../hooks/useUrdfJointLimits';
+import { isProductionModeEnabled, PRODUCTION_MODE_EVENT, toJointSpace } from '../Utils/productionMode';
 
 export type ActiveHardwareFetchOk = {
     ok: true;
@@ -38,8 +40,13 @@ interface ActiveHardwareRosContextValue {
     /** Last preset recorded after pipeline flash (GetConfig.flashed_config_name); cleared when disconnected. */
     serverFlashedConfigName: string;
     serverFlashedAt: string;
-    /** Derived joint/command routing when connected and fetch succeeded (possibly empty array). */
+    /**
+     * Derived joint/command routing when connected and fetch succeeded (possibly empty array).
+     * Servo angles by default; URDF joint angles with an identity mapping in production mode.
+     */
     controllerConfigsFromActive: ControllerJointConfig[] | null;
+    /** Settings flag: controllerConfigsFromActive is in URDF joint angles (production) rather than servo angles. */
+    productionMode: boolean;
     activeHardwareLoading: boolean;
     activeHardwareError: string | null;
     /** Increments on each successful `config/get` active fetch — editors may gate hydration on this. */
@@ -68,6 +75,22 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
     const [activeHardwareError, setActiveHardwareError] = useState<string | null>(null);
     const [epoch, setEpoch] = useState(0);
     const [serverRobotPackage, setServerRobotPackage] = useState('');
+    const urdfJointLimits = useUrdfJointLimits(isConnected);
+    const [productionMode, setProductionMode] = useState(isProductionModeEnabled);
+
+    useEffect(() => {
+        const onChange = () => setProductionMode(isProductionModeEnabled());
+        window.addEventListener(PRODUCTION_MODE_EVENT, onChange);
+        return () => window.removeEventListener(PRODUCTION_MODE_EVENT, onChange);
+    }, []);
+
+    const controllerConfigs = useMemo(
+        () =>
+            controllerConfigsFromActive && productionMode
+                ? toJointSpace(controllerConfigsFromActive, urdfJointLimits)
+                : controllerConfigsFromActive,
+        [controllerConfigsFromActive, productionMode, urdfJointLimits],
+    );
 
     const recordServerRobotPackage = useCallback((robotPackage: string) => {
         const t = robotPackage.trim();
@@ -153,7 +176,8 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             activeHardwareConfigName,
             serverFlashedConfigName,
             serverFlashedAt,
-            controllerConfigsFromActive,
+            controllerConfigsFromActive: controllerConfigs,
+            productionMode,
             activeHardwareLoading,
             activeHardwareError,
             activeHardwareFetchEpoch: epoch,
@@ -168,7 +192,8 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             activeHardwareConfigName,
             serverFlashedConfigName,
             serverFlashedAt,
-            controllerConfigsFromActive,
+            controllerConfigs,
+            productionMode,
             activeHardwareLoading,
             activeHardwareError,
             epoch,

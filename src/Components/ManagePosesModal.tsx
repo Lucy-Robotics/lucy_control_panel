@@ -110,6 +110,17 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     }, [poseNames, poseSearch, poses]);
     const paginatedPoses = filteredPoses.slice((posePage - 1) * 5, posePage * 5);
 
+    const animationsByPoseId = useMemo(() => {
+        const map: Record<string, string[]> = {};
+        animations.forEach(animation => {
+            new Set(animation.poseIds).forEach(poseId => {
+                (map[poseId] ??= []).push(animation.name);
+            });
+        });
+        return map;
+    }, [animations]);
+
+
     const loadData = useCallback(async () => {
         const [loadedPoses, loadedAnimations] = await Promise.all([
             storageService.loadPoses(),
@@ -254,6 +265,41 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                 console.error('Error deleting pose:', error);
             }
         }
+    };
+
+    const renderDeleteAction = (pose: SavedPose) => {
+        const linkedAnimations = animationsByPoseId[pose.id] ?? [];
+
+        if (linkedAnimations.length > 0) {
+            return (
+                <Tooltip
+                    key="delete"
+                    title={`Can't delete: used by ${linkedAnimations.map(name => `"${name}"`).join(', ')}. Remove it from the animation(s) first.`}
+                >
+                    {}
+                    <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>
+                        <Button
+                            danger
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            disabled
+                            aria-label={`Cannot delete pose ${pose.name}: used by an animation`}
+                        />
+                    </span>
+                </Tooltip>
+            );
+        }
+
+        return (
+            <Popconfirm
+                key="delete"
+                title={`Delete "${pose.name}"?`}
+                onConfirm={() => void deletePose(pose.id, pose.name)}
+                okButtonProps={{ danger: true }}
+            >
+                <Button danger type="text" icon={<DeleteOutlined />} aria-label={`Delete pose ${pose.name}`} />
+            </Popconfirm>
+        );
     };
 
     const addPoseToSequence = (id: string) => {
@@ -409,9 +455,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                                                 LOAD
                                                             </Button>
                                                         </ReadOnlyHint>,
-                                                        <Popconfirm key="delete" title={`Delete "${pose.name}"?`} onConfirm={() => void deletePose(pose.id, pose.name)} okButtonProps={{ danger: true }}>
-                                                            <Button danger type="text" icon={<DeleteOutlined />} />
-                                                        </Popconfirm>,
+                                                        renderDeleteAction(pose),
                                                     ]}
                                                 >
                                                     <List.Item.Meta

@@ -707,6 +707,11 @@ h6 {
   background: var(--color-status-error);
 }
 
+/* CustomTitle styles its ">" inline */
+.joint-category-card.joint-unreachable .terminal-title-prefix {
+  color: var(--color-status-error) !important;
+}
+
 /* Theme Modal Preset Card */
 .preset-card {
   --chamfer: 8px;

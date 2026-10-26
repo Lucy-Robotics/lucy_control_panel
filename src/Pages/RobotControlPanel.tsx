@@ -38,6 +38,7 @@ import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
+import { useHardwareWarnings } from '../hooks/useHardwareWarnings';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
 import type { Dock as DockName } from '../contexts/DockContext.tsx';
@@ -186,6 +187,7 @@ export const RobotControlPanel: React.FC = () => {
     } = useActiveHardwareRos();
 
     useSyncDisabledJoints(isConnected);
+    const hardwareWarnings = useHardwareWarnings(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 
@@ -943,6 +945,10 @@ export const RobotControlPanel: React.FC = () => {
                             style={{ position: 'sticky', top: headerHeight + 8, zIndex: 5, marginBottom: 12 }}
                         />
                     )}
+
+                    {hardwareWarnings.map((warning) => (
+                        <Alert key={warning} type="warning" showIcon message={warning} style={{ marginBottom: 8 }} />
+                    ))}
 
                     {isMobile && isWebcamActive && (
                         <div

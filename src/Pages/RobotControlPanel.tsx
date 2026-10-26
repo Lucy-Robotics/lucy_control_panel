@@ -43,6 +43,7 @@ import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts'
 import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
+import { useHardwareWarnings } from '../hooks/useHardwareWarnings';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -210,6 +211,7 @@ export const RobotControlPanel: React.FC = () => {
     } = useActiveHardwareRos();
 
     useSyncDisabledJoints(isConnected);
+    const hardwareWarnings = useHardwareWarnings(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 
@@ -980,6 +982,10 @@ export const RobotControlPanel: React.FC = () => {
                             className="command-rail-bottom"
                         />
                     )}
+
+                    {hardwareWarnings.map((warning) => (
+                        <Alert key={warning} type="warning" showIcon message={warning} style={{ marginBottom: 8 }} />
+                    ))}
 
                     {isMobile && isWebcamActive && (
                         <div

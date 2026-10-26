@@ -702,6 +702,16 @@ h6 {
   --frame: var(--color-highlight) !important;
 }
 
+/* Joint on a board its bridge cannot reach */
+.joint-control-card.joint-unreachable,
+.joint-control-card.joint-unreachable:hover {
+  --card-border: var(--color-status-error) !important;
+}
+
+.joint-category-card.joint-unreachable::after {
+  background: var(--color-status-error);
+}
+
 /* Theme Modal Preset Card */
 .preset-card {
   --chamfer: 8px;

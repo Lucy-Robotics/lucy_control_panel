@@ -38,7 +38,7 @@ import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
-import { useHardwareWarnings } from '../hooks/useHardwareWarnings';
+import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
 import type { Dock as DockName } from '../contexts/DockContext.tsx';
@@ -188,6 +188,7 @@ export const RobotControlPanel: React.FC = () => {
 
     useSyncDisabledJoints(isConnected);
     const hardwareWarnings = useHardwareWarnings(isConnected);
+    const unreachableBoards = useUnreachableBoards(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 
@@ -287,6 +288,7 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    board: c.boardId,
                     inverted,
                     ...(restValue !== undefined && { restValue }),
                 });
@@ -571,10 +573,11 @@ export const RobotControlPanel: React.FC = () => {
             if (!categories[key]) {
                 categories[key] = [];
             }
-            categories[key].push(joint);
+            const reason = joint.board && unreachableBoards[joint.board];
+            categories[key].push(reason ? { ...joint, unreachable: `${joint.board} ${reason}` } : joint);
         });
         return categories;
-    }, [joints]);
+    }, [joints, unreachableBoards]);
 
     const poseJoints = useMemo(
         () => joints.map((joint) => ({

@@ -45,7 +45,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
     return (
         <Card
-            className="joint-category-card"
+            className={`joint-category-card${joints.some((j) => j.unreachable) ? ' joint-unreachable' : ''}`}
             style={{
                 height: '100%',
                 display: 'flex',

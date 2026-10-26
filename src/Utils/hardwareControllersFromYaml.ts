@@ -92,6 +92,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             topic: `/${ctrlName}/joint_trajectory`,
             joints,
             defaultCategory: boardIdToCategory(boardId),
+            boardId,
             ...(Object.keys(jointLimits).length > 0 && { jointLimits }),
             ...(Object.keys(jointDisplayNames).length > 0 && { jointDisplayNames }),
         });

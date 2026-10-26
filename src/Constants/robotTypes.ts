@@ -44,6 +44,10 @@ export interface JointControlState {
   maxValue: number;
   type: Joint['type'];
   category: string | undefined;
+  /** Hardware YAML board driving this joint. */
+  board?: string;
+  /** Why that board cannot be reached right now; unset while it answers. */
+  unreachable?: string;
   inverted?: boolean;
   restValue?: number;
   /**

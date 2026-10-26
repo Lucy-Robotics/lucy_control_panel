@@ -226,147 +226,149 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
   return (
-    <Card
-      size="small"
-      className="joint-control-card"
-      style={{
-        marginBottom: 8,
-      }}
-      styles={{ body: { padding: 12 } }}
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size="small">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.displayName ?? joint.name}
-          </Text>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
-              style={{
-                color: UI_TEXT_SECONDARY_MUTED,
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {joint.inverted ? 'inverted · ' : ''}{joint.type}
+    <Tooltip title={joint.unreachable && `Not reachable: ${joint.unreachable}. Commands to this joint are lost.`}>
+      <Card
+        size="small"
+        className="joint-control-card"
+        style={{
+          marginBottom: 8,
+        }}
+        styles={{ body: { padding: 12 } }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+              {joint.displayName ?? joint.name}
+            </Text>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  color: UI_TEXT_SECONDARY_MUTED,
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {joint.inverted ? 'inverted · ' : ''}{joint.type}
+              </span>
+              {gazeboRunning !== true && (
+                <Tooltip title={!robotControlled
+                  ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
+                  : torqueOn
+                    ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+                    : 'Torque off: stays limp even while Control Robot is ON.'}>
+                  <Switch
+                    size="small"
+                    checked={torqueOn}
+                    style={robotControlled ? undefined : { opacity: 0.45 }}
+                    onChange={(on) => setJointTorqueEnabled(joint.name, on)}
+                    aria-label={`Torque on ${joint.displayName ?? joint.name}`}
+                  />
+                </Tooltip>
+              )}
             </span>
-            {gazeboRunning !== true && (
-              <Tooltip title={!robotControlled
-                ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
-                : torqueOn
-                  ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
-                  : 'Torque off: stays limp even while Control Robot is ON.'}>
-                <Switch
-                  size="small"
-                  checked={torqueOn}
-                  style={robotControlled ? undefined : { opacity: 0.45 }}
-                  onChange={(on) => setJointTorqueEnabled(joint.name, on)}
-                  aria-label={`Torque on ${joint.displayName ?? joint.name}`}
-                />
-              </Tooltip>
-            )}
-          </span>
-        </div>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
-            <ReadOnlyHint reason={readOnlyReason} block>
-              <Slider
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
+              <ReadOnlyHint reason={readOnlyReason} block>
+                <Slider
+                  min={minDisplay}
+                  max={maxDisplay}
+                  step={showDegrees ? 0.1 : 0.001}
+                  value={currentDisplay}
+                  // Inverted servo in servo angles: max on the left so it moves like the others.
+                  reverse={joint.inverted}
+                  onChange={(value) => handleSliderChange(convertInputValue(value))}
+                  onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+                  disabled={disabled}
+                  style={{ margin: 0 }}
+                  tooltip={{
+                    formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
+                    placement: 'top'
+                  }}
+                />
+              </ReadOnlyHint>
+              {restBarPercent !== undefined && (
+                <TrackMarker
+                  percent={restBarPercent}
+                  top={-6}
+                  color={UI_ACCENT_GREEN}
+                  label="Default"
+                  valueText={formatMarkerValue(joint.restValue!)}
+                  description="Rest position of this joint: where the reset button sends it back to."
+                  placement="top"
+                />
+              )}
+              {actualBarPercent !== undefined && (
+                <TrackMarker
+                  percent={actualBarPercent}
+                  top={19}
+                  color={UI_ACCENT_BLUE}
+                  label="Actual"
+                  valueText={formatMarkerValue(joint.actualValue!)}
+                  description="Real position reported by the simulator: it may lag behind the value you command."
+                  placement="bottom"
+                />
+              )}
+            </div>
+
+            <ReadOnlyHint reason={readOnlyReason}>
+              <InputNumber
                 min={minDisplay}
                 max={maxDisplay}
                 step={showDegrees ? 0.1 : 0.001}
                 value={currentDisplay}
-                // Inverted servo in servo angles: max on the left so it moves like the others.
-                reverse={joint.inverted}
-                onChange={(value) => handleSliderChange(convertInputValue(value))}
-                onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+                onChange={(value) => handleInputChange(convertInputValue(value || 0))}
                 disabled={disabled}
-                style={{ margin: 0 }}
-                tooltip={{
-                  formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
-                  placement: 'top'
-                }}
+                size="small"
+                style={{ width: 100 }}
+                addonAfter={showDegrees ? '°' : 'rad'}
               />
             </ReadOnlyHint>
-            {restBarPercent !== undefined && (
-              <TrackMarker
-                percent={restBarPercent}
-                top={-6}
-                color={UI_ACCENT_GREEN}
-                label="Default"
-                valueText={formatMarkerValue(joint.restValue!)}
-                description="Rest position of this joint: where the reset button sends it back to."
-                placement="top"
-              />
-            )}
-            {actualBarPercent !== undefined && (
-              <TrackMarker
-                percent={actualBarPercent}
-                top={19}
-                color={UI_ACCENT_BLUE}
-                label="Actual"
-                valueText={formatMarkerValue(joint.actualValue!)}
-                description="Real position reported by the simulator: it may lag behind the value you command."
-                placement="bottom"
-              />
+
+            {onReset && (
+              <ReadOnlyHint reason={readOnlyReason}>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReset();
+                  }}
+                  style={{
+                    backgroundColor: UI_COLOR_TRANSPARENT,
+                    borderColor: UI_BORDER_SOFT,
+                    color: UI_TEXT_PRIMARY_ON_DARK
+                  }}
+                  title={disabled
+                    ? undefined
+                    : `Reset ${joint.displayName ?? joint.name} to its rest value`}
+                />
+              </ReadOnlyHint>
             )}
           </div>
 
-          <ReadOnlyHint reason={readOnlyReason}>
-            <InputNumber
-              min={minDisplay}
-              max={maxDisplay}
-              step={showDegrees ? 0.1 : 0.001}
-              value={currentDisplay}
-              onChange={(value) => handleInputChange(convertInputValue(value || 0))}
-              disabled={disabled}
-              size="small"
-              style={{ width: 100 }}
-              addonAfter={showDegrees ? '°' : 'rad'}
-            />
-          </ReadOnlyHint>
-
-          {onReset && (
-            <ReadOnlyHint reason={readOnlyReason}>
-              <Button
-                size="small"
-                icon={<ReloadOutlined />}
-                disabled={disabled}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleReset();
-                }}
-                style={{
-                  backgroundColor: UI_COLOR_TRANSPARENT,
-                  borderColor: UI_BORDER_SOFT,
-                  color: UI_TEXT_PRIMARY_ON_DARK
-                }}
-                title={disabled
-                  ? undefined
-                  : `Reset ${joint.displayName ?? joint.name} to its rest value`}
-              />
-            </ReadOnlyHint>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: joint.inverted ? 'row-reverse' : 'row',
-            justifyContent: 'space-between',
-            fontSize: '10px',
-            color: UI_TEXT_SECONDARY_MUTED,
-          }}
-        >
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Min: {minDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-        </div>
-      </Space>
-    </Card>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: joint.inverted ? 'row-reverse' : 'row',
+              justifyContent: 'space-between',
+              fontSize: '10px',
+              color: UI_TEXT_SECONDARY_MUTED,
+            }}
+          >
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              Min: {minDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+          </div>
+        </Space>
+      </Card>
+    </Tooltip>
   );
 });

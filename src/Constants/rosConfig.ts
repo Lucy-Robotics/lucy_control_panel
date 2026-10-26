@@ -29,6 +29,8 @@ export interface ControllerJointConfig {
   joints: string[];
   /** Default category label for these joints in the panel */
   defaultCategory: string;
+  /** Hardware YAML board driving these joints (e.g. mega_left). */
+  boardId?: string;
   /** Per-joint servo limits extracted from the hardware YAML. Keyed by URDF joint name. */
   jointLimits?: Record<string, JointLimitRad>;
   /** Per-joint slider label (actuator id). Keyed by URDF joint name. */

@@ -15,13 +15,12 @@ import {
 import type { ActuatorTableRecord } from '../types.ts';
 import {
     actOpts,
-    boardSlots,
-    freePhysicalPinsOnBoard,
     jointSelectOptions,
     normalizeActuatorType,
-    physicalPinOptions,
+    applyPlugChoice,
+    plugChoices,
+    plugValue,
     sortedBoardIds,
-    usedPhysicalPinsOnBoardExcluding,
     usedUrdfJointsOnOtherRows,
 } from '../model/documentHelpers.ts';
 import {
@@ -40,8 +39,9 @@ export type ActuatorColumnsArgs = {
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
-    /** URDF joint ranges: editing travel, inversion or joint recomputes SCALE / OFFSET from them. */
+    /** URDF joint ranges for the per-row FIT (SCALE / OFFSET from the URDF range onto MIN..MAX). */
     urdfJointLimits: Map<string, UrdfJointLimitRad>;
+    onWarn?: (message: string) => void;
 };
 
 export function buildActuatorColumns({
@@ -53,6 +53,7 @@ export function buildActuatorColumns({
     actuatorIdOnFocusRef,
     deleteActuatorAt,
     urdfJointLimits,
+    onWarn,
 }: ActuatorColumnsArgs): ColumnsType<ActuatorTableRecord> {
     return [
         {
@@ -165,10 +166,7 @@ export function buildActuatorColumns({
                                 const nextJoint = typeof j === 'string' ? j.trim() : '';
                                 const next = structuredClone(yamlDoc);
                                 const actuators = next.actuators as Record<string, unknown>[];
-                                actuators[index] = withUrdfCalibration(
-                                    { ...actuators[index], urdf_joint: nextJoint },
-                                    urdfJointLimits,
-                                );
+                                actuators[index] = { ...actuators[index], urdf_joint: nextJoint };
                                 // Keep passive_urdf_joints consistent with the assignment delta:
                                 //   - chosen joint leaves the passive pool (it's now mapped),
                                 //   - previous joint (if any) re-enters the pool when no row claims it.
@@ -193,12 +191,9 @@ export function buildActuatorColumns({
                 const ao = actOpts(id, 'board');
                 const curBoard = String(row.board ?? '');
                 const boardIds = yamlDoc ? sortedBoardIds(yamlDoc) : [];
-                // Free-pin counts mirror the "globally unused" definition the
-                // (now-removed) toolbar selector showed; the row's own board
-                // therefore reads (n-1 free) since this row already occupies
-                // one of its pins.
+                // Free plug counts (headers + PCA), excluding other rows' claims.
                 const boardOptions = boardIds.map((b) => {
-                    const free = yamlDoc ? freePhysicalPinsOnBoard(yamlDoc, b).length : 0;
+                    const free = yamlDoc ? plugChoices(yamlDoc, b, index).length : 0;
                     return {
                         value: b,
                         label: `${b} (${free} free)`,
@@ -218,20 +213,27 @@ export function buildActuatorColumns({
                                 if (!yamlDoc) return;
                                 const next = structuredClone(yamlDoc);
                                 const actuators = next.actuators as Record<string, unknown>[];
-                                const slots = boardSlots(next, boardVal);
-                                const usedPhys = usedPhysicalPinsOnBoardExcluding(next, boardVal, {
-                                    actuatorIndex: index,
-                                });
-                                const curPhys = Number(actuators[index].physical_pin);
-                                let phys = Number.isFinite(curPhys) ? curPhys : 1;
-                                const physOpts = physicalPinOptions(slots, usedPhys, curPhys);
-                                if (physOpts.length === 0) phys = Number.isFinite(curPhys) ? curPhys : 1;
-                                else if (!physOpts.includes(phys)) phys = physOpts[0]!;
-                                actuators[index] = {
+                                const previousPlug = plugValue(actuators[index]);
+                                const provisional: Record<string, unknown> = {
                                     ...actuators[index],
                                     board: boardVal,
-                                    physical_pin: phys,
                                 };
+                                delete provisional.plug;
+                                delete provisional.physical_pin;
+                                actuators[index] = provisional;
+                                const choices = plugChoices(next, boardVal, index);
+                                if (choices.length === 0) {
+                                    onWarn?.(
+                                        `Board ${boardVal} has no free header or PCA channel.`,
+                                    );
+                                    return;
+                                }
+                                const keep =
+                                    previousPlug &&
+                                    choices.some((choice) => choice.value === previousPlug)
+                                        ? previousPlug
+                                        : choices[0].value;
+                                applyPlugChoice(actuators[index], keep);
                                 patchDoc(next);
                             }}
                         />
@@ -240,52 +242,17 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'V.PIN',
-            key: 'vp',
-            width: 88,
+            title: 'PLUG',
+            key: 'plug',
+            width: 180,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
-                const id = String(row.id ?? index);
-                const ao = actOpts(id, 'virtual_pin');
-                const curVp = Number(row.virtual_pin);
-                return (
-                    <div title={cellTooltipText(serverFieldErrors, ao)}>
-                        <InputNumber
-                            size="small"
-                            min={0}
-                            step={1}
-                            style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                            value={Number.isFinite(curVp) ? curVp : undefined}
-                            title={cellTooltipText(serverFieldErrors, ao)}
-                            onChange={(val) => {
-                                if (!yamlDoc || val == null) return;
-                                const next = structuredClone(yamlDoc);
-                                const actuators = next.actuators as Record<string, unknown>[];
-                                actuators[index] = {
-                                    ...actuators[index],
-                                    virtual_pin: val,
-                                };
-                                patchDoc(next);
-                            }}
-                        />
-                    </div>
-                );
-            },
-        },
-        {
-            title: 'PHYS PIN',
-            key: 'physical_pin',
-            width: 100,
-            render: (_: unknown, record: ActuatorTableRecord) => {
-                const { row, index } = record;
-                const id = String(row.id ?? index);
+                if (!yamlDoc) return null;
                 const bid = String(row.board ?? '');
-                const slots = yamlDoc ? boardSlots(yamlDoc, bid) : 0;
+                const id = String(row.id ?? index);
                 const ao = actOpts(id, 'physical_pin');
-                const usedPhys =
-                    yamlDoc && bid ? usedPhysicalPinsOnBoardExcluding(yamlDoc, bid, { actuatorIndex: index }) : new Set<number>();
-                const curPhys = Number(row.physical_pin);
-                const opts = physicalPinOptions(slots, usedPhys, curPhys);
+                const choices = plugChoices(yamlDoc, bid, index);
+                const current = plugValue(row);
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>
                         <Select
@@ -294,14 +261,13 @@ export function buildActuatorColumns({
                                 width: '100%',
                                 ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders),
                             }}
-                            value={Number.isFinite(curPhys) && opts.includes(curPhys) ? curPhys : opts[0]}
-                            placeholder={slots ? undefined : '—'}
-                            options={opts.map((p) => ({ value: p, label: String(p) }))}
-                            onChange={(physVal) => {
-                                if (!yamlDoc) return;
+                            aria-label={`plug ${id}`}
+                            value={choices.some((choice) => choice.value === current) ? current : undefined}
+                            options={choices}
+                            onChange={(value) => {
                                 const next = structuredClone(yamlDoc);
                                 const list = next.actuators as Record<string, unknown>[];
-                                list[index] = { ...list[index], physical_pin: physVal };
+                                applyPlugChoice(list[index], value);
                                 patchDoc(next);
                             }}
                         />
@@ -353,7 +319,7 @@ export function buildActuatorColumns({
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = withUrdfCalibration({ ...list[index], limit_min: rad }, urdfJointLimits);
+                    list[index] = { ...list[index], limit_min: rad };
                     patchDoc(next);
                 };
                 return (
@@ -407,7 +373,7 @@ export function buildActuatorColumns({
                     if (!yamlDoc) return;
                     const next = structuredClone(yamlDoc);
                     const list = next.actuators as Record<string, unknown>[];
-                    list[index] = withUrdfCalibration({ ...list[index], limit_max: rad }, urdfJointLimits);
+                    list[index] = { ...list[index], limit_max: rad };
                     patchDoc(next);
                 };
                 return (
@@ -472,7 +438,7 @@ export function buildActuatorColumns({
                             const dir = val === 'yes' ? -1 : 1;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = withUrdfCalibration({ ...list[index], direction: dir }, urdfJointLimits);
+                            list[index] = { ...list[index], direction: dir };
                             patchDoc(next);
                         }}
                     />
@@ -482,26 +448,48 @@ export function buildActuatorColumns({
         {
             title: 'SCALE',
             key: 'scale',
-            width: 90,
+            width: 140,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'scale');
+                const urdf = urdfJointLimits.get(String(row.urdf_joint ?? '').trim());
                 return (
-                    <InputNumber
-                        size="small"
-                        step={0.01}
-                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={Number(row.scale)}
-                        title={cellTooltipText(serverFieldErrors, ao)}
-                        onChange={(val) => {
-                            if (!yamlDoc || val == null) return;
-                            const next = structuredClone(yamlDoc);
-                            const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], scale: val };
-                            patchDoc(next);
-                        }}
-                    />
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        <InputNumber
+                            size="small"
+                            step={0.01}
+                            style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
+                            value={Number(row.scale)}
+                            title={cellTooltipText(serverFieldErrors, ao)}
+                            onChange={(val) => {
+                                if (!yamlDoc || val == null) return;
+                                const next = structuredClone(yamlDoc);
+                                const list = next.actuators as Record<string, unknown>[];
+                                list[index] = { ...list[index], scale: val };
+                                patchDoc(next);
+                            }}
+                        />
+                        {/* Scale is the mechanism's ratio and MIN/MAX only a clamp: fit on request,
+                            never on every travel edit, so tightening a limit keeps the calibration. */}
+                        <Button
+                            size="small"
+                            disabled={!urdf}
+                            title={urdf
+                                ? 'Set SCALE and OFFSET so the joint\'s whole URDF range maps onto MIN..MAX '
+                                  + '(use when MIN/MAX are where the real part reaches the URDF limits)'
+                                : 'URDF joint limits not loaded (connect to the robot)'}
+                            onClick={() => {
+                                if (!yamlDoc) return;
+                                const next = structuredClone(yamlDoc);
+                                const list = next.actuators as Record<string, unknown>[];
+                                list[index] = withUrdfCalibration(list[index], urdfJointLimits);
+                                patchDoc(next);
+                            }}
+                        >
+                            FIT
+                        </Button>
+                    </div>
                 );
             },
         },

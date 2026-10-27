@@ -9,7 +9,7 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { Typography } from 'antd';
+import { Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
@@ -56,15 +56,16 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const SETTINGS_BOX_WIDTH = 165;
-const FOCUS_COLOR = 'var(--color-status-info)';
-const HOVER_CLEAR_DELAY_MS = 300;
+const FOCUS_COLOR = 'var(--color-highlight)';
+const CLICK_DELAY_MS = 250;
 const MOUSE_HINTS = [
     'L-drag · rotate',
     'scroll · zoom',
     'R-drag · pan',
     'dbl-click part · focus & follow',
     'dbl-click space · unfocus',
-    'hover part · joint gizmo (control on)',
+    'click part · joint gizmo (control on)',
+    'click space · hide gizmo',
     'drag ring · set joint target',
 ];
 
@@ -158,6 +159,41 @@ const CollapsibleOverlay: React.FC<{
         </div>
     );
 };
+
+const InfoBadge: React.FC<{
+    label: string;
+    partName: string;
+    jointName?: string;
+}> = ({ label, partName, jointName }) => (
+    <div
+        className="chamfer-box viewer-overlay-box"
+        style={{
+            position: 'absolute',
+            bottom: 56,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '6px 14px',
+            fontFamily: 'monospace',
+            fontSize: 11,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            zIndex: 10,
+            pointerEvents: 'none',
+            // chamfer-box draws its border from this variable
+            '--box-border': FOCUS_COLOR,
+        } as React.CSSProperties}
+    >
+        <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
+        <span style={{ color: FOCUS_COLOR, fontWeight: 'bold' }}>{partName}</span>
+        {jointName && (
+            <>
+                <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
+                <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{jointName}</span>
+            </>
+        )}
+    </div>
+);
 
 const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     const indeterminate = progress <= 0;
@@ -395,75 +431,40 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     }, []);
 
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
-    const isGizmoHoveredRef = useRef(false);
-    const isGizmoDraggingRef = useRef(false);
-    const hoverClearTimerRef = useRef<number | null>(null);
-    const lastPartHoverRef = useRef<string | null>(null);
+    const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
+    const pendingClickTimerRef = useRef<number | null>(null);
 
-    const cancelHoverClear = useCallback(() => {
-        if (hoverClearTimerRef.current !== null) {
-            window.clearTimeout(hoverClearTimerRef.current);
-            hoverClearTimerRef.current = null;
+    const cancelPendingClick = useCallback(() => {
+        if (pendingClickTimerRef.current !== null) {
+            window.clearTimeout(pendingClickTimerRef.current);
+            pendingClickTimerRef.current = null;
         }
     }, []);
 
-    const scheduleHoverClear = useCallback(() => {
-        cancelHoverClear();
-        hoverClearTimerRef.current = window.setTimeout(() => {
-            hoverClearTimerRef.current = null;
-            if (!isGizmoHoveredRef.current && !isGizmoDraggingRef.current) {
-                setHoveredPartName(null);
-            }
-        }, HOVER_CLEAR_DELAY_MS);
-    }, [cancelHoverClear]);
+    // Single clicks wait out the double-click window, so a double-click
+    // focuses without briefly opening the gizmo first.
+    const scheduleClick = useCallback((action: () => void) => {
+        cancelPendingClick();
+        pendingClickTimerRef.current = window.setTimeout(() => {
+            pendingClickTimerRef.current = null;
+            action();
+        }, CLICK_DELAY_MS);
+    }, [cancelPendingClick]);
 
-    const handlePartHover = useCallback((name: string | null) => {
-        lastPartHoverRef.current = name;
-        if (!effectiveControlOn || isGizmoHoveredRef.current || isGizmoDraggingRef.current) return;
-        if (name) {
-            cancelHoverClear();
-            setHoveredPartName(name);
-        } else {
-            scheduleHoverClear();
-        }
-    }, [effectiveControlOn, cancelHoverClear, scheduleHoverClear]);
-
-    const releaseGizmoLock = useCallback(() => {
-        if (lastPartHoverRef.current) {
-            cancelHoverClear();
-            setHoveredPartName(lastPartHoverRef.current);
-        } else {
-            scheduleHoverClear();
-        }
-    }, [cancelHoverClear, scheduleHoverClear]);
-
-    const handleGizmoHoverChange = useCallback((hovered: boolean) => {
-        isGizmoHoveredRef.current = hovered;
-        if (hovered) {
-            cancelHoverClear();
-        } else if (!isGizmoDraggingRef.current) {
-            releaseGizmoLock();
-        }
-    }, [cancelHoverClear, releaseGizmoLock]);
-
-    const handleGizmoDraggingChange = useCallback((dragging: boolean) => {
-        isGizmoDraggingRef.current = dragging;
-        if (!dragging && !isGizmoHoveredRef.current) {
-            releaseGizmoLock();
-        }
-    }, [releaseGizmoLock]);
+    const handlePartClick = useCallback((name: string) => {
+        if (!effectiveControlOn) return;
+        scheduleClick(() => setGizmoPartName(prev => (prev === name ? null : name)));
+    }, [effectiveControlOn, scheduleClick]);
 
     useEffect(() => {
         if (effectiveControlOn) return;
-        cancelHoverClear();
-        isGizmoHoveredRef.current = false;
-        lastPartHoverRef.current = null;
-        setHoveredPartName(null);
+        cancelPendingClick();
+        setGizmoPartName(null);
         ghostTargetsRef.current.clear();
         setGhostJointNames([]);
-    }, [effectiveControlOn, cancelHoverClear]);
+    }, [effectiveControlOn, cancelPendingClick]);
 
-    useEffect(() => cancelHoverClear, [cancelHoverClear]);
+    useEffect(() => cancelPendingClick, [cancelPendingClick]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -487,12 +488,19 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return findJointForLink(link, robot, actuatedJointNames);
     }, [robot, selectedPartName, actuatedJointNames]);
 
+    const gizmoJoint = useMemo(() => {
+        if (!robot || !gizmoPartName) return null;
+        const link = robot.links[gizmoPartName];
+        if (!link) return null;
+        const joint = findJointForLink(link, robot, actuatedJointNames);
+        return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
+    }, [robot, gizmoPartName, actuatedJointNames]);
+
     const hoveredJoint = useMemo(() => {
         if (!robot || !hoveredPartName) return null;
         const link = robot.links[hoveredPartName];
         if (!link) return null;
-        const joint = findJointForLink(link, robot, actuatedJointNames);
-        return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
+        return findJointForLink(link, robot, actuatedJointNames);
     }, [robot, hoveredPartName, actuatedJointNames]);
 
     const isPointerInsideRef = useRef(false);
@@ -519,11 +527,17 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const handlePartDoubleClick = (partName: string) => {
+        cancelPendingClick();
         setSelectedPartName(prev => (prev === partName ? null : partName));
     };
 
     const handlePointerMissed = (e: MouseEvent) => {
-        if (e.type === 'dblclick') setSelectedPartName(null);
+        if (e.type === 'dblclick') {
+            cancelPendingClick();
+            setSelectedPartName(null);
+        } else if (e.type === 'click' && e.detail <= 1) {
+            scheduleClick(() => setGizmoPartName(null));
+        }
     };
 
     const handleResetCamera = () => {
@@ -584,9 +598,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         wireframe={wireframe}
                         selectedPartName={selectedPartName}
                         unselectedOpacity={unselectedOpacity}
-                        focusColor={themeColors.focus}
+                        focusColor={themeColors.accent}
+                        onPartClick={handlePartClick}
                         onPartDoubleClick={handlePartDoubleClick}
-                        onPartHover={handlePartHover}
+                        onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
                     />
                 )}
@@ -599,7 +614,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 })}
 
                 <JointRotationGizmo
-                    joint={effectiveControlOn ? hoveredJoint : null}
+                    joint={effectiveControlOn ? gizmoJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
@@ -607,8 +622,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     onTargetChange={handleTargetChange}
                     onTargetCancel={handleTargetCancel}
                     getPendingTarget={getPendingTarget}
-                    onDraggingChange={handleGizmoDraggingChange}
-                    onHoverChange={handleGizmoHoverChange}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />
@@ -634,59 +647,21 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             </Canvas>
 
             {/* Controls hint — top-left */}
-            <CollapsibleOverlay title="CONTROLS" style={{ top: 10, userSelect: 'none' }}>
+            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ top: 10, userSelect: 'none' }}>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
 
-            {/* Floating active follow badge — bottom-center */}
-            {selectedPartName && (
-                <div
-                    className="chamfer-box viewer-overlay-box"
-                    style={{
-                        position: 'absolute',
-                        bottom: 56,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        padding: '6px 14px',
-                        fontFamily: 'monospace',
-                        fontSize: 11,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        zIndex: 10,
-                        // chamfer-box draws its border from this variable
-                        '--box-border': FOCUS_COLOR,
-                    } as React.CSSProperties}
-                >
-                    <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>FOLLOWING:</span>
-                    <span style={{ color: FOCUS_COLOR, fontWeight: 'bold' }}>{selectedPartName}</span>
-                    {focusedJoint && (
-                        <>
-                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
-                            <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{urdfNameOf(focusedJoint)}</span>
-                        </>
-                    )}
-                    <button
-                        onClick={() => setSelectedPartName(null)}
-                        style={{
-                            marginLeft: 4,
-                            padding: '2px 8px',
-                            background: 'transparent',
-                            border: `1px solid ${FOCUS_COLOR}`,
-                            color: FOCUS_COLOR,
-                            cursor: 'pointer',
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                            borderRadius: 2,
-                            transition: 'all 0.2s ease',
-                        }}
-                        title="Unfollow part and release camera (Esc)"
-                    >
-                        UNFOCUS
-                    </button>
-                </div>
+            {/* Hovered joint / followed part badge — bottom-center */}
+            {hoveredPartName && hoveredJoint ? (
+                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)} />
+            ) : selectedPartName && (
+                <InfoBadge
+                    label="FOLLOWING:"
+                    partName={selectedPartName}
+                    jointName={focusedJoint ? urdfNameOf(focusedJoint) : undefined}
+                />
             )}
 
             {/* Settings */}
@@ -732,15 +707,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                     {Math.round(unselectedOpacity * 100)}%
                                 </span>
                             </div>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
+                            <Slider
+                                min={0}
+                                max={1}
+                                step={0.05}
                                 value={unselectedOpacity}
-                                onChange={e => handleUnselectedOpacityChange(parseFloat(e.target.value))}
-                                style={{ width: '100%', cursor: 'pointer' }}
-                                title="Transparency of not selected parts"
+                                onChange={handleUnselectedOpacityChange}
+                                style={{ margin: 0 }}
+                                tooltip={{ open: false }}
                             />
                         </div>
                     </div>

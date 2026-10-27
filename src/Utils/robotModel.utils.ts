@@ -22,6 +22,9 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
 
 export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
 
+/** Pointer travel (px) past which a press counts as a drag rather than a click. */
+export const CLICK_DRAG_THRESHOLD_PX = 4;
+
 export type ActuatedJointNames = ReadonlySet<string>;
 
 /** Wraps an angle into (−π, π]. */

@@ -22,6 +22,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import {
+    CLICK_DRAG_THRESHOLD_PX,
     findParentLink,
     resolveActuatedLinkName,
     urdfNameOf,
@@ -47,13 +48,18 @@ function getMaterialState(robot: URDFRobot): RobotMaterialState {
 
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
-const SELECTED_EMISSIVE_INTENSITY = 0.8;
+const SELECTED_EMISSIVE_INTENSITY = 0.25;
 const NO_EMISSIVE = new THREE.Color(0x000000);
+const UNSELECTED_COLOR = new THREE.Color(0xffffff);
 
 type PartStyle = 'normal' | 'selected' | 'unselected';
 
 function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
     return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
+}
+
+function hasColor(m: THREE.Material): m is THREE.Material & { color: THREE.Color } {
+    return (m as { color?: unknown }).color instanceof THREE.Color;
 }
 
 function applyStyle(
@@ -68,18 +74,22 @@ function applyStyle(
         (display as THREE.MeshStandardMaterial).wireframe = wireframe;
     }
 
+    if (hasColor(display) && hasColor(orig)) {
+        display.color.copy(style === 'selected' ? focus
+            : style === 'unselected' ? UNSELECTED_COLOR
+            : orig.color);
+    }
+
     if (hasEmissive(display) && hasEmissive(orig)) {
         if (style === 'selected') {
             display.emissive.copy(focus);
+            display.emissiveIntensity = SELECTED_EMISSIVE_INTENSITY;
         } else if (style === 'unselected') {
             display.emissive.copy(NO_EMISSIVE);
+            display.emissiveIntensity = 0;
         } else {
             display.emissive.copy(orig.emissive);
-        }
-        if (display instanceof THREE.MeshStandardMaterial && orig instanceof THREE.MeshStandardMaterial) {
-            display.emissiveIntensity = style === 'selected' ? SELECTED_EMISSIVE_INTENSITY
-                : style === 'unselected' ? 0
-                : orig.emissiveIntensity;
+            display.emissiveIntensity = orig.emissiveIntensity;
         }
     }
 
@@ -99,6 +109,7 @@ export interface RobotFKModelProps {
     selectedPartName?: string | null;
     unselectedOpacity?: number;
     focusColor: string;
+    onPartClick?: (partName: string) => void;
     onPartDoubleClick?: (partName: string) => void;
     onPartHover?: (partName: string | null) => void;
     actuatedJointNames?: ActuatedJointNames;
@@ -111,6 +122,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     selectedPartName = null,
     unselectedOpacity = 0.25,
     focusColor,
+    onPartClick,
     onPartDoubleClick,
     onPartHover,
     actuatedJointNames,
@@ -210,6 +222,16 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         return link ? resolveActuatedLinkName(link, robot, actuatedJointNames) : null;
     };
 
+    const handleClick = (e: ThreeEvent<MouseEvent>) => {
+        // Ring drags end past the threshold; plain clicks on the ring pass through
+        if (e.delta > CLICK_DRAG_THRESHOLD_PX) return;
+        // Second click of a double-click: the dblclick handler owns it
+        if (e.nativeEvent.detail > 1) return;
+        e.stopPropagation();
+        const name = partNameOf(e.object);
+        if (name) onPartClick?.(name);
+    };
+
     const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         const name = partNameOf(e.object);
@@ -236,6 +258,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         <group rotation={[-Math.PI / 2, 0, 0]}>
             <primitive
                 object={robot}
+                onClick={handleClick}
                 onDoubleClick={handleDoubleClick}
                 onPointerOver={handlePointerOver}
                 onPointerOut={handlePointerOut}

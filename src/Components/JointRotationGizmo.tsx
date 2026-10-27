@@ -14,6 +14,7 @@ import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import {
+    CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
     getLinkBoundingBox,
     isURDFLink,
@@ -193,6 +194,17 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     // Joint the current drag started on: `joint` can change mid-drag, and every
     // emission of that drag must stay attributed to the same ghost entry.
     const dragJointNameRef = useRef<string>('');
+    // A press on the ring only becomes a drag past CLICK_DRAG_THRESHOLD_PX, so
+    // plain clicks reach the parts behind the ring.
+    const pressRef = useRef<{ x: number; y: number; grabAngle: number; jointName: string } | null>(null);
+
+    const cancelPress = useCallback(() => {
+        if (!pressRef.current) return;
+        pressRef.current = null;
+        if (controlsRef.current) {
+            controlsRef.current.enabled = true;
+        }
+    }, [controlsRef]);
 
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
@@ -231,6 +243,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     }, [controlsRef, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
 
     useEffect(() => {
+        if (pressRef.current && (!joint || !isControlOn || pressRef.current.jointName !== jointName)) {
+            cancelPress();
+        }
         const switchedJoint = isDraggingRef.current && dragJointNameRef.current !== jointName;
         if (joint && isControlOn && !switchedJoint) return;
         if (isDraggingRef.current) {
@@ -246,12 +261,14 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         if (joint && isControlOn) return;
         pointerInsideRef.current = false;
         setHovered(false);
-    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onTargetCancel, onDraggingChange, setHovered]);
+    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onTargetCancel, onDraggingChange, setHovered, cancelPress]);
 
     useEffect(() => {
         const handleGlobalPointerUp = () => {
             if (isDraggingRef.current) {
                 finishDrag();
+            } else {
+                cancelPress();
             }
         };
         window.addEventListener('pointerup', handleGlobalPointerUp);
@@ -260,7 +277,24 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             window.removeEventListener('pointerup', handleGlobalPointerUp);
             window.removeEventListener('pointercancel', handleGlobalPointerUp);
         };
-    }, [finishDrag]);
+    }, [finishDrag, cancelPress]);
+
+    const beginDrag = (grabAngle: number) => {
+        if (!joint) return;
+        isDraggingRef.current = true;
+        setIsDragging(true);
+        onDraggingChange?.(true);
+
+        const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
+        startTargetRadRef.current = start;
+        currentTargetRadRef.current = start;
+        accumulatedAngleRef.current = 0;
+        prevPointerAngleRef.current = grabAngle;
+        pointerAngleRef.current = grabAngle;
+        lastEmittedValueRef.current = null;
+        dragJointNameRef.current = jointName;
+        onTargetChange?.(jointName, start, true);
+    };
 
     const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
         const group = groupRef.current;
@@ -272,23 +306,10 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const grabAngle = localAngleOf(grabPoint);
         if (grabAngle === null) return;
 
-        isDraggingRef.current = true;
-        setIsDragging(true);
-        onDraggingChange?.(true);
-
         if (controlsRef.current) {
             controlsRef.current.enabled = false;
         }
-
-        const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
-        startTargetRadRef.current = start;
-        currentTargetRadRef.current = start;
-        accumulatedAngleRef.current = 0;
-        prevPointerAngleRef.current = grabAngle;
-        pointerAngleRef.current = grabAngle;
-        lastEmittedValueRef.current = null;
-        dragJointNameRef.current = jointName;
-        onTargetChange?.(jointName, start, true);
+        pressRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, grabAngle, jointName };
 
         try {
             (e.target as HTMLElement)?.setPointerCapture?.(e.pointerId);
@@ -299,6 +320,15 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
         if (!joint) return;
+
+        const press = pressRef.current;
+        if (press && !isDraggingRef.current) {
+            e.stopPropagation();
+            const moved = Math.hypot(e.nativeEvent.clientX - press.x, e.nativeEvent.clientY - press.y);
+            if (moved <= CLICK_DRAG_THRESHOLD_PX) return;
+            pressRef.current = null;
+            beginDrag(press.grabAngle);
+        }
 
         if (!isDraggingRef.current) {
             const group = groupRef.current;
@@ -338,7 +368,11 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         } catch {
             // ignore
         }
-        finishDrag();
+        if (isDraggingRef.current) {
+            finishDrag();
+        } else {
+            cancelPress();
+        }
     };
 
     const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {

@@ -5,18 +5,17 @@
 
 import { useEffect, useState } from 'react';
 import { themeService } from '../Services/theme.service';
-import { HIGHLIGHT_COLOR, STATUS_INFO, STATUS_WARNING, TEXT_PRIMARY } from '../Constants/theme';
+import { HIGHLIGHT_COLOR, STATUS_WARNING, TEXT_PRIMARY } from '../Constants/theme';
 
 export interface ThemeColors3D {
     accent: string;
     active: string;
     warning: string;
-    focus: string;
 }
 
 function readThemeColors(): ThemeColors3D {
     if (typeof document === 'undefined') {
-        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, warning: STATUS_WARNING, focus: STATUS_INFO };
+        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, warning: STATUS_WARNING };
     }
     const style = getComputedStyle(document.documentElement);
     const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
@@ -24,7 +23,6 @@ function readThemeColors(): ThemeColors3D {
         accent: read('--color-highlight', HIGHLIGHT_COLOR),
         active: read('--color-text-primary', TEXT_PRIMARY),
         warning: read('--color-status-warning', STATUS_WARNING),
-        focus: read('--color-status-info', STATUS_INFO),
     };
 }
 

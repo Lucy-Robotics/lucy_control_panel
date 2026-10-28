@@ -9,6 +9,7 @@ import {
     asMapping,
     defaultNewActuatorRow,
     defaultNewPressureSensorRow,
+    newServo2040Board,
     renormalizeSensorVirtualPinsOnBoard,
 } from '../model/documentHelpers.ts';
 import { appendPassiveUrdfJointIfUnassigned } from '../model/passiveUrdf.ts';
@@ -34,16 +35,108 @@ export function useHardwareConfigMutations({
     boardsEligibleForNewActuator,
     addPressureSensorActuatorId,
 }: HardwareConfigMutationsParams) {
+    const setBoardSerial = useCallback(
+        (boardId: string, serialId: string) => {
+            if (!yamlDoc) return;
+            const boards = asMapping(yamlDoc.boards);
+            const board = boards ? asMapping(boards[boardId]) : null;
+            if (!boards || !board) return;
+            const next = structuredClone(yamlDoc);
+            const nextBoards = asMapping(next.boards);
+            const nextBoard = nextBoards ? asMapping(nextBoards[boardId]) : null;
+            if (!nextBoards || !nextBoard) return;
+            nextBoard.serial_id = serialId;
+            nextBoards[boardId] = nextBoard;
+            next.boards = nextBoards;
+            patchDoc(next);
+        },
+        [yamlDoc, patchDoc],
+    );
+
+    const handleAddBoard = useCallback(
+        (boardId: string) => {
+            if (!yamlDoc) return;
+            const id = boardId.trim();
+            const created = newServo2040Board(id);
+            if (!created) {
+                messageApi.warning('Board id must look like rp2040_left_arm.');
+                return;
+            }
+            const boards = asMapping(yamlDoc.boards) ?? {};
+            if (Object.prototype.hasOwnProperty.call(boards, id)) {
+                messageApi.warning(`Board ${id} already exists.`);
+                return;
+            }
+            const next = structuredClone(yamlDoc);
+            const nextBoards = asMapping(next.boards) ?? {};
+            nextBoards[id] = created;
+            next.boards = nextBoards;
+            patchDoc(next);
+            messageApi.success(`Added board ${id}`);
+        },
+        [yamlDoc, patchDoc, messageApi],
+    );
+
+    const handleAttachPca = useCallback(
+        (boardId: string, addressText: string) => {
+            if (!yamlDoc) return;
+            const id = boardId.trim();
+            const trimmed = addressText.trim().toLowerCase();
+            const address = trimmed.startsWith('0x') ? Number.parseInt(trimmed, 16) : Number(trimmed);
+            if (!Number.isInteger(address) || address < 0x40 || address > 0x7f) {
+                messageApi.warning('PCA9685 address must be 0x40–0x7F.');
+                return;
+            }
+            const next = structuredClone(yamlDoc);
+            const boards = asMapping(next.boards);
+            const board = boards ? asMapping(boards[id]) : null;
+            if (!boards || !board) {
+                messageApi.warning('Pick a board first.');
+                return;
+            }
+            const boardClass = String(board.board_class ?? '');
+            // PCA9685 is Servo2040-only; never rewrite bus_servo (Feetech) boards.
+            if (boardClass === 'bus_servo_only' || boardClass.startsWith('bus_servo')) {
+                messageApi.warning(`Board ${id} is bus-servo; PCA9685 attaches only to Servo2040 boards.`);
+                return;
+            }
+            if (
+                boardClass &&
+                boardClass !== 'internal_servo_only' &&
+                boardClass !== 'internal_servo_i2c_pwm'
+            ) {
+                messageApi.warning(`Board ${id} (${boardClass}) cannot host a PCA9685.`);
+                return;
+            }
+            const devices = Array.isArray(board.i2c_devices)
+                ? [...(board.i2c_devices as Record<string, unknown>[])]
+                : [];
+            if (devices.some((device) => Number(asMapping(device)?.address) === address)) {
+                messageApi.warning(`Address 0x${address.toString(16)} is already on ${id}.`);
+                return;
+            }
+            const deviceId = `pca_${address.toString(16)}`;
+            devices.push({ id: deviceId, type: 'pca9685', address, channels: 16 });
+            board.i2c_devices = devices;
+            board.board_class = 'internal_servo_i2c_pwm';
+            boards[id] = board;
+            next.boards = boards;
+            patchDoc(next);
+            messageApi.success(`Attached PCA9685 0x${address.toString(16)} to ${id}`);
+        },
+        [yamlDoc, patchDoc, messageApi],
+    );
+
     const handleAddActuator = useCallback(() => {
         if (!yamlDoc) return;
         const targetBoard = boardsEligibleForNewActuator[0];
         if (!targetBoard) {
-            messageApi.warning('No board has a free physical pin.');
+            messageApi.warning('No board has a free header or PCA channel.');
             return;
         }
         const row = defaultNewActuatorRow(yamlDoc, targetBoard);
         if (!row) {
-            messageApi.warning('No free physical pin on that board.');
+            messageApi.warning('No free header or PCA channel on that board.');
             return;
         }
         const next = structuredClone(yamlDoc);
@@ -115,6 +208,9 @@ export function useHardwareConfigMutations({
     );
 
     return {
+        setBoardSerial,
+        handleAddBoard,
+        handleAttachPca,
         handleAddActuator,
         handleAddPressureSensor,
         deleteActuatorAt,

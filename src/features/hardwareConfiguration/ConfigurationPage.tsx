@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
@@ -23,6 +23,9 @@ const { useBreakpoint } = Grid;
 const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
     const editorLocked = hw.editorLocked;
+    const [newBoardId, setNewBoardId] = useState('rp2040_');
+    const [pcaBoardId, setPcaBoardId] = useState('');
+    const [pcaAddress, setPcaAddress] = useState('0x40');
     // The page header is `position: sticky; top: 0`, so the actuator table header has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
     const screens = useBreakpoint();
@@ -258,11 +261,53 @@ const ConfigurationPage = () => {
                     }
                 >
                     <Card
-                        title={<CustomTitle title="BOARDS" subtitle="READ-ONLY" level={4} />}
+                        title={<CustomTitle title="BOARDS" subtitle="SERIAL AND ATTACHMENTS" level={4} />}
                         size="small"
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
+                        extra={
+                            <Space>
+                                <Input
+                                    size="small"
+                                    value={newBoardId}
+                                    aria-label="new board id"
+                                    onChange={(event) => setNewBoardId(event.target.value)}
+                                    style={{ width: 180 }}
+                                />
+                                <Button
+                                    size="small"
+                                    disabled={editorLocked || !hw.yamlDoc}
+                                    onClick={() => hw.handleAddBoard(newBoardId)}
+                                >
+                                    Add board
+                                </Button>
+                            </Space>
+                        }
                     >
                         <Table size="small" dataSource={hw.boardRows} columns={hw.boardColumns} pagination={false} scroll={{ x: 'max-content' }} />
+                        <Space style={{ marginTop: 8 }}>
+                            <Input
+                                size="small"
+                                value={pcaBoardId}
+                                aria-label="pca board id"
+                                placeholder="rp2040_left_arm"
+                                onChange={(event) => setPcaBoardId(event.target.value)}
+                                style={{ width: 180 }}
+                            />
+                            <Input
+                                size="small"
+                                value={pcaAddress}
+                                aria-label="pca address"
+                                onChange={(event) => setPcaAddress(event.target.value)}
+                                style={{ width: 90 }}
+                            />
+                            <Button
+                                size="small"
+                                disabled={editorLocked || !hw.yamlDoc}
+                                onClick={() => hw.handleAttachPca(pcaBoardId, pcaAddress)}
+                            >
+                                Attach PCA9685
+                            </Button>
+                        </Space>
                     </Card>
 
                     <Card
@@ -293,7 +338,7 @@ const ConfigurationPage = () => {
                                         !hw.yamlDoc
                                             ? 'Load a hardware configuration first.'
                                             : hw.boardsEligibleForNewActuator.length === 0
-                                                ? 'No board has a free physical pin.'
+                                                ? 'No board has a free header or PCA channel.'
                                                 : 'Add a row on the first board with a free pin — change the board on the new row if needed.'
                                     }
                                 >

@@ -15,13 +15,12 @@ import {
 import type { ActuatorTableRecord } from '../types.ts';
 import {
     actOpts,
-    boardSlots,
-    freePhysicalPinsOnBoard,
     jointSelectOptions,
     normalizeActuatorType,
-    physicalPinOptions,
+    applyPlugChoice,
+    plugChoices,
+    plugValue,
     sortedBoardIds,
-    usedPhysicalPinsOnBoardExcluding,
     usedUrdfJointsOnOtherRows,
 } from '../model/documentHelpers.ts';
 import {
@@ -38,6 +37,7 @@ export type ActuatorColumnsArgs = {
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
+    onWarn?: (message: string) => void;
 };
 
 export function buildActuatorColumns({
@@ -48,6 +48,7 @@ export function buildActuatorColumns({
     patchDoc,
     actuatorIdOnFocusRef,
     deleteActuatorAt,
+    onWarn,
 }: ActuatorColumnsArgs): ColumnsType<ActuatorTableRecord> {
     return [
         {
@@ -185,12 +186,9 @@ export function buildActuatorColumns({
                 const ao = actOpts(id, 'board');
                 const curBoard = String(row.board ?? '');
                 const boardIds = yamlDoc ? sortedBoardIds(yamlDoc) : [];
-                // Free-pin counts mirror the "globally unused" definition the
-                // (now-removed) toolbar selector showed; the row's own board
-                // therefore reads (n-1 free) since this row already occupies
-                // one of its pins.
+                // Free plug counts (headers + PCA), excluding other rows' claims.
                 const boardOptions = boardIds.map((b) => {
-                    const free = yamlDoc ? freePhysicalPinsOnBoard(yamlDoc, b).length : 0;
+                    const free = yamlDoc ? plugChoices(yamlDoc, b, index).length : 0;
                     return {
                         value: b,
                         label: `${b} (${free} free)`,
@@ -210,20 +208,27 @@ export function buildActuatorColumns({
                                 if (!yamlDoc) return;
                                 const next = structuredClone(yamlDoc);
                                 const actuators = next.actuators as Record<string, unknown>[];
-                                const slots = boardSlots(next, boardVal);
-                                const usedPhys = usedPhysicalPinsOnBoardExcluding(next, boardVal, {
-                                    actuatorIndex: index,
-                                });
-                                const curPhys = Number(actuators[index].physical_pin);
-                                let phys = Number.isFinite(curPhys) ? curPhys : 1;
-                                const physOpts = physicalPinOptions(slots, usedPhys, curPhys);
-                                if (physOpts.length === 0) phys = Number.isFinite(curPhys) ? curPhys : 1;
-                                else if (!physOpts.includes(phys)) phys = physOpts[0]!;
-                                actuators[index] = {
+                                const previousPlug = plugValue(actuators[index]);
+                                const provisional: Record<string, unknown> = {
                                     ...actuators[index],
                                     board: boardVal,
-                                    physical_pin: phys,
                                 };
+                                delete provisional.plug;
+                                delete provisional.physical_pin;
+                                actuators[index] = provisional;
+                                const choices = plugChoices(next, boardVal, index);
+                                if (choices.length === 0) {
+                                    onWarn?.(
+                                        `Board ${boardVal} has no free header or PCA channel.`,
+                                    );
+                                    return;
+                                }
+                                const keep =
+                                    previousPlug &&
+                                    choices.some((choice) => choice.value === previousPlug)
+                                        ? previousPlug
+                                        : choices[0].value;
+                                applyPlugChoice(actuators[index], keep);
                                 patchDoc(next);
                             }}
                         />
@@ -265,19 +270,17 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'PHYS PIN',
-            key: 'physical_pin',
-            width: 100,
+            title: 'PLUG',
+            key: 'plug',
+            width: 180,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
-                const id = String(row.id ?? index);
+                if (!yamlDoc) return null;
                 const bid = String(row.board ?? '');
-                const slots = yamlDoc ? boardSlots(yamlDoc, bid) : 0;
+                const id = String(row.id ?? index);
                 const ao = actOpts(id, 'physical_pin');
-                const usedPhys =
-                    yamlDoc && bid ? usedPhysicalPinsOnBoardExcluding(yamlDoc, bid, { actuatorIndex: index }) : new Set<number>();
-                const curPhys = Number(row.physical_pin);
-                const opts = physicalPinOptions(slots, usedPhys, curPhys);
+                const choices = plugChoices(yamlDoc, bid, index);
+                const current = plugValue(row);
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>
                         <Select
@@ -286,14 +289,13 @@ export function buildActuatorColumns({
                                 width: '100%',
                                 ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders),
                             }}
-                            value={Number.isFinite(curPhys) && opts.includes(curPhys) ? curPhys : opts[0]}
-                            placeholder={slots ? undefined : '—'}
-                            options={opts.map((p) => ({ value: p, label: String(p) }))}
-                            onChange={(physVal) => {
-                                if (!yamlDoc) return;
+                            aria-label={`plug ${id}`}
+                            value={choices.some((choice) => choice.value === current) ? current : undefined}
+                            options={choices}
+                            onChange={(value) => {
                                 const next = structuredClone(yamlDoc);
                                 const list = next.actuators as Record<string, unknown>[];
-                                list[index] = { ...list[index], physical_pin: physVal };
+                                applyPlugChoice(list[index], value);
                                 patchDoc(next);
                             }}
                         />

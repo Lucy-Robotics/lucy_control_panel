@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     asMapping,
     assignableUrdfJointsFromYaml,
+    boardHasFreeActuatorPlug,
     boardSlots,
     freePhysicalPinsOnBoard,
     sortedBoardIds,
@@ -22,7 +23,7 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
 
     const boardsEligibleForNewActuator = useMemo(() => {
         if (!yamlDoc) return [];
-        return sortedBoardIds(yamlDoc).filter((bid) => freePhysicalPinsOnBoard(yamlDoc, bid).length > 0);
+        return sortedBoardIds(yamlDoc).filter((bid) => boardHasFreeActuatorPlug(yamlDoc, bid));
     }, [yamlDoc]);
 
     const actuatorsEligibleForNewPressureSensor = useMemo(() => {

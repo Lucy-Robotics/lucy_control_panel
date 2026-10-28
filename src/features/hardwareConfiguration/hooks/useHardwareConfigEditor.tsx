@@ -68,6 +68,8 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         actuatorIdOnFocusRef: yaml.actuatorIdOnFocusRef,
         deleteActuatorAt: mutations.deleteActuatorAt,
         deletePressureSensorAt: mutations.deletePressureSensorAt,
+        setBoardSerial: mutations.setBoardSerial,
+        onWarn: (message: string) => params.messageApi.warning(message),
     });
 
     return {
@@ -93,6 +95,9 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         setAddPressureSensorActuatorId: table.setAddPressureSensorActuatorId,
         actuatorSearchQuery: table.actuatorSearchQuery,
         setActuatorSearchQuery: table.setActuatorSearchQuery,
+        handleAddBoard: mutations.handleAddBoard,
+        handleAttachPca: mutations.handleAttachPca,
+        setBoardSerial: mutations.setBoardSerial,
         handleAddActuator: mutations.handleAddActuator,
         handleAddPressureSensor: mutations.handleAddPressureSensor,
         serverErrorRows,

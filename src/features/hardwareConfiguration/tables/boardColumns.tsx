@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Typography } from 'antd';
+import { Input, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
     cellOutlineStyle,
@@ -18,6 +18,7 @@ const { Text } = Typography;
 export function buildBoardColumns(
     serverFieldErrors: Map<string, string[]>,
     outlineBorders: OutlineBorderSet,
+    onSerialChange: (boardId: string, serialId: string) => void,
 ): ColumnsType<BoardRow> {
     return [
         {
@@ -38,12 +39,13 @@ export function buildBoardColumns(
             dataIndex: 'serial_id',
             key: 'serial_id',
             render: (v: string, r: BoardRow) => (
-                <span
+                <Input
+                    value={v}
+                    aria-label={`serial ${r.boardId}`}
                     style={cellOutlineStyle(serverFieldErrors, boardOpts(r.boardId, 'serial_id'), outlineBorders)}
                     title={cellTooltipText(serverFieldErrors, boardOpts(r.boardId, 'serial_id'))}
-                >
-                    {v}
-                </span>
+                    onChange={(event) => onSerialChange(r.boardId, event.target.value)}
+                />
             ),
         },
         {

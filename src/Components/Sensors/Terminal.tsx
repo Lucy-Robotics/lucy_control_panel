@@ -50,8 +50,6 @@ export const Terminal: React.FC<TerminalProps> = ({
       <div
         style={{
           marginBottom: '12px',
-          borderBottom: '1px solid var(--color-secondary)',
-          paddingBottom: '8px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -82,7 +80,7 @@ export const Terminal: React.FC<TerminalProps> = ({
             size="small"
             onClick={() => setIsPaused(!isPaused)}
             style={{
-              borderColor: 'var(--color-secondary)',
+              borderColor: 'var(--color-line)',
               color: 'var(--color-text-primary)',
               borderRadius: 0,
             }}
@@ -93,14 +91,14 @@ export const Terminal: React.FC<TerminalProps> = ({
       </div>
       <div
         ref={terminalRef}
-        className="chamfer-box-sm"
+        className="chamfer-box chamfer-box-sm chamfer-scroll"
         style={{
           height: '280px',
           overflowY: 'auto',
           padding: '12px',
           fontFamily: fonts.mono,
           lineHeight: 1.6,
-          '--box-bg': 'var(--color-main)',
+          '--fill': 'var(--color-main-deep)',
         } as React.CSSProperties}
       >
         {displayData.length > 0 ? (

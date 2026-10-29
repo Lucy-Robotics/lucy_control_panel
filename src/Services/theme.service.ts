@@ -9,6 +9,7 @@ import {
     HIGHLIGHT_COLOR,
     TEXT_PRIMARY,
     injectThemeVariables,
+    deriveSurfaceTokens,
 } from '../Constants/theme';
 import {
     BUILTIN_THEMES,
@@ -33,6 +34,11 @@ export const THEME_STORAGE_KEYS = {
 } as const;
 
 const STYLE_TAG_ID = 'lucy-custom-theme-style';
+
+/** Legacy tokens older themes define, used to seed the new surface tier they map to. */
+const LEGACY_SURFACE_ALIASES: Record<string, string> = {
+    '--color-surface-2': '--color-main-elevated',
+};
 
 class ThemeService {
     private static instance: ThemeService;
@@ -179,11 +185,9 @@ class ThemeService {
 
     public setThemeColors(colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }): void {
         const textSec = colors.textSecondary || '#6C7D8E';
+        // Surface tiers, lines and grid tints are derived in applyActiveTheme()
         const css = `:root {
   --color-main: ${colors.main};
-  --color-main-surface: ${colors.main};
-  --color-main-elevated: ${colors.main};
-  --color-main-deep: ${colors.main};
   --color-secondary: ${colors.secondary};
   --color-secondary-border: ${colors.secondary};
   --color-highlight: ${colors.highlight};
@@ -258,28 +262,34 @@ class ThemeService {
         const sanitizedCss = cssSecurityService.sanitizeCss(cssToApply);
         styleElement.textContent = sanitizedCss;
 
+        const definedVars = new Map<string, string>();
         if (sanitizedCss) {
             const varRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;!}\n\r]+)/g;
             let match;
             while ((match = varRegex.exec(sanitizedCss)) !== null) {
                 const varName = match[1].trim();
                 const varValue = match[2].trim();
+                definedVars.set(varName, varValue);
                 root.style.setProperty(varName, varValue);
             }
         }
 
         const colors = this.getActiveColors();
         root.style.setProperty('--color-main', colors.main);
-        root.style.setProperty('--color-main-surface', colors.main);
-        root.style.setProperty('--color-main-elevated', colors.main);
-        root.style.setProperty('--color-main-deep', colors.main);
         root.style.setProperty('--color-secondary', colors.secondary);
         root.style.setProperty('--color-secondary-border', colors.secondary);
         root.style.setProperty('--color-highlight', colors.highlight);
         root.style.setProperty('--color-text-primary', colors.text);
         root.style.setProperty('--ui-accent-green', colors.highlight);
 
-        document.body.style.backgroundColor = colors.main;
+        // Fill in every derived token the theme did not define itself
+        for (const [varName, derived] of Object.entries(deriveSurfaceTokens(colors))) {
+            if (definedVars.has(varName)) continue;
+            const legacy = LEGACY_SURFACE_ALIASES[varName];
+            root.style.setProperty(varName, (legacy && definedVars.get(legacy)) || derived);
+        }
+
+        document.body.style.backgroundColor = definedVars.get('--color-bg') || colors.main;
     }
 
     public getThemeTemplateCss(): string {

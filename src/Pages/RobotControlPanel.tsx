@@ -73,8 +73,6 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
     UI_WARNING,
-    UI_PANEL_BG,
-    UI_BORDER_MUTED,
     UI_BORDER_DIM,
     UI_GRADIENT_MODAL_HEADER,
     PAGE_CONTENT_STYLE,
@@ -753,12 +751,6 @@ export const RobotControlPanel: React.FC = () => {
         },
     ];
 
-    const dropdownOverlayStyle = {
-        backgroundColor: UI_PANEL_BG,
-        border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: 0,
-    };
-
     return (
         <JointPreviewContext.Provider value={jointPreviewStore}>
             <Robot3DViewerModal
@@ -818,8 +810,9 @@ export const RobotControlPanel: React.FC = () => {
                             position: 'sticky',
                             top: headerHeight,
                             zIndex: 5,
-                            backgroundColor: 'var(--color-main)',
-                            borderBottom: '1px solid var(--color-secondary)',
+                            background: 'color-mix(in srgb, var(--color-surface-1) 82%, transparent)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
                             margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 8px`,
                             padding: isMobile ? '6px 12px' : '6px 30px',
                             flexShrink: 0,
@@ -871,9 +864,6 @@ export const RobotControlPanel: React.FC = () => {
                                     <Dropdown
                                         menu={{ items }}
                                         trigger={['click']}
-                                        dropdownRender={menu => (
-                                            <div style={dropdownOverlayStyle}>{menu}</div>
-                                        )}
                                     >
                                         <Button
                                             icon={<MenuOutlined />}

@@ -6,7 +6,7 @@
 import React from 'react';
 import { Card, Typography, Tooltip, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { TEXT_PRIMARY, TEXT_SECONDARY, SECONDARY_COLOR, fonts } from '../../Constants/theme';
+import { TEXT_PRIMARY, TEXT_SECONDARY, fonts } from '../../Constants/theme';
 import type { ThemePreset } from '../../Constants/builtinThemes';
 
 const { Text, Paragraph } = Typography;
@@ -68,16 +68,16 @@ export const PresetsTab: React.FC<PresetsTabProps> = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                                 <span style={{ fontSize: 10, color: TEXT_SECONDARY, marginRight: 4 }}>PALETTE:</span>
                                 <Tooltip title={`Main: ${preset.colors.main}`}>
-                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.main, border: `1px solid ${SECONDARY_COLOR}` }} />
+                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.main, border: '1px solid var(--color-line)' }} />
                                 </Tooltip>
                                 <Tooltip title={`Secondary: ${preset.colors.secondary}`}>
-                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.secondary, border: `1px solid ${SECONDARY_COLOR}` }} />
+                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.secondary, border: '1px solid var(--color-line)' }} />
                                 </Tooltip>
                                 <Tooltip title={`Highlight: ${preset.colors.highlight}`}>
-                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.highlight, border: `1px solid ${SECONDARY_COLOR}` }} />
+                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.highlight, border: '1px solid var(--color-line)' }} />
                                 </Tooltip>
                                 <Tooltip title={`Text: ${preset.colors.text}`}>
-                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.text, border: `1px solid ${SECONDARY_COLOR}` }} />
+                                    <div style={{ width: 18, height: 18, backgroundColor: preset.colors.text, border: '1px solid var(--color-line)' }} />
                                 </Tooltip>
                             </div>
                         </Card>

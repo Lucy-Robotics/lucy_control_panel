@@ -23,7 +23,6 @@ export const StreamSwitch: React.FC<StreamSwitchProps> = ({ labelA = 'OFF', labe
         className="tui-toggle"
         style={{
             display: 'inline-flex',
-            border: '1px solid var(--color-secondary)',
             backgroundColor: 'var(--color-main)',
         }}
     >

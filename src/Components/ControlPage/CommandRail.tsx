@@ -37,6 +37,8 @@ export interface RailGroup {
     /** Short mono caption shown above the group (e.g. "POSE"). */
     code: string;
     items: RailItem[];
+    /** Pushes the group to the far end of the rail (bottom when vertical). */
+    pinEnd?: boolean;
 }
 
 interface CommandRailProps {
@@ -126,7 +128,7 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
 
                 {groups.map((group) => (
                     <React.Fragment key={group.key}>
-                        <span className="rail-divider" aria-hidden />
+                        <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
                         <div className="rail-group" role="group" aria-label={group.code}>
                             <span className="rail-code" aria-hidden>{group.code}</span>
                             {group.items.map(renderItem)}

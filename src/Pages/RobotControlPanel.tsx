@@ -797,6 +797,7 @@ export const RobotControlPanel: React.FC = () => {
         {
             key: 'layout',
             code: 'LAYOUT',
+            pinEnd: true,
             items: [
                 {
                     key: '3d-view',
@@ -993,7 +994,7 @@ export const RobotControlPanel: React.FC = () => {
                                 orientation="vertical"
                                 groups={railGroups}
                                 arm={railArm}
-                                style={{ alignSelf: 'flex-start', flexShrink: 0, width: COMMAND_RAIL_WIDTH }}
+                                style={{ alignSelf: 'stretch', flexShrink: 0, width: COMMAND_RAIL_WIDTH }}
                             />
                             <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
                                 <ResizablePanels

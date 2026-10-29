@@ -26,6 +26,14 @@ import {
     resolveActuatedLinkName,
     urdfNameOf,
 } from '../Utils/robotModel.utils';
+import {
+    CAMERA_FOV,
+    MAX_CAMERA_DISTANCE,
+    MIN_CAMERA_DISTANCE,
+    distanceForZoom,
+    getRobotBoundingBox,
+    zoomForDistance,
+} from '../Utils/camera.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
@@ -76,25 +84,20 @@ const MOUSE_HINTS = [
 
 type Vec3 = [number, number, number];
 
-const CAMERA_FOV = 50;
-const MIN_CAMERA_DISTANCE = 0.2;
-const MAX_CAMERA_DISTANCE = 10;
-
-const zoomForDistance = (distance: number, viewportHeight: number): number =>
-    viewportHeight / (2 * distance * Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2)));
-
-const distanceForZoom = (zoom: number, viewportHeight: number): number =>
-    viewportHeight / (2 * zoom * Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2)));
-
 const DEFAULT_CAMERA: { readonly position: Vec3; readonly target: Vec3 } = {
     position: [0, 2, 3],
     target: [0, 1, 0],
 };
 
+const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(...DEFAULT_CAMERA.position)
+    .sub(new THREE.Vector3(...DEFAULT_CAMERA.target))
+    .normalize();
+
 const savedCamera: { position: Vec3; target: Vec3 } = {
     position: [...DEFAULT_CAMERA.position],
     target: [...DEFAULT_CAMERA.target],
 };
+let framedRobot: URDFRobot | null = null;
 
 const isEditableTarget = (target: EventTarget | null): boolean =>
     target instanceof HTMLElement
@@ -482,10 +485,28 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
 
-    const handleSelectView = useCallback((direction: THREE.Vector3) => {
-        setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction }));
+    const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
+        setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction, instant }));
     }, []);
     const [selectedPartName, setSelectedPartName] = useState<string | null>(null);
+
+    const getFramingBox = useCallback((): THREE.Box3 | null => {
+        if (!robot) return null;
+        const link = selectedPartName ? robot.links[selectedPartName] : undefined;
+        if (!link) return getRobotBoundingBox(robot);
+        link.updateWorldMatrix(true, true);
+        return getLinkBoundingBox(link);
+    }, [robot, selectedPartName]);
+
+    const loadedOnMountRef = useRef(robot !== null && !loading);
+    const userMovedCameraRef = useRef(false);
+    useEffect(() => {
+        if (!robot || loading || framedRobot === robot) return;
+        framedRobot = robot;
+        if (userMovedCameraRef.current) return;
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
+    }, [robot, loading, handleSelectView]);
+
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
 
     const handleUnselectedOpacityChange = (val: number) => {
@@ -654,6 +675,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const handleResetCamera = () => {
         setSelectedPartName(null);
+        if (robot) {
+            handleSelectView(DEFAULT_VIEW_DIRECTION.clone());
+            return;
+        }
         const controls = controlsRef.current;
         if (!controls) return;
         controls.target.set(...DEFAULT_CAMERA.target);
@@ -758,6 +783,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
+                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate
@@ -767,7 +793,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
 
                 <ProjectionSync controlsRef={controlsRef} />
-                <CameraViewTween request={viewRequest} controlsRef={controlsRef} />
+                <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
                 <ViewCube colors={themeColors} onSelectView={handleSelectView} />
             </Canvas>
 

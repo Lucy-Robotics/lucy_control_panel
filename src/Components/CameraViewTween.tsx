@@ -7,30 +7,39 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
+import { computeCameraFraming, safeViewDirection } from '../Utils/camera.utils';
 
 const DURATION_S = 0.45;
-const POLE_NUDGE = 1e-3;
 
 export interface ViewRequest {
     id: number;
     direction: THREE.Vector3;
+    instant?: boolean;
 }
 
 interface Tween {
-    from: THREE.Vector3;
-    full: THREE.Quaternion;
-    distance: number;
+    fromDir: THREE.Vector3;
+    rotation: THREE.Quaternion;
+    fromTarget: THREE.Vector3;
+    toTarget: THREE.Vector3;
+    fromDistance: number;
+    toDistance: number;
+    fromZoom: number;
+    toZoom: number | null;
     t: number;
+    instant: boolean;
 }
 
 export interface CameraViewTweenProps {
     request: ViewRequest | null;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
+    getFramingBox?: () => THREE.Box3 | null;
 }
 
-export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, controlsRef }) => {
+export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, controlsRef, getFramingBox }) => {
     const camera = useThree(s => s.camera);
     const controls = useThree(s => s.controls);
+    const size = useThree(s => s.size);
     const tweenRef = useRef<Tween | null>(null);
     const handledIdRef = useRef<number | null>(null);
     const step = useMemo(() => new THREE.Quaternion(), []);
@@ -40,13 +49,27 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         if (!request || !orbit || handledIdRef.current === request.id) return;
         handledIdRef.current = request.id;
         const offset = camera.position.clone().sub(orbit.target);
-        const distance = offset.length();
-        if (distance < 1e-6) return;
+        const fromDistance = offset.length();
+        if (fromDistance < 1e-6) return;
 
-        const to = request.direction.clone().normalize();
-        if (Math.abs(to.y) > 1 - 1e-6) to.set(POLE_NUDGE, Math.sign(to.y), 0).normalize();
-        const from = offset.divideScalar(distance);
-        tweenRef.current = { from, full: new THREE.Quaternion().setFromUnitVectors(from, to), distance, t: 0 };
+        const box = getFramingBox?.();
+        const framing = box ? computeCameraFraming(box, request.direction, camera, size) : null;
+        const fromDir = offset.divideScalar(fromDistance);
+        const isOrtho = camera instanceof THREE.OrthographicCamera;
+        tweenRef.current = {
+            fromDir,
+            rotation: new THREE.Quaternion().setFromUnitVectors(fromDir, safeViewDirection(request.direction)),
+            fromTarget: orbit.target.clone(),
+            toTarget: framing ? framing.target : orbit.target.clone(),
+            fromDistance,
+            toDistance: framing ? framing.distance : fromDistance,
+            fromZoom: isOrtho ? camera.zoom : 1,
+            toZoom: isOrtho ? framing?.zoom ?? null : null,
+            t: 0,
+            instant: request.instant ?? false,
+        };
+        // Resizing or a new framing source must not replay an already handled request
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [request, camera, controlsRef]);
 
     useEffect(() => {
@@ -62,10 +85,16 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         const orbit = controlsRef.current;
         if (!tween || !orbit) return;
 
-        tween.t = Math.min(1, tween.t + delta / DURATION_S);
+        tween.t = tween.instant ? 1 : Math.min(1, tween.t + delta / DURATION_S);
         const ease = 1 - Math.pow(1 - tween.t, 3);
-        step.identity().slerp(tween.full, ease);
-        camera.position.copy(tween.from).applyQuaternion(step).multiplyScalar(tween.distance).add(orbit.target);
+        step.identity().slerp(tween.rotation, ease);
+        orbit.target.lerpVectors(tween.fromTarget, tween.toTarget, ease);
+        const distance = THREE.MathUtils.lerp(tween.fromDistance, tween.toDistance, ease);
+        camera.position.copy(tween.fromDir).applyQuaternion(step).multiplyScalar(distance).add(orbit.target);
+        if (tween.toZoom !== null && camera instanceof THREE.OrthographicCamera) {
+            camera.zoom = THREE.MathUtils.lerp(tween.fromZoom, tween.toZoom, ease);
+            camera.updateProjectionMatrix();
+        }
         orbit.update();
 
         if (tween.t >= 1) tweenRef.current = null;

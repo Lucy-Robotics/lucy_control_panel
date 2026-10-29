@@ -18,6 +18,8 @@ const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
+const HOVER_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
+const HOVER_REFRESH_ANGLE = 1e-3;
 
 type Axis = 0 | 1 | 2;
 type Sign = 1 | -1;
@@ -140,7 +142,11 @@ interface ViewCubeSceneProps {
 const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView }) => {
     const size = useThree(s => s.size);
     const gl = useThree(s => s.gl);
+    const events = useThree(s => s.events);
+    const pointer = useThree(s => s.pointer);
     const cubeRef = useRef<THREE.Group>(null);
+    const pointerInsideRef = useRef(false);
+    const lastRefreshQuat = useMemo(() => new THREE.Quaternion(), []);
     const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
     const pieces = useMemo(buildViewCubePieces, []);
@@ -171,8 +177,34 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     const labelGeometry = useMemo(() => new THREE.PlaneGeometry(2 * INNER, 2 * INNER), []);
     useEffect(() => () => labelGeometry.dispose(), [labelGeometry]);
 
+    useEffect(() => {
+        const el = gl.domElement;
+        const inside = () => { pointerInsideRef.current = true; };
+        const outside = () => { pointerInsideRef.current = false; };
+        el.addEventListener('pointermove', inside);
+        el.addEventListener('pointerleave', outside);
+        return () => {
+            el.removeEventListener('pointermove', inside);
+            el.removeEventListener('pointerleave', outside);
+        };
+    }, [gl]);
+
+    const cubeCenter = useMemo(() => new THREE.Vector2(
+        size.width / 2 - CUBE_MARGIN_PX,
+        -size.height / 2 + CUBE_MARGIN_PX + BOTTOM_OFFSET_PX,
+    ), [size]);
+
     useFrame(() => {
-        cubeRef.current?.quaternion.copy(mainCamera.quaternion).invert();
+        const cube = cubeRef.current;
+        if (!cube) return;
+        cube.quaternion.copy(mainCamera.quaternion).invert();
+
+        if (lastRefreshQuat.angleTo(cube.quaternion) < HOVER_REFRESH_ANGLE) return;
+        lastRefreshQuat.copy(cube.quaternion);
+        if (!pointerInsideRef.current) return;
+        const dx = pointer.x * size.width / 2 - cubeCenter.x;
+        const dy = pointer.y * size.height / 2 - cubeCenter.y;
+        if (Math.hypot(dx, dy) <= HOVER_RADIUS_PX) events.update?.();
     });
 
     useEffect(() => () => {
@@ -201,7 +233,7 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     return (
         <>
             <OrthographicCamera makeDefault position={[0, 0, 200]} />
-            <group position={[size.width / 2 - CUBE_MARGIN_PX, -size.height / 2 + CUBE_MARGIN_PX + BOTTOM_OFFSET_PX, 0]}>
+            <group position={[cubeCenter.x, cubeCenter.y, 0]}>
                 <group ref={cubeRef} scale={CUBE_HALF_PX}>
                     {pieces.map(piece => (
                         <mesh

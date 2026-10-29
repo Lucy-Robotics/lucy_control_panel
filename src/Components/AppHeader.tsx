@@ -121,7 +121,8 @@ export const AppHeader: React.FC = () => {
         alignItems: 'center',
         gap: 8,
         padding: isMobile ? '0 8px' : '0 12px',
-        minWidth: 0,
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
     };
 
     // Tint the status box frame with the state colour

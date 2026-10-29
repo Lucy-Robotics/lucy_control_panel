@@ -8,9 +8,6 @@ import { Button, Card, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-    MAIN_COLOR,
-    MAIN_DEEP,
-    SECONDARY_COLOR,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     STATUS_ERROR,
@@ -38,20 +35,16 @@ export const NotFound: React.FC = () => {
         >
             <Card
                 bordered
+                className="hud-corners"
                 style={{
                     width: 'min(100%, 580px)',
-                    background: MAIN_COLOR,
-                    borderColor: SECONDARY_COLOR,
-                    borderRadius: 0,
-                    boxShadow: `0 16px 48px rgba(0, 0, 0, 0.8), 0 0 1px ${SECONDARY_COLOR}`,
                 }}
                 styles={{ body: { padding: 0 } }}
             >
                 <div
                     style={{
                         padding: '12px 20px',
-                        borderBottom: `1px solid ${SECONDARY_COLOR}`,
-                        background: MAIN_DEEP,
+                        background: 'var(--color-surface-2)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -110,7 +103,7 @@ export const NotFound: React.FC = () => {
                             onClick={() => navigate(-1)}
                             style={{
                                 background: 'transparent',
-                                borderColor: SECONDARY_COLOR,
+                                borderColor: 'var(--color-line)',
                                 color: TEXT_PRIMARY,
                                 borderRadius: 0,
                             }}
@@ -122,7 +115,7 @@ export const NotFound: React.FC = () => {
                             onClick={() => window.location.reload()}
                             style={{
                                 background: 'transparent',
-                                borderColor: SECONDARY_COLOR,
+                                borderColor: 'var(--color-line)',
                                 color: TEXT_PRIMARY,
                                 borderRadius: 0,
                             }}

@@ -8,9 +8,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import { ROUTES } from '../Constants/routes.ts';
-import {
-    SECONDARY_COLOR,
-} from '../Constants/theme.ts';
 
 const { useBreakpoint } = Grid;
 
@@ -39,8 +36,10 @@ export const Navigation: React.FC = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
-        backgroundColor: `rgba(20, 20, 20, 0.98)`,
-        borderTop: `1px solid ${SECONDARY_COLOR}`,
+        background: 'color-mix(in srgb, var(--color-surface-1) 92%, transparent)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.45)',
         display: 'flex',
         justifyContent: 'space-around',
         padding: '8px 8px',

@@ -25,6 +25,8 @@ import {
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     fonts,
+    deriveSurfaceTokens,
+    isHexColor,
 } from '../Constants/theme';
 
 interface ThemeContextType {
@@ -81,14 +83,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const highlight = colors.highlight || HIGHLIGHT_COLOR;
         const text = colors.text || TEXT_PRIMARY;
 
+        // antd derives colors from its tokens, so only hand it plain hex values
+        const derived = deriveSurfaceTokens({ main, secondary, highlight, text });
+        const hexOr = (name: string, fallback: string) => (isHexColor(derived[name]) ? derived[name] : fallback);
+        const surface1 = hexOr('--color-surface-1', main);
+        const surface2 = hexOr('--color-surface-2', main);
+        const line = isHexColor(secondary) ? derived['--color-line'] : secondary;
+        const highlightSoft = isHexColor(highlight) ? derived['--color-highlight-soft'] : 'transparent';
+
         return {
             algorithm: antdThemeEngine.darkAlgorithm,
             token: {
                 colorPrimary: highlight,
                 colorBgBase: main,
-                colorBgContainer: main,
-                colorBorder: secondary,
-                colorBorderSecondary: secondary,
+                colorBgLayout: main,
+                colorBgContainer: surface1,
+                colorBgElevated: surface2,
+                colorBorder: line,
+                colorBorderSecondary: line,
+                colorSplit: line,
                 colorText: text,
                 colorTextSecondary: TEXT_SECONDARY,
                 colorLink: highlight,
@@ -103,45 +116,45 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     siderBg: main,
                 },
                 Card: {
-                    colorBgContainer: main,
-                    colorBorderSecondary: secondary,
+                    colorBgContainer: surface1,
+                    colorBorderSecondary: line,
                     borderRadiusLG: 0,
                 },
                 Button: {
                     colorBgContainer: 'transparent',
-                    colorBorder: secondary,
+                    colorBorder: line,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Input: {
-                    colorBgContainer: main,
-                    colorBorder: secondary,
+                    colorBgContainer: surface2,
+                    colorBorder: line,
                     colorText: text,
                     borderRadius: 0,
                 },
                 InputNumber: {
-                    colorBgContainer: main,
-                    colorBorder: secondary,
+                    colorBgContainer: surface2,
+                    colorBorder: line,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Select: {
-                    colorBgContainer: main,
-                    colorBorder: secondary,
+                    colorBgContainer: surface2,
+                    colorBorder: line,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Modal: {
-                    contentBg: main,
-                    headerBg: main,
+                    contentBg: surface1,
+                    headerBg: surface2,
                     titleColor: text,
                     borderRadiusLG: 0,
                 },
                 Table: {
-                    colorBgContainer: main,
-                    headerBg: main,
-                    borderColor: secondary,
-                    rowHoverBg: 'rgba(43, 62, 80, 0.2)',
+                    colorBgContainer: surface1,
+                    headerBg: surface2,
+                    borderColor: line,
+                    rowHoverBg: highlightSoft,
                     borderRadius: 0,
                 },
                 Slider: {

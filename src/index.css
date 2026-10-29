@@ -3,29 +3,59 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* ─── Animatable Geometry Tokens ──────────────────────────────────────────── */
+/* Registered so frame / fill / HUD colour changes transition smoothly. They
+   inherit so the ::after overlay of a chamfered container can read them;
+   every chamfered element sets its own values, so nesting never leaks. */
+@property --frame {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --fill {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --hud {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
 /* ─── Baseline ────────────────────────────────────────────────────────────── */
+/* Static fallbacks only: themeService injects the live values at runtime. */
 :root {
-  /* 75% Dominant: Dark Canvas & Surface */
+  /* 75% Dominant: canvas and elevation tiers */
   --color-main: #141414;
-  --color-main-surface: #141414;
-  --color-main-elevated: #1e1e1e;
+  --color-bg: #141414;
+  --color-surface-1: #1c1c1c;
+  --color-surface-2: #232323;
+  --color-surface-3: #2e2e2e;
+  --color-main-surface: #1c1c1c;
+  --color-main-elevated: #232323;
   --color-main-deep: #0a0a0a;
 
-  /* 10% Secondary: Borders & Framing only */
+  /* 10% Secondary: framing, used sparingly */
   --color-secondary: #2B3E50;
   --color-secondary-border: #2B3E50;
   --color-secondary-subtle: rgba(43, 62, 80, 0.4);
-  --color-secondary-hover: #3d5873;
+  --color-secondary-hover: #4e6175;
   --color-secondary-dark: #1b2834;
   --color-secondary-text: #6C7D8E;
+  --color-line: rgba(43, 62, 80, 0.45);
+  --color-line-strong: #2B3E50;
 
-  /* 15% Highlight: Brand Identifier & Active Cues */
+  /* 15% Highlight: brand identifier & active cues */
   --color-highlight: #00FF41;
-  --color-highlight-light: #33ff66;
-  --color-highlight-dark: #00cc33;
-  --color-highlight-glow: transparent;
-  --color-highlight-glow-strong: transparent;
-  --color-highlight-glow-subtle: transparent;
+  --color-highlight-light: #26ff67;
+  --color-highlight-dark: #00d91a;
+  --color-highlight-soft: rgba(0, 255, 65, 0.1);
+  --color-highlight-glow: rgba(0, 255, 65, 0.25);
+  --color-highlight-glow-strong: rgba(0, 255, 65, 0.55);
+  --color-highlight-glow-subtle: rgba(0, 255, 65, 0.12);
 
   /* Text & Content (Warm parchment #F7F1E5, not white!) */
   --color-text-primary: #F7F1E5;
@@ -38,6 +68,14 @@
   --color-status-warning: #FFAA00;
   --color-status-info: #00D8FF;
   --color-status-active: #00FF41;
+
+  /* Background grid */
+  --color-grid-dot: rgba(247, 241, 229, 0.2);
+  --color-grid-line: rgba(247, 241, 229, 0.09);
+
+  /* Depth */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
 
   /* Typography */
   --font-graphical: 'Orbitron', sans-serif;
@@ -60,11 +98,18 @@
 
   /* Border & Chamfer Geometric Tokens */
   --border-width: 1px;
+  --chamfer-xs: 4px;
   --chamfer-sm: 6px;
   --chamfer: 8px;
   --chamfer-md: 10px;
   --chamfer-lg: 12px;
   --chamfer-modal: 14px;
+  --hud-length: 10px;
+  --hud-width: 2px;
+
+  /* Motion */
+  --motion-fast: 0.14s;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
 
   /* Backward Compatibility Variables */
   --ui-accent-green: var(--color-highlight);
@@ -82,7 +127,8 @@
 
 html {
   scrollbar-gutter: stable;
-  background-color: var(--color-main);
+  scrollbar-color: var(--color-surface-3) transparent;
+  background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-content);
   -webkit-font-smoothing: antialiased;
@@ -92,7 +138,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--color-main);
+  background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-content);
   font-size: var(--font-size-content-web);
@@ -101,27 +147,59 @@ body {
   overflow-x: hidden;
 }
 
-.ant-layout,
-.ant-layout-header,
-.ant-layout-content,
-.lucy-page-header {
-  background-color: var(--color-main) !important;
+::selection {
+  background: var(--color-highlight-glow);
+  color: var(--color-text-primary);
 }
 
-/* ─── Custom Cybernetic Scrollbars ────────────────────────────────────────── */
+/* Layout is transparent so the page grid shows through */
+.ant-layout,
+.ant-layout-content {
+  background: transparent !important;
+}
+
+/* ─── Page Background Grid ────────────────────────────────────────────────── */
+/* Dot grid (48px major dots, dotted 8px minor rules) with a faint highlight
+   glow at the top. Tinted entirely by theme tokens. */
+.lucy-grid-bg,
+.ant-layout.lucy-grid-bg {
+  background-color: var(--color-bg) !important;
+  background-image:
+    radial-gradient(ellipse 1200px 520px at 50% -8%, var(--color-highlight-soft), transparent 70%),
+    radial-gradient(circle at 1px 1px, var(--color-grid-dot) 1.2px, transparent 1.2px),
+    radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px),
+    radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px) !important;
+  background-size: 100% 100%, 48px 48px, 8px 48px, 48px 8px !important;
+  background-position: 0 0, 0 0, 0 0, 0 0 !important;
+  background-repeat: no-repeat, repeat, repeat, repeat !important;
+  background-attachment: fixed !important;
+}
+
+.ant-layout.lucy-plain-bg {
+  background-color: var(--color-bg) !important;
+}
+
+/* Sticky page header: translucent, blurred, separated by depth not a rule */
+.ant-layout-header.lucy-page-header {
+  background: color-mix(in srgb, var(--color-surface-1) 82%, transparent) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-1);
+}
+
+/* ─── Scrollbars ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
-  background-color: var(--color-main);
+  background-color: transparent;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-main-deep);
-  border-left: 1px solid var(--color-secondary-subtle);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-secondary);
+  background: var(--color-surface-3);
   border-radius: 0;
 }
 
@@ -200,15 +278,27 @@ h6 {
   color: var(--color-text-primary);
 }
 
-/* ─── Ant Design Core Overrides (Strict 75-10-15 & 0px Radius) ─────────────── */
+/* Small "// LABEL" section caption */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.section-label::before {
+  content: "// ";
+  color: var(--color-highlight);
+}
+
+/* ─── Strict 0px Radius ───────────────────────────────────────────────────── */
 .ant-btn,
-.ant-btn-primary,
-.ant-btn-default,
 .ant-switch,
 .ant-slider,
 .ant-slider-rail,
 .ant-slider-track,
-.ant-slider-handle,
 .ant-input,
 .ant-input-number,
 .ant-select-selector,
@@ -221,12 +311,197 @@ h6 {
 .ant-layout-content,
 .ant-tag,
 .ant-dropdown-menu,
+.ant-select-dropdown,
+.ant-popover-inner,
+.ant-table,
+.ant-table-container,
 .ant-col,
 .ant-row {
   border-radius: 0 !important;
 }
 
-/* ─── Ant Design Tabs ──────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNIFIED CHAMFER SYSTEM
+   Top-right and bottom-left corners are cut. Every chamfered element is
+   driven by the same four variables:
+     --chamfer  cut size          --frame  border colour
+     --fill     background        --hud    corner-bracket colour (containers)
+   The straight edges are a real border; the two diagonals are thin gradient
+   stripes so the frame keeps the same width all the way round.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Shared geometry & frame (leaf controls and containers) */
+.chamfer-box,
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.lucy-movable-modal,
+.ant-alert,
+.ant-table,
+.ant-popover-inner,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.lucy-navigation-bar,
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector,
+.ant-input-number-group-addon,
+.ant-input-group-addon,
+.ant-tag,
+.ant-tooltip-inner {
+  border: var(--border-width) solid var(--frame) !important;
+  border-radius: 0 !important;
+  background-color: var(--fill) !important;
+  clip-path: polygon(0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer))) !important;
+  transition:
+    --frame var(--motion-fast) var(--motion-ease),
+    --fill var(--motion-fast) var(--motion-ease),
+    --hud var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease) !important;
+}
+
+/* Leaf controls draw the diagonals in their own background (inputs cannot
+   have pseudo-elements, and no child paints over their corners). Popups and
+   scrollable boxes use it too: an overlay would add 1px of scroll overflow,
+   while a background stays pinned to the box as the content scrolls. */
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector,
+.ant-input-number-group-addon,
+.ant-input-group-addon,
+.ant-tag,
+.ant-tooltip-inner,
+.ant-popover-inner,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.chamfer-box.chamfer-scroll {
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width)), var(--frame) 50%, transparent 50%),
+    linear-gradient(to top right, transparent 50%, var(--frame) 50%, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))) !important;
+  background-size: var(--chamfer) var(--chamfer) !important;
+  background-position: top right, bottom left !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+  box-shadow: none !important;
+}
+
+/* Containers draw the diagonals (and optional HUD corner brackets) on an
+   overlay, above children that paint their own backgrounds (headers, rows). */
+.chamfer-box,
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.lucy-movable-modal,
+.ant-alert,
+.ant-table,
+.lucy-navigation-bar,
+.tui-toggle {
+  --hud: transparent;
+  isolation: isolate;
+}
+
+.chamfer-box,
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.ant-alert,
+.ant-table,
+.lucy-navigation-bar,
+.tui-toggle {
+  position: relative;
+}
+
+.chamfer-box::after,
+.tui-container::after,
+.tui-container-dark::after,
+.ant-card::after,
+.ant-modal-content::after,
+.lucy-movable-modal::after,
+.ant-alert::after,
+.ant-table::after,
+.lucy-navigation-bar::after,
+.tui-toggle::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--border-width));
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width)), var(--frame) 50%, transparent 50%),
+    linear-gradient(to top right, transparent 50%, var(--frame) 50%, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))),
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud));
+  background-size:
+    var(--chamfer) var(--chamfer),
+    var(--chamfer) var(--chamfer),
+    var(--hud-length) var(--hud-width),
+    var(--hud-width) var(--hud-length),
+    var(--hud-length) var(--hud-width),
+    var(--hud-width) var(--hud-length);
+  background-position: top right, bottom left, top left, top left, bottom right, bottom right;
+  background-repeat: no-repeat;
+}
+
+/* Scrollable chamfer boxes draw their diagonals as a leaf (see above) */
+.chamfer-box.chamfer-scroll::after {
+  content: none;
+}
+
+/* Size modifiers */
+.chamfer-box-xs {
+  --chamfer: var(--chamfer-xs);
+}
+
+.chamfer-box-sm {
+  --chamfer: var(--chamfer-sm);
+}
+
+.chamfer-box-md {
+  --chamfer: var(--chamfer-md);
+}
+
+.chamfer-box-lg {
+  --chamfer: var(--chamfer-lg);
+}
+
+.chamfer-box-modal {
+  --chamfer: var(--chamfer-modal);
+}
+
+/* HUD corner brackets on the two square corners (opt-in utility) */
+.hud-corners,
+.hud-corners-hover:hover {
+  --hud: var(--color-highlight) !important;
+}
+
+/* ─── Generic Chamfer Utility ─────────────────────────────────────────────── */
+.chamfer-box {
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
+}
+
+/* ─── Ant Design Tabs ─────────────────────────────────────────────────────── */
 .ant-tabs {
   color: var(--color-text-primary);
 }
@@ -236,7 +511,7 @@ h6 {
 }
 
 .ant-tabs-nav::before {
-  border-bottom: 1px solid var(--color-secondary) !important;
+  border-bottom: none !important;
 }
 
 .ant-tabs-nav-wrap {
@@ -250,12 +525,13 @@ h6 {
   color: var(--color-text-secondary) !important;
   padding: 8px 14px !important;
   margin: 0 4px !important;
-  transition: all 0.2s ease !important;
+  transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease !important;
   border-radius: 0 !important;
 }
 
 .ant-tabs-tab:hover {
   color: var(--color-highlight) !important;
+  background-color: var(--color-highlight-soft);
 }
 
 .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -266,107 +542,116 @@ h6 {
 .ant-tabs-ink-bar {
   background: var(--color-highlight) !important;
   height: 2px !important;
+  box-shadow: 0 0 8px var(--color-highlight-glow);
 }
 
-/* Buttons */
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .ant-btn {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+
   font-family: var(--font-title) !important;
   letter-spacing: 0.5px !important;
-  transition: all 0.25s ease !important;
   position: relative !important;
-  border-color: var(--color-secondary) !important;
   color: var(--color-text-primary) !important;
-  background-color: transparent !important;
 }
 
-.ant-btn:hover {
-  border-color: var(--color-highlight) !important;
+.ant-btn:not(:disabled):hover {
+  --frame: var(--color-highlight);
+  --fill: var(--color-surface-3);
   color: var(--color-highlight) !important;
   transform: translateY(-1px);
 }
 
+.ant-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
 .ant-btn-primary {
-  background-color: var(--color-highlight) !important;
-  border-color: var(--color-highlight) !important;
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight);
   color: var(--color-text-on-highlight) !important;
   font-weight: 700 !important;
 }
 
-.ant-btn-primary:hover {
-  background-color: var(--color-highlight-light) !important;
-  border-color: var(--color-highlight-light) !important;
+.ant-btn-primary:not(:disabled):hover {
+  --frame: var(--color-highlight-light);
+  --fill: var(--color-highlight-light);
   color: var(--color-text-on-highlight) !important;
-  transform: translateY(-1px);
 }
 
-.ant-btn-primary:active {
-  transform: translateY(0);
+.ant-btn-dangerous {
+  --frame: var(--color-status-error);
+  color: var(--color-status-error) !important;
 }
 
-.ant-btn-default {
-  background-color: transparent !important;
-  border-color: var(--color-secondary) !important;
+.ant-btn-dangerous:not(:disabled):hover {
+  --frame: var(--color-status-error);
+  color: var(--color-status-error) !important;
+}
+
+.ant-btn-dangerous.ant-btn-primary {
+  --fill: var(--color-status-error);
   color: var(--color-text-primary) !important;
 }
 
-.ant-btn-default:hover {
-  background-color: rgba(0, 255, 65, 0.08) !important;
-  border-color: var(--color-highlight) !important;
-  color: var(--color-highlight) !important;
+.ant-btn-text,
+.ant-btn-link {
+  --frame: transparent;
+  --fill: transparent;
 }
 
-/* ─── Cards with Chamfered Corners ────────────────────────────────────────── */
-/* Chamfered top-right and bottom-left corners. The card background paints the
-   border colour; ::before fills the inside, its chamfer shortened so the
-   diagonal edges keep the exact same border width. */
+.ant-btn-text:not(:disabled):hover,
+.ant-btn-link:not(:disabled):hover {
+  --frame: transparent;
+  --fill: var(--color-highlight-soft);
+  transform: none;
+}
+
+.ant-btn:disabled {
+  --frame: var(--color-line);
+  --fill: transparent;
+  color: var(--color-text-muted) !important;
+  opacity: 0.6;
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────────────── */
 .ant-card {
-  --chamfer: var(--chamfer-md, 8px);
-  --card-border: var(--color-secondary);
-  --card-bg: var(--color-main);
-
-  position: relative !important;
-  isolation: isolate;
-  background: var(--card-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
   color: var(--color-text-primary) !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-  transition: background 0.2s ease, filter 0.2s ease;
 }
 
-.ant-card::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--card-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
-}
-
+/* Header separated by tone + an accent tick instead of a full-width rule */
 .ant-card-head {
-  border-bottom: 1px solid var(--color-secondary) !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
   color: var(--color-text-primary) !important;
   font-family: var(--font-title) !important;
   letter-spacing: 1px;
-  background: transparent !important;
+  background: var(--color-surface-2) !important;
 }
 
 .ant-card-head-title {
   color: var(--color-text-primary) !important;
   font-family: var(--font-title) !important;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+}
+
+.ant-card-head-title::before,
+.ant-modal-title::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  margin-right: 10px;
+  vertical-align: -2px;
+  background: var(--color-highlight);
+  box-shadow: 0 0 6px var(--color-highlight-glow);
 }
 
 .ant-card-body {
@@ -374,18 +659,17 @@ h6 {
 }
 
 .ant-card-hoverable:hover {
-  --card-border: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
+  --hud: var(--color-highlight) !important;
 }
 
-/* Control Page Joint Category Card */
+/* Control Page Joint Category Card: left accent bar instead of a head tick */
 .joint-category-card {
-  --chamfer: var(--chamfer-lg, 12px);
-  --card-border: var(--color-secondary);
-  --card-bg: var(--color-main);
+  --chamfer: var(--chamfer-lg);
   height: 100%;
 }
 
-.joint-category-card::after {
+.joint-category-card::before {
   content: "";
   position: absolute;
   top: 0;
@@ -393,85 +677,149 @@ h6 {
   width: 3px;
   bottom: var(--chamfer);
   background: var(--color-highlight);
-  z-index: 1;
+  box-shadow: 0 0 8px var(--color-highlight-glow);
+  z-index: 2;
   pointer-events: none;
 }
 
 /* Control Page Joint Control Card */
 .joint-control-card {
   --chamfer: 7px;
-  --card-border: var(--color-secondary);
-  --card-bg: var(--color-main);
-  transition: all 0.2s ease;
+  --fill: var(--color-surface-2);
 }
 
 .joint-control-card:hover {
-  --card-border: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
 }
 
 /* Theme Modal Preset Card */
 .preset-card {
   --chamfer: 8px;
-  --card-border: var(--color-secondary);
-  --card-bg: var(--color-main);
-  transition: all 0.2s ease;
 }
 
 .preset-card:hover {
-  --card-border: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
 }
 
 .preset-card.preset-card-active {
-  --card-border: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
+  --hud: var(--color-highlight) !important;
+  --fill: color-mix(in srgb, var(--color-highlight) 6%, var(--color-surface-1));
 }
 
-/* Inputs & Numbers */
-.ant-input,
-.ant-input-number,
-.ant-input-affix-wrapper,
-.ant-select-selector {
-  background-color: var(--color-main) !important;
-  border: 1px solid var(--color-secondary) !important;
+/* ─── Inputs, Numbers & Selects ───────────────────────────────────────────── */
+/* Recessed wells: one tone below the canvas */
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector {
+  --chamfer: 5px;
+  --frame: var(--color-line-strong);
+  --fill: var(--color-main-deep);
   color: var(--color-text-primary) !important;
   font-family: var(--font-mono) !important;
 }
 
-.ant-input:focus,
-.ant-input-focused,
-.ant-input-affix-wrapper:focus,
-.ant-input-affix-wrapper-focused,
-.ant-input-number:focus,
-.ant-input-number-focused,
-.ant-select-focused .ant-select-selector {
-  border-color: var(--color-highlight) !important;
-}
-
-.ant-input-number-input {
+.ant-input-affix-wrapper > .ant-input,
+.ant-input-number-outlined .ant-input-number-input {
+  background: transparent !important;
   color: var(--color-text-primary) !important;
   font-family: var(--font-mono) !important;
+}
+
+.ant-input-outlined:not(.ant-input-disabled):hover,
+.ant-input-number-outlined:not(.ant-input-number-disabled):hover,
+.ant-picker-outlined:not(.ant-picker-disabled):hover,
+.ant-select-outlined:not(.ant-select-disabled):hover .ant-select-selector {
+  --frame: var(--color-secondary-hover);
+}
+
+.ant-input-outlined:focus,
+.ant-input-outlined:focus-within,
+.ant-input-outlined.ant-input-affix-wrapper-focused,
+.ant-input-number-outlined.ant-input-number-focused,
+.ant-input-number-outlined:focus-within,
+.ant-picker-outlined.ant-picker-focused,
+.ant-select-outlined.ant-select-focused .ant-select-selector {
+  --frame: var(--color-highlight) !important;
+}
+
+.ant-input-outlined.ant-input-status-error,
+.ant-input-number-outlined.ant-input-number-status-error,
+.ant-select-outlined.ant-select-status-error .ant-select-selector {
+  --frame: var(--color-status-error) !important;
 }
 
 .ant-input-number-handler-wrap {
-  background-color: var(--color-main-elevated) !important;
-  border-left: 1px solid var(--color-secondary) !important;
+  background-color: transparent !important;
+  border-left: 1px solid var(--color-line) !important;
 }
 
 .ant-input-number-handler {
-  border-color: var(--color-secondary) !important;
+  border-color: var(--color-line) !important;
   color: var(--color-text-secondary) !important;
 }
 
 .ant-input-number-handler:hover {
   color: var(--color-highlight) !important;
+  background-color: var(--color-highlight-soft) !important;
 }
 
-/* Slider */
+/* Addon groups (field + unit): the pair reads as one chamfered control, the
+   first part keeps the bottom-left cut and the last part the top-right one. */
+.ant-input-number-group-addon,
+.ant-input-group-addon {
+  --chamfer: 5px;
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+  color: var(--color-text-secondary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :first-child:not(:last-child) {
+  border-right-width: 0 !important;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer))) !important;
+  background-size: 0 0, var(--chamfer) var(--chamfer) !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :last-child:not(:first-child) {
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%) !important;
+  background-size: var(--chamfer) var(--chamfer), 0 0 !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :not(:first-child):not(:last-child) {
+  border-right-width: 0 !important;
+  clip-path: none !important;
+  background-size: 0 0, 0 0 !important;
+}
+
+/* Dropdowns & popovers */
+.ant-select-dropdown,
+.ant-dropdown-menu,
+.ant-popover-inner {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.ant-dropdown-menu-item:hover {
+  background-color: var(--color-surface-3) !important;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: var(--color-highlight-soft) !important;
+  color: var(--color-highlight) !important;
+}
+
+/* ─── Slider ──────────────────────────────────────────────────────────────── */
 .ant-slider-rail {
-  background-color: var(--color-secondary) !important;
+  background-color: var(--color-surface-3) !important;
 }
 
 .ant-slider-track {
   background-color: var(--color-highlight) !important;
+  box-shadow: 0 0 6px var(--color-highlight-glow-subtle);
 }
 
 .ant-slider-handle {
@@ -489,78 +837,75 @@ h6 {
   transition: transform 0.08s ease !important;
 }
 
-/* Tables */
+/* ─── Tables ──────────────────────────────────────────────────────────────── */
+/* Zebra rows and a toned header replace per-row rules */
 .ant-table {
-  background: var(--color-main) !important;
+  --chamfer: 8px;
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
   color: var(--color-text-primary) !important;
-  border: 1px solid var(--color-secondary) !important;
 }
 
-.ant-table-thead>tr>th {
-  background: var(--color-main-deep) !important;
-  color: var(--color-text-primary) !important;
-  border-bottom: 1px solid var(--color-secondary) !important;
+.ant-table-thead > tr > th {
+  background: var(--color-surface-2) !important;
+  color: var(--color-text-secondary) !important;
+  border-bottom: none !important;
   font-family: var(--font-title) !important;
+  font-size: 12px;
   font-weight: 700 !important;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
-.ant-table-tbody>tr>td {
-  border-bottom: 1px solid var(--color-secondary-subtle) !important;
+.ant-table-thead > tr > th::before {
+  background-color: var(--color-line) !important;
+}
+
+.ant-table-tbody > tr > td {
+  background: transparent !important;
+  border-bottom: none !important;
   color: var(--color-text-primary) !important;
   font-family: var(--font-mono) !important;
 }
 
-.ant-table-tbody>tr:hover>td {
-  background: rgba(43, 62, 80, 0.25) !important;
+.ant-table-tbody > tr:nth-child(even) > td {
+  background: color-mix(in srgb, var(--color-surface-2) 55%, transparent) !important;
 }
 
-/* ─── Modals with Chamfered Corners ───────────────────────────────────────── */
+.ant-table-tbody > tr:hover > td {
+  background: var(--color-highlight-soft) !important;
+}
+
+/* ─── Modals ──────────────────────────────────────────────────────────────── */
+/* The shadow lives on the wrapper: a filter on the clipped element is clipped too */
+.ant-modal {
+  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.6));
+}
+
+.ant-modal-mask {
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
 .ant-modal-content {
-  --chamfer: var(--chamfer-modal, 14px);
-  --modal-border: var(--color-secondary);
-  --modal-bg: var(--color-main);
-
-  position: relative !important;
-  isolation: isolate !important;
-  background: var(--modal-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
+  --chamfer: var(--chamfer-modal);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-1);
+  --hud: var(--color-highlight) !important;
   color: var(--color-text-primary) !important;
-  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-}
-
-.ant-modal-content::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--modal-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
+  box-shadow: none !important;
 }
 
 .ant-modal-header {
   background-color: transparent !important;
-  border-bottom: 1px solid var(--color-secondary) !important;
+  border-bottom: none !important;
 }
 
 .ant-modal-title {
   color: var(--color-text-primary) !important;
   font-family: var(--font-title) !important;
+  letter-spacing: 1px;
 }
 
 .ant-modal-body {
@@ -569,121 +914,82 @@ h6 {
 
 .ant-modal-footer {
   background-color: transparent !important;
-  border-top: 1px solid var(--color-secondary) !important;
+  border-top: none !important;
 }
 
 /* Movable Modal (Floating Control Panel Tools) */
 .lucy-movable-modal {
-  --chamfer: var(--chamfer-modal, 14px);
-  --modal-border: var(--color-secondary);
-  --modal-bg: var(--color-main);
-
-  isolation: isolate;
-  background: var(--modal-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.85)) !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
+  --chamfer: var(--chamfer-modal);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-1);
+  --hud: var(--color-highlight) !important;
 }
 
-.lucy-movable-modal::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--modal-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
+.lucy-movable-modal-header {
+  background-color: var(--color-surface-2) !important;
 }
 
-/* Tags */
+/* ─── Tags ────────────────────────────────────────────────────────────────── */
 .ant-tag {
+  --chamfer: var(--chamfer-xs);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
   font-family: var(--font-mono) !important;
-  border-color: var(--color-secondary) !important;
-  background-color: var(--color-main-deep) !important;
-  color: var(--color-text-primary) !important;
   padding: 2px 8px !important;
 }
 
-/* Tooltips & Popovers */
+/* Neutral tags use the text colour; preset-coloured tags keep their own */
+.ant-tag:not(.ant-tag-has-color):not(:is(.ant-tag-green, .ant-tag-orange, .ant-tag-purple, .ant-tag-blue,
+  .ant-tag-red, .ant-tag-gold, .ant-tag-cyan, .ant-tag-magenta, .ant-tag-volcano, .ant-tag-lime,
+  .ant-tag-geekblue, .ant-tag-success, .ant-tag-error, .ant-tag-warning, .ant-tag-processing)) {
+  color: var(--color-text-primary) !important;
+}
+
+.ant-tag:is(.ant-tag-green, .ant-tag-orange, .ant-tag-purple, .ant-tag-blue, .ant-tag-red,
+  .ant-tag-gold, .ant-tag-cyan, .ant-tag-magenta, .ant-tag-volcano, .ant-tag-lime, .ant-tag-geekblue,
+  .ant-tag-success, .ant-tag-error, .ant-tag-warning, .ant-tag-processing) {
+  --frame: currentColor;
+  --fill: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* ─── Tooltips ────────────────────────────────────────────────────────────── */
 .ant-tooltip-inner {
-  background-color: var(--color-main-deep) !important;
-  border: 1px solid var(--color-secondary) !important;
+  --chamfer: var(--chamfer-xs);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-3);
   color: var(--color-text-primary) !important;
   font-family: var(--font-mono) !important;
   font-size: 11px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
-  border-radius: 0 !important;
 }
 
-.ant-tooltip-arrow::before {
-  background-color: var(--color-main-deep) !important;
-  border: 1px solid var(--color-secondary) !important;
+/* Chamfered tooltips read fine without an arrow */
+.ant-tooltip-arrow {
+  display: none !important;
 }
 
-/* ─── Alerts with Chamfered Corners ───────────────────────────────────────── */
+/* ─── Alerts ──────────────────────────────────────────────────────────────── */
 .ant-alert {
-  --chamfer: var(--chamfer-sm, 6px);
-  --alert-border: var(--color-secondary);
-  --alert-bg: var(--color-main-deep);
-
-  position: relative !important;
-  isolation: isolate;
-  background: var(--alert-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
+  --chamfer: var(--chamfer-sm);
+  --alert-color: var(--color-line-strong);
+  --frame: color-mix(in srgb, var(--alert-color) 70%, transparent);
+  --fill: color-mix(in srgb, var(--alert-color) 8%, var(--color-surface-1));
   color: var(--color-text-primary) !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-}
-
-.ant-alert::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--alert-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
 }
 
 .ant-alert-error {
-  --alert-border: var(--color-status-error);
+  --alert-color: var(--color-status-error);
 }
 
 .ant-alert-warning {
-  --alert-border: var(--color-status-warning);
+  --alert-color: var(--color-status-warning);
 }
 
 .ant-alert-info {
-  --alert-border: var(--color-secondary);
+  --alert-color: var(--color-status-info);
 }
 
 .ant-alert-success {
-  --alert-border: var(--color-highlight);
+  --alert-color: var(--color-highlight);
 }
 
 .ant-alert-message {
@@ -697,55 +1003,31 @@ h6 {
   font-family: var(--font-mono) !important;
 }
 
-/* ─── TUI Utility Classes & Chamfer Containers ────────────────────────────── */
+/* ─── Dividers ────────────────────────────────────────────────────────────── */
+.ant-divider {
+  border-color: var(--color-line) !important;
+}
+
+/* ─── TUI Containers ──────────────────────────────────────────────────────── */
 .tui-container,
 .tui-container-dark {
-  --chamfer: var(--chamfer-md, 10px);
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
-
-  position: relative !important;
-  isolation: isolate;
-  background: var(--box-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
   padding: var(--spacing-standard);
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-}
-
-.tui-container::before,
-.tui-container-dark::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--box-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
 }
 
 .tui-container-dark {
-  --box-bg: var(--color-main);
+  --fill: var(--color-main-deep);
 }
 
 /* Floating overlay panels in 3D viewer & pagination */
 .viewer-overlay-box {
   --chamfer: 6px;
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
-  backdrop-filter: blur(4px);
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 86%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 /* Collapsible overlay panels: collapsed to their title, expand on click */
@@ -754,6 +1036,7 @@ h6 {
 }
 
 .viewer-overlay-box.collapsible:hover {
+  --frame: var(--color-highlight);
   transform: translateY(-1px);
 }
 
@@ -826,83 +1109,27 @@ h6 {
 
 .category-pagination-anchor {
   --chamfer: 8px;
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 86%, transparent);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* ─── Universal Cybernetic Chamfer Utility ────────────────────────────────── */
-.chamfer-box {
-  --chamfer: var(--chamfer-md, 8px);
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
-
-  position: relative;
-  isolation: isolate;
-  background: var(--box-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-}
-
-.chamfer-box::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--box-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
-}
-
-.chamfer-box-sm {
-  --chamfer: var(--chamfer-sm, 6px);
-}
-
-.chamfer-box-md {
-  --chamfer: var(--chamfer-md, 10px);
-}
-
-.chamfer-box-lg {
-  --chamfer: var(--chamfer-lg, 12px);
-}
-
-.chamfer-box-modal {
-  --chamfer: var(--chamfer-modal, 14px);
-}
-
-/* ─── Navigation Bar & Nav Buttons Chamfer ───────────────────────────────── */
+/* ─── Navigation Bar & Nav Buttons ────────────────────────────────────────── */
 .lucy-navigation-bar {
-  --chamfer: var(--chamfer-lg, 12px);
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
+  --chamfer: var(--chamfer-lg);
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
   backdrop-filter: blur(8px);
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.7));
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .nav-item-btn {
   --chamfer: 6px;
-  --border-width: 1px;
-  --btn-border: var(--color-secondary);
-  --btn-bg: transparent;
+  --frame: var(--color-line);
+  --fill: transparent;
 
   position: relative !important;
-  isolation: isolate;
-  background: var(--btn-border) !important;
-  border: none !important;
-  border-radius: 0 !important;
   color: var(--color-text-primary) !important;
   font-family: var(--font-mono) !important;
   font-weight: bold !important;
@@ -914,71 +1141,70 @@ h6 {
   align-items: center !important;
   justify-content: center !important;
   gap: 6px !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
-  transition: all 0.2s ease !important;
-}
-
-.nav-item-btn::before {
-  --inner-chamfer: calc(var(--chamfer) - 0.586 * var(--border-width, 1px));
-
-  content: "";
-  position: absolute;
-  inset: var(--border-width, 1px);
-  z-index: -1;
-  background: var(--btn-bg);
-  clip-path: polygon(0 0,
-      calc(100% - var(--inner-chamfer)) 0,
-      100% var(--inner-chamfer),
-      100% 100%,
-      var(--inner-chamfer) 100%,
-      0 calc(100% - var(--inner-chamfer)));
-  pointer-events: none;
-  transition: background 0.2s ease;
 }
 
 .nav-item-btn:hover:not(:disabled) {
-  --btn-border: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
+  --fill: var(--color-highlight-soft) !important;
   color: var(--color-highlight) !important;
   transform: translateY(-1px);
 }
 
 .nav-item-btn.active {
-  --btn-border: var(--color-highlight) !important;
-  --btn-bg: var(--color-highlight) !important;
+  --frame: var(--color-highlight) !important;
+  --fill: var(--color-highlight) !important;
   color: var(--color-text-on-highlight) !important;
 }
 
 .nav-item-btn.active:hover {
-  --btn-border: var(--color-highlight-light) !important;
-  --btn-bg: var(--color-highlight-light) !important;
+  --frame: var(--color-highlight-light) !important;
+  --fill: var(--color-highlight-light) !important;
   color: var(--color-text-on-highlight) !important;
 }
 
-/* Header Status Indicators */
+/* ─── Header Status Indicators ────────────────────────────────────────────── */
 .header-status-box {
-  --chamfer: 6px;
-  --box-border: var(--color-secondary);
-  --box-bg: var(--color-main);
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-2);
+  /* Whole-pixel height (matches .nav-item-btn) so the bottom border is never
+     split across a sub-pixel and shaved by the clip */
+  height: 32px;
+  line-height: 1;
 }
 
+/* Square status LED with a soft glow, coloured through `color` */
+.status-led {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  background-color: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.status-led-pulse {
+  animation: statusLedPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes statusLedPulse {
+  50% { opacity: 0.35; box-shadow: none; }
+}
+
+/* ─── TUI Toggle ──────────────────────────────────────────────────────────── */
 .tui-toggle {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-main-deep);
+
   display: inline-flex;
-  border: 1px solid var(--color-secondary);
-  background-color: var(--color-main);
   font-family: var(--font-mono);
   font-size: 12px;
-  transition: all 0.2s ease;
-  position: relative;
   overflow: hidden;
 }
 
 .tui-toggle:hover {
-  border-color: var(--color-highlight);
+  --frame: var(--color-highlight);
 }
 
 .tui-toggle-button {
@@ -990,7 +1216,7 @@ h6 {
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease;
   position: relative;
   z-index: 2;
 }
@@ -1011,14 +1237,14 @@ h6 {
 
 .tui-toggle-divider {
   width: 1px;
-  background-color: var(--color-secondary);
+  background-color: var(--color-line);
 }
 
 /* ─── Joint Category Scrollbar Styling with Spacing ───────────────────────── */
 .joint-category-scroll {
   padding-right: 10px;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-secondary) transparent;
+  scrollbar-color: var(--color-surface-3) transparent;
 }
 
 .joint-category-scroll::-webkit-scrollbar {
@@ -1032,10 +1258,46 @@ h6 {
 }
 
 .joint-category-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-secondary);
-  border-radius: 3px;
+  background: var(--color-surface-3);
+  border-radius: 0;
 }
 
 .joint-category-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-highlight);
+}
+
+/* ─── Keyboard Focus ──────────────────────────────────────────────────────── */
+/* Plain elements get an outline; chamfered ones would clip it, so they light
+   their frame and add an inner ring instead. */
+:where(a, button, [role="button"], [tabindex]:not([tabindex="-1"]), summary):focus-visible {
+  outline: 2px solid var(--color-highlight);
+  outline-offset: 2px;
+}
+
+.ant-btn:focus-visible,
+.nav-item-btn:focus-visible,
+.tui-toggle-button:focus-visible,
+.chamfer-box:focus-visible,
+.ant-card:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
+}
+
+/* ─── Reduced Motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ant-btn:hover,
+  .nav-item-btn:hover,
+  .viewer-overlay-box.collapsible:hover {
+    transform: none !important;
+  }
 }

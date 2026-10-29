@@ -8,8 +8,6 @@ import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import CryptoJS from 'crypto-js';
 import {
-    MAIN_COLOR,
-    SECONDARY_COLOR,
     TEXT_SECONDARY,
     STATUS_ERROR,
     fonts,
@@ -68,22 +66,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
     };
 
     return (
-        <div style={{
+        <div className="lucy-grid-bg" style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '100vh',
-            background: MAIN_COLOR,
             padding: '30px'
         }}>
             <Card
+                className="hud-corners"
                 style={{
                     width: '100%',
                     maxWidth: 440,
-                    backgroundColor: MAIN_COLOR,
-                    border: `1px solid ${SECONDARY_COLOR}`,
-                    borderRadius: 0,
-                    boxShadow: `0 16px 48px rgba(0, 0, 0, 0.8), 0 0 1px ${SECONDARY_COLOR}`
                 }}
                 styles={{ body: { padding: '40px 32px' } }}
             >
@@ -139,13 +133,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         <Input
                             prefix={<UserOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Username"
-                            style={{
-                                backgroundColor: 'var(--color-main)',
-                                borderColor: 'var(--color-secondary)',
-                                color: 'var(--color-text-primary)',
-                                fontFamily: fonts.mono,
-                                borderRadius: 0,
-                            }}
                         />
                     </Form.Item>
 
@@ -159,13 +146,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         <Input.Password
                             prefix={<LockOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Password"
-                            style={{
-                                backgroundColor: 'var(--color-main)',
-                                borderColor: 'var(--color-secondary)',
-                                color: 'var(--color-text-primary)',
-                                fontFamily: fonts.mono,
-                                borderRadius: 0,
-                            }}
                         />
                     </Form.Item>
 
@@ -193,14 +173,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     </Form.Item>
                 </Form>
 
-                <div style={{
+                <div className="chamfer-box chamfer-box-sm" style={{
                     textAlign: 'center',
                     marginTop: 24,
                     padding: '12px',
-                    backgroundColor: 'var(--color-main)',
-                    border: '1px solid var(--color-secondary)',
-                    borderRadius: 0,
-                }}>
+                    '--fill': 'var(--color-main-deep)',
+                } as React.CSSProperties}>
                     <Text style={{ color: TEXT_SECONDARY, fontFamily: fonts.mono, fontSize: 11, letterSpacing: '0.5px' }}>
                         Secure access to Lucy robot control system
                     </Text>

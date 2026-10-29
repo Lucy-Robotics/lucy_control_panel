@@ -75,14 +75,14 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div
+                    className="chamfer-box chamfer-box-sm"
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '12px 16px',
-                        background: 'rgba(43, 62, 80, 0.25)',
-                        border: '1px solid var(--color-secondary)',
-                    }}
+                        '--fill': 'var(--color-surface-2)',
+                    } as React.CSSProperties}
                 >
                     <div>
                         <CustomTitle title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
@@ -103,7 +103,6 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                     defaultActiveKey="presets"
                     tabBarStyle={{
                         marginBottom: 16,
-                        borderBottom: '1px solid var(--color-secondary)',
                     }}
                     items={[
                         {

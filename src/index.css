@@ -358,12 +358,14 @@ h6 {
   border: var(--border-width) solid var(--frame) !important;
   border-radius: 0 !important;
   background-color: var(--fill) !important;
-  clip-path: polygon(0 0,
-      calc(100% - var(--chamfer)) 0,
-      100% var(--chamfer),
-      100% 100%,
-      var(--chamfer) 100%,
-      0 calc(100% - var(--chamfer))) !important;
+  /* The polygon runs 1px past every straight edge (sliding along the same
+     diagonals) so a border on a sub-pixel position is never shaved. */
+  clip-path: polygon(-1px -1px,
+      calc(100% - var(--chamfer) - 1px) -1px,
+      calc(100% + 1px) calc(var(--chamfer) + 1px),
+      calc(100% + 1px) calc(100% + 1px),
+      calc(var(--chamfer) + 1px) calc(100% + 1px),
+      -1px calc(100% - var(--chamfer) - 1px)) !important;
   transition:
     --frame var(--motion-fast) var(--motion-ease),
     --fill var(--motion-fast) var(--motion-ease),
@@ -778,12 +780,14 @@ h6 {
 
 :is(.ant-input-number-group, .ant-input-group) > :first-child:not(:last-child) {
   border-right-width: 0 !important;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer))) !important;
+  clip-path: polygon(-1px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% + 1px),
+      calc(var(--chamfer) + 1px) calc(100% + 1px), -1px calc(100% - var(--chamfer) - 1px)) !important;
   background-size: 0 0, var(--chamfer) var(--chamfer) !important;
 }
 
 :is(.ant-input-number-group, .ant-input-group) > :last-child:not(:first-child) {
-  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%) !important;
+  clip-path: polygon(-1px -1px, calc(100% - var(--chamfer) - 1px) -1px, calc(100% + 1px) calc(var(--chamfer) + 1px),
+      calc(100% + 1px) calc(100% + 1px), -1px calc(100% + 1px)) !important;
   background-size: var(--chamfer) var(--chamfer), 0 0 !important;
 }
 
@@ -1167,9 +1171,7 @@ h6 {
   --chamfer: var(--chamfer-sm);
   --frame: var(--color-line);
   --fill: var(--color-surface-2);
-  /* Whole-pixel height (matches .nav-item-btn) so the bottom border is never
-     split across a sub-pixel and shaved by the clip */
-  height: 32px;
+  height: 32px; /* matches .nav-item-btn */
   line-height: 1;
 }
 

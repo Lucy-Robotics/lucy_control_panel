@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useMemo, useCallback, useContext } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
@@ -13,6 +13,9 @@ import { Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { ViewCube } from '../Components/ViewCube';
+import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
+import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
@@ -23,6 +26,14 @@ import {
     resolveActuatedLinkName,
     urdfNameOf,
 } from '../Utils/robotModel.utils';
+import {
+    CAMERA_FOV,
+    MAX_CAMERA_DISTANCE,
+    MIN_CAMERA_DISTANCE,
+    distanceForZoom,
+    getRobotBoundingBox,
+    zoomForDistance,
+} from '../Utils/camera.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
@@ -39,6 +50,7 @@ import {
 const { Text } = Typography;
 
 const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
+const STORAGE_KEY_ORTHOGRAPHIC = 'lucy_3d_orthographic';
 
 const getInitialUnselectedOpacity = (): number => {
     try {
@@ -67,6 +79,7 @@ const MOUSE_HINTS = [
     'click part · joint gizmo (control on)',
     'click space · hide gizmo',
     'drag ring · set joint target',
+    'click cube · snap view',
 ];
 
 type Vec3 = [number, number, number];
@@ -76,10 +89,15 @@ const DEFAULT_CAMERA: { readonly position: Vec3; readonly target: Vec3 } = {
     target: [0, 1, 0],
 };
 
+const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(...DEFAULT_CAMERA.position)
+    .sub(new THREE.Vector3(...DEFAULT_CAMERA.target))
+    .normalize();
+
 const savedCamera: { position: Vec3; target: Vec3 } = {
     position: [...DEFAULT_CAMERA.position],
     target: [...DEFAULT_CAMERA.target],
 };
+let framedRobot: URDFRobot | null = null;
 
 const isEditableTarget = (target: EventTarget | null): boolean =>
     target instanceof HTMLElement
@@ -250,7 +268,11 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     selectedPartName,
     controlsRef,
 }) => {
-    const { camera } = useThree();
+    const camera = useThree(s => s.camera);
+    const orbitControls = useThree(s => s.controls);
+    const viewportHeight = useThree(s => s.size.height);
+    const startZoomRef = useRef<number>(1);
+    const targetZoomRef = useRef<number | null>(null);
     const localCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const lastWorldCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
     const isTransitioningRef = useRef<boolean>(false);
@@ -278,7 +300,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
             controls.removeEventListener('start', handleStart);
             controls.removeEventListener('end', handleEnd);
         };
-    }, [controlsRef]);
+    }, [controlsRef, orbitControls]);
 
     useEffect(() => {
         if (!robot || !selectedPartName) {
@@ -312,9 +334,18 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
                 : rawDir.normalize();
 
             desiredOffsetRef.current.copy(dir.multiplyScalar(framingDist));
+            // Ortho size doesn't depend on distance, so frame the part through zoom
+            if (camera instanceof THREE.OrthographicCamera) {
+                startZoomRef.current = camera.zoom;
+                targetZoomRef.current = zoomForDistance(framingDist, viewportHeight);
+            } else {
+                targetZoomRef.current = null;
+            }
             isTransitioningRef.current = true;
             transitionProgressRef.current = 0;
         }
+        // Resizing must not re-trigger the framing transition
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [robot, selectedPartName, camera, controlsRef]);
 
     useFrame((_state, delta) => {
@@ -336,6 +367,10 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
             const targetCamPos = currentWorldCenter.clone().add(desiredOffsetRef.current);
             controls.target.lerpVectors(startTargetRef.current, currentWorldCenter, ease);
             camera.position.lerpVectors(startCamPosRef.current, targetCamPos, ease);
+            if (targetZoomRef.current !== null && camera instanceof THREE.OrthographicCamera) {
+                camera.zoom = THREE.MathUtils.lerp(startZoomRef.current, targetZoomRef.current, ease);
+                camera.updateProjectionMatrix();
+            }
             controls.update();
 
             if (rawT >= 1) {
@@ -357,6 +392,59 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
             lastWorldCenterRef.current.copy(currentWorldCenter);
         }
     });
+
+    return null;
+};
+
+const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl | null> }> = ({ controlsRef }) => {
+    const camera = useThree(s => s.camera);
+    const viewportHeight = useThree(s => s.size.height);
+    const prevCameraRef = useRef<THREE.Camera | null>(null);
+    const lastTargetRef = useRef(new THREE.Vector3(...savedCamera.target));
+
+    useFrame(() => {
+        const controls = controlsRef.current;
+        if (controls) lastTargetRef.current.copy(controls.target);
+    });
+
+    useLayoutEffect(() => {
+        const prev = prevCameraRef.current;
+        prevCameraRef.current = camera;
+        if (prev === camera) return;
+
+        const target = lastTargetRef.current.clone();
+        const fromPosition = prev ? prev.position.clone() : new THREE.Vector3(...savedCamera.position);
+        const offset = fromPosition.clone().sub(target);
+        const distance = Math.max(offset.length(), MIN_CAMERA_DISTANCE);
+        const dir = offset.lengthSq() > 1e-12 ? offset.normalize() : new THREE.Vector3(0, 0, 1);
+
+        if (camera instanceof THREE.OrthographicCamera) {
+            camera.zoom = zoomForDistance(distance, viewportHeight);
+            camera.position.copy(target).addScaledVector(dir, distance);
+        } else {
+            const perspectiveDistance = prev instanceof THREE.OrthographicCamera
+                ? THREE.MathUtils.clamp(distanceForZoom(prev.zoom, viewportHeight), MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE)
+                : distance;
+            camera.position.copy(target).addScaledVector(dir, perspectiveDistance);
+        }
+        camera.lookAt(target);
+        if (camera instanceof THREE.OrthographicCamera || camera instanceof THREE.PerspectiveCamera) {
+            camera.updateProjectionMatrix();
+        }
+
+        const controls = controlsRef.current;
+        if (controls) {
+            controls.target.copy(target);
+            controls.update();
+        }
+    }, [camera, controlsRef, viewportHeight]);
+
+    useEffect(() => {
+        const controls = controlsRef.current;
+        if (!controls) return;
+        controls.minZoom = zoomForDistance(MAX_CAMERA_DISTANCE, viewportHeight);
+        controls.maxZoom = zoomForDistance(MIN_CAMERA_DISTANCE, viewportHeight);
+    }, [camera, controlsRef, viewportHeight]);
 
     return null;
 };
@@ -394,7 +482,31 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
+    const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
+    const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
+
+    const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
+        setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction, instant }));
+    }, []);
     const [selectedPartName, setSelectedPartName] = useState<string | null>(null);
+
+    const getFramingBox = useCallback((): THREE.Box3 | null => {
+        if (!robot) return null;
+        const link = selectedPartName ? robot.links[selectedPartName] : undefined;
+        if (!link) return getRobotBoundingBox(robot);
+        link.updateWorldMatrix(true, true);
+        return getLinkBoundingBox(link);
+    }, [robot, selectedPartName]);
+
+    const loadedOnMountRef = useRef(robot !== null && !loading);
+    const userMovedCameraRef = useRef(false);
+    useEffect(() => {
+        if (!robot || loading || framedRobot === robot) return;
+        framedRobot = robot;
+        if (userMovedCameraRef.current) return;
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
+    }, [robot, loading, handleSelectView]);
+
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
 
     const handleUnselectedOpacityChange = (val: number) => {
@@ -563,10 +675,19 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const handleResetCamera = () => {
         setSelectedPartName(null);
+        if (robot) {
+            handleSelectView(DEFAULT_VIEW_DIRECTION.clone());
+            return;
+        }
         const controls = controlsRef.current;
         if (!controls) return;
         controls.target.set(...DEFAULT_CAMERA.target);
         controls.object.position.set(...DEFAULT_CAMERA.position);
+        if (controls.object instanceof THREE.OrthographicCamera) {
+            const distance = new THREE.Vector3(...DEFAULT_CAMERA.position).distanceTo(new THREE.Vector3(...DEFAULT_CAMERA.target));
+            controls.object.zoom = zoomForDistance(distance, controls.domElement?.clientHeight ?? window.innerHeight);
+            controls.object.updateProjectionMatrix();
+        }
         controls.update();
     };
 
@@ -591,10 +712,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         >
             {loading && <LoadingBar progress={progress} />}
             <Canvas
-                camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
                 onPointerMissed={handlePointerMissed}
             >
+                {orthographic ? (
+                    <OrthographicCamera makeDefault position={initialCamera.position} near={-50} far={500} />
+                ) : (
+                    <PerspectiveCamera makeDefault position={initialCamera.position} fov={CAMERA_FOV} near={0.1} far={500} />
+                )}
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
                 <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN_HEX} />
@@ -658,13 +783,18 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
+                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate
                     dampingFactor={0.1}
-                    minDistance={0.2}
-                    maxDistance={10}
+                    minDistance={MIN_CAMERA_DISTANCE}
+                    maxDistance={MAX_CAMERA_DISTANCE}
                 />
+
+                <ProjectionSync controlsRef={controlsRef} />
+                <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
+                <ViewCube colors={themeColors} onSelectView={handleSelectView} />
             </Canvas>
 
             {/* Controls hint — top-left */}
@@ -744,6 +874,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
+                <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
 
                 <button
                     onClick={handleResetCamera}

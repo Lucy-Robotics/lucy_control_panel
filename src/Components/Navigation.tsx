@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import { ROUTES } from '../Constants/routes.ts';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 
 const { useBreakpoint } = Grid;
 
@@ -21,6 +22,17 @@ export const Navigation: React.FC = () => {
     const location = useLocation();
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+    const [mobileNavRef, mobileNavHeight] = useMeasuredHeight<HTMLDivElement>();
+
+    // Lets sticky page elements (e.g. the category strip) sit above the fixed mobile nav
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isMobile && mobileNavHeight > 0) {
+            root.style.setProperty('--mobile-nav-height', `${mobileNavHeight}px`);
+        } else {
+            root.style.removeProperty('--mobile-nav-height');
+        }
+    }, [isMobile, mobileNavHeight]);
 
     const desktopStyle: React.CSSProperties = {
         position: 'fixed',
@@ -48,7 +60,7 @@ export const Navigation: React.FC = () => {
 
     if (isMobile) {
         return (
-            <div style={mobileStyle}>
+            <div ref={mobileNavRef} style={mobileStyle}>
                 {navigationItems.map(item => {
                     const isActive = location.pathname === item.to;
                     return (

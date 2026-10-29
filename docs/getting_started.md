@@ -36,7 +36,7 @@ The control panel has to connect to this bridge everytime, which is made automat
 
 > This is where you'll control your robot, and it's full of stuff, so let's go over the basics!
 
-First thing first, you will need to take control over the robot. This can be achieved by using the 'Control robot' toggle.
+First thing first, you will need to take control over the robot. This can be achieved by using the ⚡ 'Control Robot' button at the top of the command rail, on the left of the page.
 > This security system ensure that no more than one controller is sending instruction to your robot. When activated, this will take control from other control applications.
 
 ---
@@ -56,7 +56,7 @@ Every slider comes with two indicators:
 
 ## Poses
 
-In the top bar controls, you can find the 'Save pose' & 'Load pose' popups.
+In the command rail, the 'Manage poses & animations' button opens the 'Save pose' & 'Load pose' popups. The same rail also lets you reset every joint, try a random pose, start teleoperation and choose which windows & docked panel are shown.
 
 They will let you save every actuators position and load them at a later time when needed.
 

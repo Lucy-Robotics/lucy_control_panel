@@ -354,7 +354,11 @@ h6 {
 .ant-input-number-group-addon,
 .ant-input-group-addon,
 .ant-tag,
-.ant-tooltip-inner {
+.ant-tooltip-inner,
+.command-rail,
+.rail-btn,
+.category-strip,
+.category-tab {
   border: var(--border-width) solid var(--frame) !important;
   border-radius: 0 !important;
   background-color: var(--fill) !important;
@@ -392,7 +396,11 @@ h6 {
 .ant-popover-inner,
 .ant-dropdown-menu,
 .ant-select-dropdown,
-.chamfer-box.chamfer-scroll {
+.chamfer-box.chamfer-scroll,
+.command-rail,
+.rail-btn,
+.category-strip,
+.category-tab {
   background-image:
     linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width)), var(--frame) 50%, transparent 50%),
     linear-gradient(to top right, transparent 50%, var(--frame) 50%, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))) !important;
@@ -811,7 +819,8 @@ h6 {
   background-color: var(--color-surface-3) !important;
 }
 
-.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled),
+.ant-dropdown-menu-item-selected {
   background-color: var(--color-highlight-soft) !important;
   color: var(--color-highlight) !important;
 }
@@ -1111,12 +1120,89 @@ h6 {
   flex-direction: column;
 }
 
-.category-pagination-anchor {
+/* ─── Joint Category Strip (pages of categories, under the cards) ─────────── */
+.category-strip {
   --chamfer: 8px;
-  --frame: var(--color-line-strong);
-  --fill: color-mix(in srgb, var(--color-surface-1) 86%, transparent);
+  --frame: var(--color-line);
+  --fill: color-mix(in srgb, var(--color-surface-1) 90%, transparent);
+
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+.category-strip > .rail-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+/* Scrolls sideways when the panel is narrow; the arrows keep every page reachable */
+.category-tabs {
+  position: relative; /* offset parent for the active-tab scroll math */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Centre the tabs between the arrows; auto margins (unlike justify-content)
+   collapse when the row overflows, so the first tab stays reachable */
+.category-tab:first-child {
+  margin-left: auto;
+}
+
+.category-tab:last-child {
+  margin-right: auto;
+}
+
+.category-tab {
+  --chamfer: var(--chamfer-sm);
+  --frame: transparent;
+  --fill: transparent;
+
+  flex: none;
+  max-width: 180px;
+  height: 32px;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.category-tab:hover {
+  --fill: var(--color-surface-3);
+  color: var(--color-text-primary);
+}
+
+.category-tab[aria-selected="true"] {
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight-soft);
+  color: var(--color-highlight);
+}
+
+.category-tab:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
 }
 
 /* ─── Navigation Bar & Nav Buttons ────────────────────────────────────────── */
@@ -1191,6 +1277,226 @@ h6 {
 
 @keyframes statusLedPulse {
   50% { opacity: 0.35; box-shadow: none; }
+}
+
+/* ─── Control Page Command Rail ────────────────────────────────────────────── */
+.command-rail {
+  --chamfer: var(--chamfer-lg);
+  --frame: var(--color-line);
+  --fill: color-mix(in srgb, var(--color-surface-1) 90%, transparent);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.command-rail[data-orientation="horizontal"] {
+  --chamfer: var(--chamfer-sm);
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px;
+}
+
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-group {
+  flex-direction: row;
+  gap: 2px;
+}
+
+.rail-code {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-code {
+  display: none;
+}
+
+.rail-divider {
+  flex: none;
+  width: 36px;
+  height: 1px;
+  background: var(--color-line);
+}
+
+.command-rail[data-orientation="horizontal"] .rail-divider {
+  width: 1px;
+  height: 24px;
+}
+
+/* Wrapper keeps the tooltip alive while the button is disabled */
+.rail-slot {
+  display: inline-flex;
+}
+
+.rail-btn {
+  --chamfer: var(--chamfer-sm);
+  --frame: transparent;
+  --fill: transparent;
+
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 60px;
+  min-height: 48px;
+  padding: 6px 2px;
+  font-size: 17px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.rail-icon {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.rail-caption,
+.rail-detail {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.rail-caption {
+  color: var(--color-text-secondary);
+}
+
+.rail-btn:not(:disabled):hover .rail-caption,
+.rail-btn[aria-pressed="true"] .rail-caption,
+.rail-btn-danger .rail-caption,
+.rail-arm .rail-caption {
+  color: inherit;
+}
+
+/* Current value (e.g. the docked panel), read as a small inset tag */
+.rail-detail {
+  padding: 2px 4px;
+  color: var(--color-highlight);
+  background: var(--color-highlight-soft);
+}
+
+.rail-btn:not(:disabled):hover {
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-3);
+  color: var(--color-highlight);
+}
+
+.rail-btn[aria-pressed="true"] {
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight-soft);
+  color: var(--color-highlight);
+}
+
+.rail-btn:disabled {
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.rail-slot:has(.rail-btn:disabled) {
+  cursor: help;
+}
+
+.rail-btn-danger,
+.rail-btn-danger:not(:disabled):hover {
+  --frame: var(--color-status-error);
+  --fill: color-mix(in srgb, var(--color-status-error) 14%, transparent);
+  color: var(--color-status-error);
+}
+
+.rail-btn:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
+}
+
+/* Arm switch: the one control everything else depends on */
+.rail-arm {
+  min-height: 62px;
+  --frame: color-mix(in srgb, var(--color-status-error) 60%, transparent);
+  --fill: color-mix(in srgb, var(--color-status-error) 8%, transparent);
+  color: var(--color-status-error);
+}
+
+.rail-arm:not(:disabled):hover {
+  --frame: var(--color-status-error);
+  --fill: color-mix(in srgb, var(--color-status-error) 16%, transparent);
+  color: var(--color-status-error);
+}
+
+.rail-arm.is-on,
+.rail-arm.is-on:not(:disabled):hover {
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight);
+  color: var(--color-text-on-highlight);
+}
+
+.rail-arm .rail-caption {
+  opacity: 0.8;
+}
+
+/* Glow on the wrapper: a filter on the clipped button would be clipped too */
+.rail-slot:has(.rail-arm.is-on) {
+  filter: drop-shadow(0 0 6px var(--color-highlight-glow));
+}
+
+.rail-arm-state {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-btn {
+  width: 35px;
+  min-height: 40px;
+  padding: 4px 1px;
+  gap: 3px;
+  font-size: 14px;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-caption {
+  font-size: 7px;
+  letter-spacing: 0;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-detail {
+  display: none;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-arm {
+  width: 40px;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-arm .rail-caption {
+  display: none;
 }
 
 /* ─── TUI Toggle ──────────────────────────────────────────────────────────── */

@@ -57,7 +57,6 @@ const getInitialUnselectedOpacity = (): number => {
 
 const SETTINGS_BOX_WIDTH = 165;
 const FOCUS_COLOR = 'var(--color-highlight)';
-const CLICK_DELAY_MS = 250;
 const MOUSE_HINTS = [
     'L-drag · rotate',
     'scroll · zoom',
@@ -453,39 +452,18 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
-    const pendingClickTimerRef = useRef<number | null>(null);
-
-    const cancelPendingClick = useCallback(() => {
-        if (pendingClickTimerRef.current !== null) {
-            window.clearTimeout(pendingClickTimerRef.current);
-            pendingClickTimerRef.current = null;
-        }
-    }, []);
-
-    // Single clicks wait out the double-click window, so a double-click
-    // focuses without briefly opening the gizmo first.
-    const scheduleClick = useCallback((action: () => void) => {
-        cancelPendingClick();
-        pendingClickTimerRef.current = window.setTimeout(() => {
-            pendingClickTimerRef.current = null;
-            action();
-        }, CLICK_DELAY_MS);
-    }, [cancelPendingClick]);
 
     const handlePartClick = useCallback((name: string) => {
         if (!effectiveControlOn) return;
-        scheduleClick(() => setGizmoPartName(prev => (prev === name ? null : name)));
-    }, [effectiveControlOn, scheduleClick]);
+        setGizmoPartName(prev => (prev === name ? null : name));
+    }, [effectiveControlOn]);
 
     useEffect(() => {
         if (effectiveControlOn) return;
-        cancelPendingClick();
         setGizmoPartName(null);
         ghostTargetsRef.current.clear();
         setGhostJointNames([]);
-    }, [effectiveControlOn, cancelPendingClick]);
-
-    useEffect(() => cancelPendingClick, [cancelPendingClick]);
+    }, [effectiveControlOn]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -548,16 +526,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const handlePartDoubleClick = (partName: string) => {
-        cancelPendingClick();
         setSelectedPartName(prev => (prev === partName ? null : partName));
     };
 
     const handlePointerMissed = (e: MouseEvent) => {
         if (e.type === 'dblclick') {
-            cancelPendingClick();
             setSelectedPartName(null);
         } else if (e.type === 'click' && e.detail <= 1) {
-            scheduleClick(() => setGizmoPartName(null));
+            setGizmoPartName(null);
         }
     };
 

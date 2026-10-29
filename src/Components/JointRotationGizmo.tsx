@@ -18,10 +18,8 @@ import {
     getJointAngle,
     getLinkBoundingBox,
     isURDFLink,
-    jointAngleError,
     urdfNameOf,
     wrapAngle,
-    TARGET_REACHED_TOLERANCE_RAD,
 } from '../Utils/robotModel.utils';
 
 const RENDER_ORDER = 1000;
@@ -139,7 +137,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const mats = useMemo(() => ({
         ring: overlayMaterial(0.55),
         knob: overlayMaterial(1),
-        target: overlayMaterial(0.9),
     }), []);
 
     useEffect(() => () => Object.values(mats).forEach(m => m.dispose()), [mats]);
@@ -148,7 +145,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         ring: new THREE.TorusGeometry(radius, radius * 0.008, 6, 128),
         hitbox: new THREE.TorusGeometry(radius, radius * 0.38, 16, 48),
         knob: new THREE.CircleGeometry(radius * 0.035, 24),
-        target: new THREE.RingGeometry(radius * 0.024, radius * 0.035, 24),
     }), [radius]);
 
     useEffect(() => () => Object.values(geos).forEach(g => g.dispose()), [geos]);
@@ -394,7 +390,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     }, [joint]);
 
     const knobRef = useRef<THREE.Mesh>(null);
-    const targetRef = useRef<THREE.Group>(null);
     const badgeAnchorRef = useRef<THREE.Group>(null);
     const badgeValueRef = useRef<HTMLSpanElement>(null);
 
@@ -425,10 +420,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const fade = fadeRef.current;
         mats.ring.color.set(dragging ? colors.active : colors.accent);
         mats.knob.color.set(colors.active);
-        mats.target.color.set(colors.accent);
         mats.ring.opacity = (dragging ? 1 : hovered ? 0.9 : 0.55) * fade;
         mats.knob.opacity = fade;
-        mats.target.opacity = 0.9 * fade;
 
         if (knobRef.current) {
             knobRef.current.visible = hovered || dragging;
@@ -437,12 +430,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         const actual = getJointAngle(joint);
         const pending = dragging ? undefined : getPendingTarget?.(jointName);
-        if (targetRef.current) {
-            const show = pending !== undefined
-                && Math.abs(jointAngleError(joint, actual, pending)) >= TARGET_REACHED_TOLERANCE_RAD;
-            targetRef.current.visible = show;
-            if (pending !== undefined) targetRef.current.rotation.z = pending;
-        }
 
         if (badgeValueRef.current) {
             const shown = toSliderValue(dragging ? currentTargetRadRef.current : (pending ?? actual));
@@ -458,11 +445,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             <group ref={groupRef}>
                 <mesh geometry={geos.ring} material={mats.ring} renderOrder={RENDER_ORDER} />
 
-                <group ref={targetRef} visible={false}>
-                    <mesh position={[radius, 0, 0]} geometry={geos.target} material={mats.target} renderOrder={RENDER_ORDER + 1} />
-                </group>
-
-                <mesh ref={knobRef} geometry={geos.knob} material={mats.knob} renderOrder={RENDER_ORDER + 2} visible={false} />
+                <mesh ref={knobRef} geometry={geos.knob} material={mats.knob} renderOrder={RENDER_ORDER + 1} visible={false} />
 
                 <mesh
                     geometry={geos.hitbox}

@@ -164,7 +164,8 @@ const InfoBadge: React.FC<{
     label: string;
     partName: string;
     jointName?: string;
-}> = ({ label, partName, jointName }) => (
+    onUnfocus?: () => void;
+}> = ({ label, partName, jointName, onUnfocus }) => (
     <div
         className="chamfer-box viewer-overlay-box"
         style={{
@@ -191,6 +192,26 @@ const InfoBadge: React.FC<{
                 <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
                 <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{jointName}</span>
             </>
+        )}
+        {onUnfocus && (
+            <button
+                onClick={onUnfocus}
+                style={{
+                    marginLeft: 6,
+                    padding: '1px 6px',
+                    background: 'transparent',
+                    border: `1px solid ${FOCUS_COLOR}`,
+                    color: FOCUS_COLOR,
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    borderRadius: 2,
+                    pointerEvents: 'auto',
+                }}
+                title="Stop following this part"
+            >
+                UNFOCUS
+            </button>
         )}
     </div>
 );
@@ -661,6 +682,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     label="FOLLOWING:"
                     partName={selectedPartName}
                     jointName={focusedJoint ? urdfNameOf(focusedJoint) : undefined}
+                    onUnfocus={() => setSelectedPartName(null)}
                 />
             )}
 

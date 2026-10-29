@@ -1336,6 +1336,21 @@ h6 {
   background: var(--color-line);
 }
 
+/* Vertical rail fills the page height: the pinned group sits at the bottom */
+.command-rail[data-orientation="vertical"] {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.command-rail[data-orientation="vertical"]::-webkit-scrollbar {
+  display: none;
+}
+
+.command-rail[data-orientation="vertical"] .rail-divider-end {
+  margin-top: auto;
+}
+
 .command-rail[data-orientation="horizontal"] .rail-divider {
   width: 1px;
   height: 24px;

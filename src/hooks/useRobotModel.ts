@@ -100,6 +100,7 @@ export function useRobotModel(): UseRobotModelReturn {
             let total = 0;
             let completed = 0;
             let failed = 0;
+            let mtlFailed = 0;
             let lastError = '';
             let stlCount = 0;
 
@@ -137,7 +138,11 @@ export function useRobotModel(): UseRobotModelReturn {
                             // Colours live in the sibling .mtl (`mtllib`); without it the mesh still loads, untinted.
                             const mtllib = /^mtllib\s+(.+?)\s*$/m.exec(payload.data)?.[1];
                             const mtl = mtllib
-                                ? await MeshHandler.getMesh(path.slice(0, path.lastIndexOf('/') + 1) + mtllib).catch(() => null)
+                                ? await MeshHandler.getMesh(path.slice(0, path.lastIndexOf('/') + 1) + mtllib).catch((e) => {
+                                    mtlFailed++;
+                                    console.warn(`[useRobotModel] ${mtllib} for ${path}: ${formatCaughtError(e)}`);
+                                    return null;
+                                })
                                 : null;
                             const objLoader = new OBJLoader();
                             if (mtl) {
@@ -188,9 +193,16 @@ export function useRobotModel(): UseRobotModelReturn {
                 );
             }
 
-            // Commit to the session cache only once we have a usable model, so a
-            // total failure doesn't leave an empty robot cached for later mounts.
-            globalCache = { ready: true, urdf, robot: loadedRobot };
+            // Commit to the session cache only once every mesh loaded, so a partial
+            // load is retried by the next mount instead of keeping its holes.
+            if (failed === 0 && mtlFailed === 0) {
+                globalCache = { ready: true, urdf, robot: loadedRobot };
+            } else {
+                console.warn(
+                    `[useRobotModel] ${failed} mesh(es) and ${mtlFailed} material file(s) failed to load ` +
+                    `(${lastError || 'see above'}); the model will reload on the next open`,
+                );
+            }
 
             const linkCount = Object.keys(loadedRobot.links).length;
             const jointCount = Object.keys(loadedRobot.joints).length;

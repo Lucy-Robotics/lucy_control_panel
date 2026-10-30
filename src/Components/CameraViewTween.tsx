@@ -37,7 +37,7 @@ export interface CameraViewTweenProps {
 }
 
 export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, controlsRef, getFramingBox }) => {
-    const camera = useThree(s => s.camera);
+    const get = useThree(s => s.get);
     const controls = useThree(s => s.controls);
     const size = useThree(s => s.size);
     const tweenRef = useRef<Tween | null>(null);
@@ -48,6 +48,7 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         const orbit = controlsRef.current;
         if (!request || !orbit || handledIdRef.current === request.id) return;
         handledIdRef.current = request.id;
+        const camera = get().camera;
         const offset = camera.position.clone().sub(orbit.target);
         const fromDistance = offset.length();
         if (fromDistance < 1e-6) return;
@@ -70,7 +71,7 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         };
         // Resizing or a new framing source must not replay an already handled request
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [request, camera, controlsRef]);
+    }, [request, get, controlsRef]);
 
     useEffect(() => {
         const orbit = controlsRef.current;
@@ -80,7 +81,7 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         return () => orbit.removeEventListener('start', cancel);
     }, [controls, controlsRef]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ camera }, delta) => {
         const tween = tweenRef.current;
         const orbit = controlsRef.current;
         if (!tween || !orbit) return;

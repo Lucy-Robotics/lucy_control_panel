@@ -272,7 +272,7 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue = lim.maxRad;
                     restValue = lim.defaultRad;
                     // Joint angles (production mode) carry an identity mapping, so never inverted there.
-                    inverted = lim.mapping.direction === -1;
+                    inverted = lim.mapping.direction * lim.mapping.scale < 0;
                 }
                 joints.push({
                     name,

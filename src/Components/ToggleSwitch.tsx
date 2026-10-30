@@ -22,6 +22,8 @@ export interface ToggleSwitchProps {
     titlePlacement?: 'above' | 'inline';
     centerTitle?: boolean; /* Only used if placement === 'above'*/
     isOffRed?: boolean;
+    /** Greys the switch out and ignores clicks. */
+    disabled?: boolean;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -36,6 +38,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     titlePlacement = 'above',
     centerTitle = true,
     isOffRed = true,
+    disabled = false,
 }) => {
     const titleStyle: React.CSSProperties = {
         fontFamily: fonts.mono,
@@ -57,11 +60,13 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                 display: 'flex',
                 border: '1px solid var(--color-secondary)',
                 backgroundColor: 'var(--color-main)',
+                opacity: disabled ? 0.4 : 1,
             }}
         >
             <button
                 className={`tui-toggle-button${!isOn ? (isOffRed ? ' off' : ' on') : ''}`}
                 onClick={() => onToggle(false)}
+                disabled={disabled}
                 style={{
                     flex: 1,
                     display: 'flex',
@@ -77,7 +82,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                     fontSize: 11,
                     padding: '4px 8px',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
                 }}
                 aria-label={`${title}: ${textOff}`}
             >
@@ -88,6 +93,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             <button
                 className={`tui-toggle-button${isOn ? ' on' : ''}`}
                 onClick={() => onToggle(true)}
+                disabled={disabled}
                 style={{
                     flex: 1,
                     display: 'flex',
@@ -103,7 +109,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                     fontSize: 11,
                     padding: '4px 8px',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
                 }}
                 aria-label={`${title}: ${textOn}`}
             >

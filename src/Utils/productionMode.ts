@@ -7,23 +7,27 @@ import type { ControllerJointConfig, JointLimitRad } from '../Constants/rosConfi
 import type { UrdfJointLimitRad } from '../hooks/useUrdfJointLimits';
 import { DEFAULT_ACTUATOR_MAPPING, servoRadToJointRad } from './actuatorJointMapping.ts';
 
-/** Settings flag: off = sliders in servo angles (bench), on = URDF joint angles (production). */
+/** Settings flag: on (default) = URDF joint angles (production), off = servo angles (bench). */
 export const PRODUCTION_MODE_KEY = 'productionModeEnabled';
 export const PRODUCTION_MODE_EVENT = 'productionModeChanged';
 
 export const isProductionModeEnabled = () =>
-    localStorage.getItem(PRODUCTION_MODE_KEY) === 'true';
+    localStorage.getItem(PRODUCTION_MODE_KEY) !== 'false';
+
+/**
+ * True when no hardware or simulator is behind ros2_control: the generator emits
+ * `publish_actuators=false` on LucySystemHardware only for `use_mock_hardware`.
+ */
+export function isMockHardware(urdfXml: string): boolean {
+    return /<param\s+name="publish_actuators"\s*>\s*false\s*</.test(urdfXml);
+}
 
 function jointSpaceLimit(lim: JointLimitRad, urdf: UrdfJointLimitRad | undefined): JointLimitRad {
-    // Servo travel seen as joint angles; an inverted servo swaps its ends.
+    // URDF limits; without them, the servo travel seen as joint angles (an inverted servo swaps its ends).
     const a = servoRadToJointRad(lim.minRad, lim.mapping);
     const b = servoRadToJointRad(lim.maxRad, lim.mapping);
-    let minRad = Math.min(a, b);
-    let maxRad = Math.max(a, b);
-    if (urdf && Math.max(minRad, urdf.lowerRad) < Math.min(maxRad, urdf.upperRad)) {
-        minRad = Math.max(minRad, urdf.lowerRad);
-        maxRad = Math.min(maxRad, urdf.upperRad);
-    }
+    const minRad = urdf ? urdf.lowerRad : Math.min(a, b);
+    const maxRad = urdf ? urdf.upperRad : Math.max(a, b);
     const rest = servoRadToJointRad(lim.defaultRad, lim.mapping);
     return {
         minRad,
@@ -34,8 +38,8 @@ function jointSpaceLimit(lim: JointLimitRad, urdf: UrdfJointLimitRad | undefined
 }
 
 /**
- * Production mode: every joint's limits become joint angles (URDF range within the servo
- * travel) with an identity mapping, so sliders, commands, feedback and the gizmo all work in
+ * Production mode: every joint's limits become joint angles (the URDF range) with an identity
+ * mapping, so sliders, commands, feedback and the gizmo all work in
  * URDF angles. The hardware interface still applies offset / direction / scale and clamps to
  * the servo travel, so INVERTED servos move the same way as the others.
  */

@@ -13,10 +13,10 @@ import {
 } from '../../../Utils/hardwareConfigServerErrors.ts';
 import type { PressureSensorTableRecord } from '../types.ts';
 import {
-    boardSlots,
     physicalPinOptions,
     sensOpts,
-    usedPhysicalPinsOnBoardExcluding,
+    SERVO2040_SENSOR_HEADER_COUNT,
+    usedSensorHeadersOnBoardExcluding,
 } from '../model/documentHelpers.ts';
 
 const { Text } = Typography;
@@ -89,23 +89,6 @@ export function buildPressureSensorColumns({
             },
         },
         {
-            title: 'V.PIN',
-            key: 'vp',
-            width: 70,
-            render: (_: unknown, record: PressureSensorTableRecord) => {
-                const id = String(record.row.id ?? record.index);
-                const so = sensOpts(id, 'virtual_pin');
-                return (
-                    <span
-                        style={cellOutlineStyle(serverFieldErrors, so, outlineBorders)}
-                        title={cellTooltipText(serverFieldErrors, so)}
-                    >
-                        {String(record.row.virtual_pin ?? '')}
-                    </span>
-                );
-            },
-        },
-        {
             title: 'PHYSICAL_PIN',
             key: 'physical_pin',
             width: 110,
@@ -113,23 +96,36 @@ export function buildPressureSensorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const bid = String(row.board ?? '');
-                const slots = yamlDoc ? boardSlots(yamlDoc, bid) : 0;
                 const so = sensOpts(id, 'physical_pin');
+                // Servo 2040 Sensor1–6 ADC headers only (not Servo1–18 PWM).
                 const usedPhys =
-                    yamlDoc && bid ? usedPhysicalPinsOnBoardExcluding(yamlDoc, bid, { sensorIndex: index }) : new Set<number>();
+                    yamlDoc && bid
+                        ? usedSensorHeadersOnBoardExcluding(yamlDoc, bid, index)
+                        : new Set<number>();
                 const curPhys = Number(row.physical_pin);
-                const opts = physicalPinOptions(slots, usedPhys, curPhys);
+                const opts = physicalPinOptions(SERVO2040_SENSOR_HEADER_COUNT, usedPhys, curPhys);
+                const selectOptions = opts.map((p) => ({ value: p, label: `Sensor${p}` }));
+                // Legacy YAML may still use servo-header numbers; keep visible until reassigned.
+                if (
+                    Number.isFinite(curPhys) &&
+                    (curPhys < 1 || curPhys > SERVO2040_SENSOR_HEADER_COUNT) &&
+                    !opts.includes(curPhys)
+                ) {
+                    selectOptions.unshift({
+                        value: curPhys,
+                        label: `${curPhys} (not Sensor1–6)`,
+                    });
+                }
                 return (
-                    <div title={cellTooltipText(serverFieldErrors, so)}>
+                    <div title={cellTooltipText(serverFieldErrors, so) || 'Servo 2040 analogue sensor header (Sensor1–6)'}>
                         <Select
                             size="small"
                             style={{
                                 width: '100%',
                                 ...cellOutlineStyle(serverFieldErrors, so, outlineBorders),
                             }}
-                            value={Number.isFinite(curPhys) && opts.includes(curPhys) ? curPhys : opts[0]}
-                            placeholder={slots ? undefined : '—'}
-                            options={opts.map((p) => ({ value: p, label: String(p) }))}
+                            value={Number.isFinite(curPhys) ? curPhys : opts[0]}
+                            options={selectOptions}
                             onChange={(physVal) => {
                                 if (!yamlDoc) return;
                                 const next = structuredClone(yamlDoc);

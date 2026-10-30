@@ -63,7 +63,7 @@ export function FloatingViewerModal({
             mobileTopOffset={headerHeight}
             initialPosition={initialPosition}
         >
-            <div ref={ref} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
+            <div ref={ref} style={{ width: '100%', height: '100%', backgroundColor: 'black', userSelect: 'none' }}>
                 {children}
             </div>
         </MovableModal>

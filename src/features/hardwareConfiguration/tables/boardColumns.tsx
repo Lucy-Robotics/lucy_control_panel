@@ -70,7 +70,7 @@ export function buildBoardColumns(
             render: (n: number, r: BoardRow) => (
                 <Text
                     style={{ fontFamily: 'monospace' }}
-                    title="Physical pins 1..internal_actuator_slots claimed by actuators or sensors on this board"
+                    title="Servo PWM headers claimed by actuators (Sensor1–6 ADC headers are separate)"
                 >
                     {n}
                     {r.internalActuatorSlots > 0 ? (

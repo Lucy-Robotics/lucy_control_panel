@@ -31,9 +31,9 @@ import { decodeStlPayload } from '../Utils/mesh.utils';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
-/** Concurrent mesh fetches for STL — keep low; multi-MB responses share one websocket. */
-const MESH_FETCH_CONCURRENCY_STL = 2;
-/** Concurrent mesh fetches for DAE/OBJ — small text payloads; allow more parallelism than STL. */
+/** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
+const MESH_FETCH_CONCURRENCY_LARGE = 2;
+/** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ export function useRobotModel(): UseRobotModelReturn {
             let failed = 0;
             let mtlFailed = 0;
             let lastError = '';
-            let stlCount = 0;
+            let largeCount = 0;
 
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
@@ -167,7 +167,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         setLoadingStatus(`Loading meshes (${completed}/${total})…`);
                     }
                 });
-                if (path.toLowerCase().endsWith('.stl')) stlCount++;
+                if (/\.(stl|obj)$/i.test(path)) largeCount++;
             };
             const loadedRobot = loader.parse(urdf);
             total = tasks.length;
@@ -180,8 +180,8 @@ export function useRobotModel(): UseRobotModelReturn {
             setRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            const concurrency = stlCount > 0
-                ? MESH_FETCH_CONCURRENCY_STL
+            const concurrency = largeCount > 0
+                ? MESH_FETCH_CONCURRENCY_LARGE
                 : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks, concurrency);
 

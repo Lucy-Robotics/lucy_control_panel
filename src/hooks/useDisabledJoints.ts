@@ -9,30 +9,28 @@ import { RosBridgeService } from '../Services/ros/ros.service';
 
 /**
  * Joints kept limp (torque off) while Control Robot is ON, e.g. to drive one finger at a time
- * when finding its limits. lucy_control_supervisor reads the latched list.
+ * when finding its limits. The latched list lucy_control_supervisor reads is the source of truth.
  */
-const STORAGE_KEY = 'lucy_disabled_joints';
 const DISABLED_JOINTS_TOPIC = '/lucy/disabled_joints';
 
-function load(): ReadonlySet<string> {
-    try {
-        const v: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-        return new Set(Array.isArray(v) ? v.filter((n): n is string => typeof n === 'string') : []);
-    } catch {
-        return new Set();
-    }
+let disabled: ReadonlySet<string> = new Set();
+const listeners = new Set<() => void>();
+
+function setDisabled(next: ReadonlySet<string>): void {
+    disabled = next;
+    listeners.forEach((l) => l());
 }
 
-let disabled = load();
-const listeners = new Set<() => void>();
+// One advertised topic per bridge connection: re-advertising per change would churn
+// publishers, and unadvertising would drop the latched value for a supervisor that restarts.
+let topic: { ros: ROSLIB.Ros; topic: ROSLIB.Topic } | null = null;
 
 export function setJointTorqueEnabled(name: string, enabled: boolean): void {
     const next = new Set(disabled);
     if (enabled) next.delete(name);
     else next.add(name);
-    disabled = next;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-    listeners.forEach((l) => l());
+    setDisabled(next);
+    topic?.topic.publish(new ROSLIB.Message({ data: JSON.stringify([...next]) }));
 }
 
 export function useDisabledJoints(): ReadonlySet<string> {
@@ -45,18 +43,13 @@ export function useDisabledJoints(): ReadonlySet<string> {
     );
 }
 
-// One advertised publisher per bridge connection: re-advertising per change would churn
-// publishers, and unadvertising would drop the latched value for a supervisor that restarts.
-let publisher: { ros: ROSLIB.Ros; topic: ROSLIB.Topic } | null = null;
-
-/** Publish the list on every change and on (re)connect; latched so the supervisor always has it. */
-export function usePublishDisabledJoints(isConnected: boolean): void {
-    const current = useDisabledJoints();
+/** Follow the latched list, so every panel shows and edits the list the supervisor applies. */
+export function useSyncDisabledJoints(isConnected: boolean): void {
     useEffect(() => {
         const ros = RosBridgeService.getInstance().rosConnection;
         if (!isConnected || !ros) return;
-        if (publisher?.ros !== ros) {
-            publisher = {
+        if (topic?.ros !== ros) {
+            topic = {
                 ros,
                 topic: new ROSLIB.Topic({
                     ros,
@@ -66,6 +59,17 @@ export function usePublishDisabledJoints(isConnected: boolean): void {
                 }),
             };
         }
-        publisher.topic.publish(new ROSLIB.Message({ data: JSON.stringify([...current]) }));
-    }, [isConnected, current]);
+        setDisabled(new Set());
+        const t = topic.topic;
+        const onMessage = (msg: ROSLIB.Message) => {
+            try {
+                const v: unknown = JSON.parse((msg as unknown as { data?: string }).data ?? '[]');
+                setDisabled(new Set(Array.isArray(v) ? v.filter((n): n is string => typeof n === 'string') : []));
+            } catch {
+                setDisabled(new Set());
+            }
+        };
+        t.subscribe(onMessage);
+        return () => t.unsubscribe(onMessage);
+    }, [isConnected]);
 }

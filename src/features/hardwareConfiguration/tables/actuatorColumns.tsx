@@ -237,39 +237,6 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'V.PIN',
-            key: 'vp',
-            width: 88,
-            render: (_: unknown, record: ActuatorTableRecord) => {
-                const { row, index } = record;
-                const id = String(row.id ?? index);
-                const ao = actOpts(id, 'virtual_pin');
-                const curVp = Number(row.virtual_pin);
-                return (
-                    <div title={cellTooltipText(serverFieldErrors, ao)}>
-                        <InputNumber
-                            size="small"
-                            min={0}
-                            step={1}
-                            style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                            value={Number.isFinite(curVp) ? curVp : undefined}
-                            title={cellTooltipText(serverFieldErrors, ao)}
-                            onChange={(val) => {
-                                if (!yamlDoc || val == null) return;
-                                const next = structuredClone(yamlDoc);
-                                const actuators = next.actuators as Record<string, unknown>[];
-                                actuators[index] = {
-                                    ...actuators[index],
-                                    virtual_pin: val,
-                                };
-                                patchDoc(next);
-                            }}
-                        />
-                    </div>
-                );
-            },
-        },
-        {
             title: 'PLUG',
             key: 'plug',
             width: 180,

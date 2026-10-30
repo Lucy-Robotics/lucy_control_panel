@@ -572,14 +572,27 @@ export const RobotControlPanel: React.FC = () => {
         return categories;
     }, [joints]);
 
+    const poseJoints = useMemo(
+        () => joints.map((joint) => ({
+            ...joint,
+            currentValue: servoRadToJointRad(
+                joint.currentValue,
+                actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING,
+            ),
+        })),
+        [joints],
+    );
+
     const handleLoadPose = useCallback(
         (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
             setJoints((prevJoints) =>
-                prevJoints.map((joint) => ({
-                    ...joint,
-                    currentValue: poseJoints[joint.name] ?? joint.currentValue,
-                    targetValue: poseJoints[joint.name] ?? joint.targetValue,
-                }))
+                prevJoints.map((joint) => {
+                    const jointRad = poseJoints[joint.name];
+                    if (jointRad === undefined) return joint;
+                    const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                    const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+                    return { ...joint, currentValue: value, targetValue: value };
+                })
             );
 
             if (categoryOrder) {
@@ -882,7 +895,7 @@ export const RobotControlPanel: React.FC = () => {
             />
 
             <ManagePosesModal
-                joints={joints}
+                joints={poseJoints}
                 controlEnabled={isSending}
                 onLoadPose={handleLoadPose}
                 onPlayAnimation={handlePlayAnimation}

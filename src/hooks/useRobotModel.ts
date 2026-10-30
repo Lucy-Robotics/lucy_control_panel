@@ -46,6 +46,13 @@ type GlobalCache =
 
 let globalCache: GlobalCache = { ready: false };
 
+function utf8Text(payload: MeshPayload, path: string): string {
+    if (payload.encoding !== 'utf8') {
+        throw new Error(`expected utf8 payload, got '${payload.encoding}' for ${path}`);
+    }
+    return payload.data;
+}
+
 function disposeRobot(robot: URDFRobot): void {
     robot.traverse((o) => {
         if (!(o instanceof THREE.Mesh || o instanceof THREE.LineSegments || o instanceof THREE.Points)) return;
@@ -142,12 +149,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         }
                         const payload = await cached;
                         if (lower.endsWith('.dae')) {
-                            if (payload.encoding !== 'utf8') {
-                                throw new Error(
-                                    `expected utf8 DAE payload, got '${payload.encoding}' for ${path}`,
-                                );
-                            }
-                            done(colladaLoader.parse(payload.data, '').scene);
+                            done(colladaLoader.parse(utf8Text(payload, path), '').scene);
                         } else if (lower.endsWith('.stl')) {
                             const geometry = stlLoader.parse(await decodeStlPayload(payload));
                             const stlMesh = new THREE.Mesh(
@@ -156,28 +158,30 @@ export function useRobotModel(): UseRobotModelReturn {
                             );
                             done(stlMesh);
                         } else if (lower.endsWith('.obj')) {
-                            if (payload.encoding !== 'utf8') {
-                                throw new Error(
-                                    `expected utf8 OBJ payload, got '${payload.encoding}' for ${path}`,
-                                );
-                            }
-                            // Colours live in the sibling .mtl (`mtllib`); without it the mesh still loads, untinted.
-                            const mtllib = /^mtllib\s+(.+?)\s*$/m.exec(payload.data)?.[1];
-                            const mtl = mtllib
-                                ? await MeshHandler.getMesh(path.slice(0, path.lastIndexOf('/') + 1) + mtllib).catch((e) => {
-                                    mtlFailed++;
-                                    console.warn(`[useRobotModel] ${mtllib} for ${path}: ${formatCaughtError(e)}`);
-                                    return null;
-                                })
-                                : null;
+                            const obj = utf8Text(payload, path);
+                            const dir = path.slice(0, path.lastIndexOf('/') + 1);
+                            const libs = [...obj.matchAll(/^[^\S\r\n]*mtllib[^\S\r\n]+(.+?)[^\S\r\n]*$/gm)]
+                                .flatMap(m => m[1].split(/\s+/));
+                            const mtls = await Promise.all(libs.map(lib =>
+                                MeshHandler.getMesh(dir + lib)
+                                    .then(mtl => utf8Text(mtl, dir + lib))
+                                    .catch((e) => {
+                                        mtlFailed++;
+                                        console.warn(`[useRobotModel] ${lib} for ${path}: ${formatCaughtError(e)}`);
+                                        return '';
+                                    }),
+                            ));
+                            const mtl = mtls.join('\n')
+                                .replace(/^[^\S\r\n]*(?:map_\w+|bump|disp|decal|refl)[^\S\r\n].*$/gm, '');
                             const objLoader = new OBJLoader();
-                            if (mtl) {
-                                const materials = mtlLoader.parse(mtl.data, '');
-                                materials.preload();
-                                objLoader.setMaterials(materials);
+                            if (mtl.trim()) objLoader.setMaterials(mtlLoader.parse(mtl, ''));
+                            // Drop loose-edge `l` and point `p` records: one turns OBJLoader's whole object into line segments (wireframe jaw).
+                            const group = objLoader.parse(obj.replace(/^[^\S\r\n]*(?:l|lod|p)(?:[^\S\r\n].*)?$/gm, ''));
+                            Object.assign(group, { materialLibraries: [] });
+                            if (!group.children.some(c => c instanceof THREE.Mesh)) {
+                                throw new Error(`no faces in ${path}`);
                             }
-                            // Drop loose-edge `l` records: one turns OBJLoader's whole object into line segments (wireframe jaw).
-                            done(objLoader.parse(payload.data.replace(/^l\s.*$/gm, '')));
+                            done(!mtl.trim() && group.children.length === 1 ? group.children[0] : group);
                         } else {
                             throw new Error(`unsupported mesh type: ${path}`);
                         }

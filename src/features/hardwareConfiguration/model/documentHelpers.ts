@@ -117,41 +117,50 @@ export function jointSelectOptions(
     return ordered.map((j) => ({ value: j, label: j }));
 }
 
-/** Physical pins already claimed on `boardId`, optionally ignoring one actuator or sensor row (YAML array index). */
-export function usedPhysicalPinsOnBoardExcluding(
+/**
+ * Servo 2040 external analogue sensor headers (Sensor1–Sensor6).
+ * Separate from the 18 PWM servo headers — see Pimoroni Servo 2040 docs / NUM_SENSORS.
+ */
+export const SERVO2040_SENSOR_HEADER_COUNT = 6;
+
+/** Servo PWM headers already claimed by actuators on `boardId` (ignores sensors). */
+export function usedActuatorHeadersOnBoardExcluding(
     doc: Record<string, unknown>,
     boardId: string,
-    skip: { actuatorIndex?: number; sensorIndex?: number },
+    skipActuatorIndex?: number,
 ): Set<number> {
     const used = new Set<number>();
-    if (Array.isArray(doc.actuators)) {
-        doc.actuators.forEach((a, i) => {
-            if (skip.actuatorIndex !== undefined && i === skip.actuatorIndex) return;
-            const m = asMapping(a);
-            if (!m || String(m.board ?? '') !== boardId) return;
-            const plug = asMapping(m.plug);
-            const p =
-                plug?.kind === 'servo_header' ? Number(plug.header) : Number(m.physical_pin);
-            if (Number.isFinite(p)) used.add(p);
-        });
-    }
-    if (Array.isArray(doc.sensors)) {
-        doc.sensors.forEach((s, i) => {
-            if (skip.sensorIndex !== undefined && i === skip.sensorIndex) return;
-            const m = asMapping(s);
-            if (!m || String(m.board ?? '') !== boardId) return;
-            const p = Number(m.physical_pin);
-            if (Number.isFinite(p)) used.add(p);
-        });
-    }
+    if (!Array.isArray(doc.actuators)) return used;
+    doc.actuators.forEach((a, i) => {
+        if (skipActuatorIndex !== undefined && i === skipActuatorIndex) return;
+        const m = asMapping(a);
+        if (!m || String(m.board ?? '') !== boardId) return;
+        const plug = asMapping(m.plug);
+        const p = plug?.kind === 'servo_header' ? Number(plug.header) : Number(m.physical_pin);
+        if (Number.isFinite(p)) used.add(p);
+    });
     return used;
 }
 
-export function usedPhysicalPinsOnBoard(doc: Record<string, unknown>, boardId: string): Set<number> {
-    return usedPhysicalPinsOnBoardExcluding(doc, boardId, {});
+/** Analogue sensor headers already claimed by sensors on `boardId` (ignores actuators). */
+export function usedSensorHeadersOnBoardExcluding(
+    doc: Record<string, unknown>,
+    boardId: string,
+    skipSensorIndex?: number,
+): Set<number> {
+    const used = new Set<number>();
+    if (!Array.isArray(doc.sensors)) return used;
+    doc.sensors.forEach((s, i) => {
+        if (skipSensorIndex !== undefined && i === skipSensorIndex) return;
+        const m = asMapping(s);
+        if (!m || String(m.board ?? '') !== boardId) return;
+        const p = Number(m.physical_pin);
+        if (Number.isFinite(p)) used.add(p);
+    });
+    return used;
 }
 
-/** Available physical connector indices `1..slots` (`internal_servo_slots` YAML key), excluding pins taken by other rows. */
+/** Available connector indices `1..slots`, keeping `currentPin` selectable even if listed as used. */
 export function physicalPinOptions(slots: number, usedElsewhere: Set<number>, currentPin: number): number[] {
     const opts: number[] = [];
     const cur = Number.isFinite(currentPin) ? currentPin : 1;
@@ -161,13 +170,11 @@ export function physicalPinOptions(slots: number, usedElsewhere: Set<number>, cu
     return opts;
 }
 
-/** Physical pin indices `1..internal_servo_slots` not claimed by an actuator or sensor on this board. */
-export function freePhysicalPinsOnBoard(doc: Record<string, unknown>, boardId: string): number[] {
-    const slots = boardSlots(doc, boardId);
-    if (slots <= 0) return [];
-    const used = usedPhysicalPinsOnBoard(doc, boardId);
+/** Free Servo 2040 sensor headers `1..6` on this board (not claimed by other sensors). */
+export function freeSensorHeadersOnBoard(doc: Record<string, unknown>, boardId: string): number[] {
+    const used = usedSensorHeadersOnBoardExcluding(doc, boardId);
     const out: number[] = [];
-    for (let p = 1; p <= slots; p++) {
+    for (let p = 1; p <= SERVO2040_SENSOR_HEADER_COUNT; p++) {
         if (!used.has(p)) out.push(p);
     }
     return out;
@@ -181,23 +188,6 @@ export function actuatorCountOnBoard(doc: Record<string, unknown>, boardId: stri
 export function sensorCountOnBoard(doc: Record<string, unknown>, boardId: string): number {
     if (!Array.isArray(doc.sensors)) return 0;
     return doc.sensors.filter((s) => String(asMapping(s)?.board ?? '') === boardId).length;
-}
-
-/** Keep contiguous sensor virtual_pin 0..n-1 on a board after add/remove (matches lucy_config_generator schema). */
-export function renormalizeSensorVirtualPinsOnBoard(sensors: Record<string, unknown>[], boardId: string): void {
-    const hits = sensors
-        .map((s, idx) => ({
-            idx,
-            m: asMapping(s),
-            vp: Number(asMapping(s)?.virtual_pin),
-        }))
-        .filter((x) => x.m && String(x.m.board ?? '') === boardId);
-    hits.sort((a, b) => (Number.isFinite(a.vp) ? a.vp : 0) - (Number.isFinite(b.vp) ? b.vp : 0));
-    hits.forEach((h, ord) => {
-        const row = asMapping(sensors[h.idx]);
-        if (!row) return;
-        sensors[h.idx] = { ...row, virtual_pin: ord };
-    });
 }
 
 function collectActuatorIds(doc: Record<string, unknown>): Set<string> {
@@ -249,13 +239,12 @@ function uniquePressureSensorId(doc: Record<string, unknown>, boardId: string, v
 export function defaultNewActuatorRow(doc: Record<string, unknown>, boardId: string): Record<string, unknown> | null {
     const free = freeActuatorPlugChoices(doc, boardId);
     if (free.length === 0) return null;
-    const vp = actuatorCountOnBoard(doc, boardId);
-    const id = uniqueActuatorId(doc, boardId, vp);
+    const ordinal = actuatorCountOnBoard(doc, boardId);
+    const id = uniqueActuatorId(doc, boardId, ordinal);
     const row: Record<string, unknown> = {
         id,
         urdf_joint: '',
         board: boardId,
-        virtual_pin: vp,
         ...DEFAULT_NEW_ACTUATOR_VALUES,
     };
     applyPlugChoice(row, free[0].value);
@@ -271,16 +260,15 @@ export function defaultNewPressureSensorRow(
     if (!act) return null;
     const boardId = String(act.board ?? '').trim();
     if (!boardId) return null;
-    const pins = freePhysicalPinsOnBoard(doc, boardId);
+    const pins = freeSensorHeadersOnBoard(doc, boardId);
     if (pins.length === 0) return null;
-    const vp = sensorCountOnBoard(doc, boardId);
-    const id = uniquePressureSensorId(doc, boardId, vp);
+    const ordinal = sensorCountOnBoard(doc, boardId);
+    const id = uniquePressureSensorId(doc, boardId, ordinal);
     return {
         id,
         type: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.type,
         associated_actuator: associatedActuatorId,
         board: boardId,
-        virtual_pin: vp,
         physical_pin: pins[0],
         min_value: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.min_value,
         max_value: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.max_value,
@@ -324,8 +312,8 @@ export function plugChoices(
     actuatorIndex: number,
 ): PlugChoice[] {
     const choices: PlugChoice[] = [];
-    // Occupancy: actuators + sensors share the physical header pin space.
-    const usedHeaders = usedPhysicalPinsOnBoardExcluding(doc, boardId, { actuatorIndex });
+    // Servo PWM headers only — sensors use the separate Sensor1–6 ADC headers.
+    const usedHeaders = usedActuatorHeadersOnBoardExcluding(doc, boardId, actuatorIndex);
     const actuators = Array.isArray(doc.actuators) ? doc.actuators : [];
     const current = asMapping(actuators[actuatorIndex]);
     const currentPlug = current ? asMapping(current.plug) : null;

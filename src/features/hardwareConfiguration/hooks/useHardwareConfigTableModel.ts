@@ -9,7 +9,8 @@ import {
     assignableUrdfJointsFromYaml,
     boardHasFreeActuatorPlug,
     boardSlots,
-    freePhysicalPinsOnBoard,
+    freeSensorHeadersOnBoard,
+    usedActuatorHeadersOnBoardExcluding,
     sortedBoardIds,
 } from '../model/documentHelpers.ts';
 import type { ActuatorTableRecord, BoardRow, PressureSensorTableRecord } from '../types.ts';
@@ -35,7 +36,7 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
             const id = String(m.id ?? '').trim();
             const boardId = String(m.board ?? '').trim();
             if (!id || !boardId) continue;
-            if (freePhysicalPinsOnBoard(yamlDoc, boardId).length === 0) continue;
+            if (freeSensorHeadersOnBoard(yamlDoc, boardId).length === 0) continue;
             opts.push({ value: id, label: `${id} (${boardId})` });
         }
         return opts;
@@ -56,8 +57,7 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         return Object.keys(boards).map((boardId) => {
             const b = asMapping(boards[boardId]);
             const slots = boardSlots(yamlDoc, boardId);
-            const freeList = freePhysicalPinsOnBoard(yamlDoc, boardId);
-            const attachedPins = slots > 0 ? slots - freeList.length : 0;
+            const attachedPins = usedActuatorHeadersOnBoardExcluding(yamlDoc, boardId).size;
             return {
                 key: boardId,
                 boardId,
@@ -85,7 +85,13 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
             const name = String(row.name ?? '').toLowerCase();
             const id = String(row.id ?? '').toLowerCase();
             const joint = String(row.joint ?? '').toLowerCase();
-            return name.includes(query) || id.includes(query) || joint.includes(query);
+            const board = String(row.board ?? '').toLowerCase();
+            return (
+                name.includes(query) ||
+                id.includes(query) ||
+                joint.includes(query) ||
+                board.includes(query)
+            );
         });
     }, [yamlDoc, actuatorSearchQuery]);
 

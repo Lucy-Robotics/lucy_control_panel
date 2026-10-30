@@ -10,7 +10,6 @@ import {
     defaultNewActuatorRow,
     defaultNewPressureSensorRow,
     newServo2040Board,
-    renormalizeSensorVirtualPinsOnBoard,
 } from '../model/documentHelpers.ts';
 import { appendPassiveUrdfJointIfUnassigned } from '../model/passiveUrdf.ts';
 
@@ -127,24 +126,35 @@ export function useHardwareConfigMutations({
         [yamlDoc, patchDoc, messageApi],
     );
 
-    const handleAddActuator = useCallback(() => {
-        if (!yamlDoc) return;
-        const targetBoard = boardsEligibleForNewActuator[0];
-        if (!targetBoard) {
-            messageApi.warning('No board has a free header or PCA channel.');
-            return;
-        }
-        const row = defaultNewActuatorRow(yamlDoc, targetBoard);
-        if (!row) {
-            messageApi.warning('No free header or PCA channel on that board.');
-            return;
-        }
-        const next = structuredClone(yamlDoc);
-        if (!Array.isArray(next.actuators)) next.actuators = [];
-        (next.actuators as Record<string, unknown>[]).push(row);
-        patchDoc(next);
-        messageApi.success(`Added actuator "${String(row.id)}" on ${targetBoard}`);
-    }, [yamlDoc, boardsEligibleForNewActuator, patchDoc, messageApi]);
+    const handleAddActuator = useCallback(
+        (preferredBoardId?: string) => {
+            if (!yamlDoc) return;
+            const preferred = preferredBoardId?.trim() ?? '';
+            const targetBoard =
+                preferred && boardsEligibleForNewActuator.includes(preferred)
+                    ? preferred
+                    : boardsEligibleForNewActuator[0];
+            if (!targetBoard) {
+                messageApi.warning(
+                    preferred
+                        ? `No free header or PCA channel on ${preferred}.`
+                        : 'No board has a free header or PCA channel.',
+                );
+                return;
+            }
+            const row = defaultNewActuatorRow(yamlDoc, targetBoard);
+            if (!row) {
+                messageApi.warning('No free header or PCA channel on that board.');
+                return;
+            }
+            const next = structuredClone(yamlDoc);
+            if (!Array.isArray(next.actuators)) next.actuators = [];
+            (next.actuators as Record<string, unknown>[]).push(row);
+            patchDoc(next);
+            messageApi.success(`Added actuator "${String(row.id)}" on ${targetBoard}`);
+        },
+        [yamlDoc, boardsEligibleForNewActuator, patchDoc, messageApi],
+    );
 
     const handleAddPressureSensor = useCallback(() => {
         if (!yamlDoc || !addPressureSensorActuatorId) return;
@@ -193,14 +203,10 @@ export function useHardwareConfigMutations({
                 messageApi.warning('Can only remove pressure sensors from this table.');
                 return;
             }
-            const boardId = String(row.board ?? '').trim();
             const sid = String(row.id ?? '').trim();
             const next = structuredClone(yamlDoc);
             const sensors = next.sensors as Record<string, unknown>[];
             sensors.splice(index, 1);
-            if (boardId) {
-                renormalizeSensorVirtualPinsOnBoard(sensors, boardId);
-            }
             patchDoc(next);
             messageApi.success(sid ? `Removed sensor "${sid}"` : 'Pressure sensor removed');
         },

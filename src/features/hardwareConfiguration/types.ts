@@ -22,6 +22,6 @@ export interface BoardRow {
     board_class: string;
     firmware_target: string;
     internalActuatorSlots: number;
-    /** Distinct physical_pin values in 1..internal_servo_slots (YAML) used by actuators or sensors on this board. */
+    /** Distinct Servo PWM headers claimed by actuators on this board (sensors use Sensor1–6 separately). */
     attachedPins: number;
 }

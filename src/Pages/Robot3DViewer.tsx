@@ -268,7 +268,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     selectedPartName,
     controlsRef,
 }) => {
-    const camera = useThree(s => s.camera);
+    const get = useThree(s => s.get);
     const orbitControls = useThree(s => s.controls);
     const viewportHeight = useThree(s => s.size.height);
     const startZoomRef = useRef<number>(1);
@@ -320,6 +320,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         lastWorldCenterRef.current.copy(worldCenter);
 
         const controls = controlsRef.current;
+        const camera = get().camera;
         if (controls) {
             startTargetRef.current.copy(controls.target);
             startCamPosRef.current.copy(camera.position);
@@ -346,9 +347,9 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         }
         // Resizing must not re-trigger the framing transition
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [robot, selectedPartName, camera, controlsRef]);
+    }, [robot, selectedPartName, get, controlsRef]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ camera }, delta) => {
         const controls = controlsRef.current;
         if (!controls || !selectedPartName || !robot) return;
 

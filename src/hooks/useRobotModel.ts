@@ -46,6 +46,17 @@ type GlobalCache =
 
 let globalCache: GlobalCache = { ready: false };
 
+function disposeRobot(robot: URDFRobot): void {
+    robot.traverse((o) => {
+        if (!(o instanceof THREE.Mesh || o instanceof THREE.LineSegments || o instanceof THREE.Points)) return;
+        o.geometry.dispose();
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            for (const v of Object.values(m)) if (v instanceof THREE.Texture) v.dispose();
+            m.dispose();
+        }
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -74,8 +85,22 @@ export function useRobotModel(): UseRobotModelReturn {
     const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.urdf : null);
     // Bumped by reload() to force a fresh subscription + parse.
     const [reloadToken, setReloadToken] = useState(0);
+    const runRef = useRef(0);
+    const robotRef = useRef<URDFRobot | null>(robot);
+
+    const showRobot = useCallback((next: URDFRobot | null) => {
+        const previous = robotRef.current;
+        robotRef.current = next;
+        setRobot(next);
+        if (previous && previous !== next) {
+            if (globalCache.ready && globalCache.robot === previous) globalCache = { ready: false };
+            disposeRobot(previous);
+        }
+    }, []);
 
     const parseAndLoad = useCallback(async (urdf: string) => {
+        const run = ++runRef.current;
+        const stale = () => runRef.current !== run;
         if (!isWebGLAvailable()) {
             setError('WebGL is not supported in this browser.');
             setLoading(false);
@@ -107,6 +132,7 @@ export function useRobotModel(): UseRobotModelReturn {
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
                 tasks.push(async () => {
+                    if (stale()) return;
                     try {
                         const lower = path.toLowerCase();
                         let cached = meshCache.get(path);
@@ -163,8 +189,10 @@ export function useRobotModel(): UseRobotModelReturn {
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
                     } finally {
                         completed++;
-                        if (total > 0) setProgress(Math.min(0.99, completed / total));
-                        setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+                        if (!stale()) {
+                            if (total > 0) setProgress(Math.min(0.99, completed / total));
+                            setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+                        }
                     }
                 });
                 if (/\.(stl|obj)$/i.test(path)) largeCount++;
@@ -177,13 +205,14 @@ export function useRobotModel(): UseRobotModelReturn {
             // while meshes load. Mark this URDF as in-flight to block a duplicate
             // parse if the latched topic re-delivers it mid-load.
             loadedUrdfRef.current = urdf;
-            setRobot(loadedRobot);
+            showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
             const concurrency = largeCount > 0
                 ? MESH_FETCH_CONCURRENCY_LARGE
                 : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks, concurrency);
+            if (stale()) return;
 
             if (total > 0 && failed === total) {
                 throw new Error(
@@ -218,12 +247,13 @@ export function useRobotModel(): UseRobotModelReturn {
             setLoading(false);
 
         } catch (err) {
+            if (stale()) return;
             // Clear the in-flight guard so a retry (or topic re-delivery) re-parses.
             loadedUrdfRef.current = null;
             setError(err instanceof Error ? err.message : 'Failed to load robot model');
             setLoading(false);
         }
-    }, []);
+    }, [showRobot]);
 
     useEffect(() => {
         let cancelled = false;
@@ -268,13 +298,14 @@ export function useRobotModel(): UseRobotModelReturn {
         RobotDescriptionHandler.getInstance().resubscribe();
         globalCache = { ready: false };
         loadedUrdfRef.current = null;
-        setRobot(null);
+        runRef.current++;
+        showRobot(null);
         setLoading(true);
         setProgress(0);
         setError(null);
         setLoadingStatus('');
         setReloadToken(t => t + 1);
-    }, []);
+    }, [showRobot]);
 
     return { robot, loading, loadingStatus, progress, error, reload };
 }

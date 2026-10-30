@@ -75,6 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const {
         activeHardwareConfigName,
         controllerConfigsFromActive,
+        servoControlAvailable,
     } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
@@ -252,16 +253,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             centerTitle={false}
                         />
 
-                        <ToggleSwitch
-                            isOn={productionMode}
-                            onToggle={setProductionMode}
-                            title="Sliders (production mode)"
-                            textOn="URDF JOINTS"
-                            textOff="SERVO"
-                            width={180}
-                            isOffRed={false}
-                            centerTitle={false}
-                        />
+                        <span title={servoControlAvailable ? undefined : 'No robot or simulator behind ros2_control: no servo to drive'}>
+                            <ToggleSwitch
+                                isOn={productionMode || !servoControlAvailable}
+                                onToggle={setProductionMode}
+                                title="Sliders (production mode)"
+                                textOn="URDF JOINTS"
+                                textOff="SERVO"
+                                width={180}
+                                isOffRed={false}
+                                centerTitle={false}
+                                disabled={!servoControlAvailable}
+                            />
+                        </span>
                     </Space>
                 </Form.Item>
 

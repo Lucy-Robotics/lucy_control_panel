@@ -343,20 +343,20 @@ export const RobotControlPanel: React.FC = () => {
                 )
                 : value;
         actuatorMappingByJointRef.current = mapByJoint;
-        setJoints((prev) => {
-            const byName = new Map(prev.map((j) => [j.name, j]));
-            const next = buildJointsFromControllerConfig(ctrls);
-            return next.map((j) => {
-                const existing = byName.get(j.name);
-                return existing
-                    ? {
-                        ...j,
-                        currentValue: carry(j.name, existing.currentValue),
-                        targetValue: carry(j.name, existing.targetValue),
-                    }
-                    : j;
-            });
+        if (modeSwitched) actualPositionsRef.current.clear();
+        const byName = new Map(jointsRef.current.map((j) => [j.name, j]));
+        const nextJoints = buildJointsFromControllerConfig(ctrls).map((j) => {
+            const existing = byName.get(j.name);
+            return existing
+                ? {
+                    ...j,
+                    currentValue: carry(j.name, existing.currentValue),
+                    targetValue: carry(j.name, existing.targetValue),
+                }
+                : j;
         });
+        jointsRef.current = nextJoints;
+        setJoints(nextJoints);
         setCategoryOrder((prevOrder) => {
             const nextCats = [...new Set(ctrls.map((c) => c.defaultCategory))];
             const preserved = prevOrder.filter((c) => nextCats.includes(c));

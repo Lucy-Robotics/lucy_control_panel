@@ -431,6 +431,13 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
+    useEffect(() => {
+        if (!isSending) return;
+        const confirmLeave = (event: BeforeUnloadEvent) => event.preventDefault();
+        window.addEventListener('beforeunload', confirmLeave);
+        return () => window.removeEventListener('beforeunload', confirmLeave);
+    }, [isSending]);
+
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);

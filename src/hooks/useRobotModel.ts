@@ -4,7 +4,7 @@
  */
 
 /**
- * Loads the robot model via urdf-loader (full FK, DAE/STL loading, visual origins
+ * Loads the robot model via urdf-loader (full FK, DAE/STL/OBJ loading, visual origins
  * and joint transforms).
  *
  * Both the model and its meshes come over ROS, so the viewer needs no
@@ -19,7 +19,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { isWebGLAvailable, ColladaLoader, STLLoader } from 'three-stdlib';
+import { isWebGLAvailable, ColladaLoader, STLLoader, OBJLoader, MTLLoader } from 'three-stdlib';
 import URDFLoader from 'urdf-loader';
 import type { URDFRobot } from 'urdf-loader';
 import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
@@ -31,9 +31,9 @@ import { decodeStlPayload } from '../Utils/mesh.utils';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
-/** Concurrent mesh fetches for STL — keep low; multi-MB responses share one websocket. */
-const MESH_FETCH_CONCURRENCY_STL = 2;
-/** Concurrent mesh fetches for DAE — small payloads; allow more parallelism than STL. */
+/** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
+const MESH_FETCH_CONCURRENCY_LARGE = 2;
+/** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 
 // ---------------------------------------------------------------------------
@@ -45,6 +45,24 @@ type GlobalCache =
     | { ready: true; urdf: string; robot: URDFRobot };
 
 let globalCache: GlobalCache = { ready: false };
+
+function utf8Text(payload: MeshPayload, path: string): string {
+    if (payload.encoding !== 'utf8') {
+        throw new Error(`expected utf8 payload, got '${payload.encoding}' for ${path}`);
+    }
+    return payload.data;
+}
+
+function disposeRobot(robot: URDFRobot): void {
+    robot.traverse((o) => {
+        if (!(o instanceof THREE.Mesh || o instanceof THREE.LineSegments || o instanceof THREE.Points)) return;
+        o.geometry.dispose();
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            for (const v of Object.values(m)) if (v instanceof THREE.Texture) v.dispose();
+            m.dispose();
+        }
+    });
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -74,8 +92,22 @@ export function useRobotModel(): UseRobotModelReturn {
     const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.urdf : null);
     // Bumped by reload() to force a fresh subscription + parse.
     const [reloadToken, setReloadToken] = useState(0);
+    const runRef = useRef(0);
+    const robotRef = useRef<URDFRobot | null>(robot);
+
+    const showRobot = useCallback((next: URDFRobot | null) => {
+        const previous = robotRef.current;
+        robotRef.current = next;
+        setRobot(next);
+        if (previous && previous !== next) {
+            if (globalCache.ready && globalCache.robot === previous) globalCache = { ready: false };
+            disposeRobot(previous);
+        }
+    }, []);
 
     const parseAndLoad = useCallback(async (urdf: string) => {
+        const run = ++runRef.current;
+        const stale = () => runRef.current !== run;
         if (!isWebGLAvailable()) {
             setError('WebGL is not supported in this browser.');
             setLoading(false);
@@ -94,17 +126,20 @@ export function useRobotModel(): UseRobotModelReturn {
             // pooled after parse() returns.
             const colladaLoader = new ColladaLoader();
             const stlLoader = new STLLoader();
+            const mtlLoader = new MTLLoader();
             const meshCache = new Map<string, Promise<MeshPayload>>(); // dedupe shared meshes
             const tasks: Array<() => Promise<void>> = [];
             let total = 0;
             let completed = 0;
             let failed = 0;
+            let mtlFailed = 0;
             let lastError = '';
-            let stlCount = 0;
+            let largeCount = 0;
 
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
                 tasks.push(async () => {
+                    if (stale()) return;
                     try {
                         const lower = path.toLowerCase();
                         let cached = meshCache.get(path);
@@ -114,12 +149,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         }
                         const payload = await cached;
                         if (lower.endsWith('.dae')) {
-                            if (payload.encoding !== 'utf8') {
-                                throw new Error(
-                                    `expected utf8 DAE payload, got '${payload.encoding}' for ${path}`,
-                                );
-                            }
-                            done(colladaLoader.parse(payload.data, '').scene);
+                            done(colladaLoader.parse(utf8Text(payload, path), '').scene);
                         } else if (lower.endsWith('.stl')) {
                             const geometry = stlLoader.parse(await decodeStlPayload(payload));
                             const stlMesh = new THREE.Mesh(
@@ -127,6 +157,31 @@ export function useRobotModel(): UseRobotModelReturn {
                                 new THREE.MeshPhongMaterial({ color: 0xb0b0b0 }),
                             );
                             done(stlMesh);
+                        } else if (lower.endsWith('.obj')) {
+                            const obj = utf8Text(payload, path);
+                            const dir = path.slice(0, path.lastIndexOf('/') + 1);
+                            const libs = [...obj.matchAll(/^[^\S\r\n]*mtllib[^\S\r\n]+(.+?)[^\S\r\n]*$/gm)]
+                                .flatMap(m => m[1].split(/\s+/));
+                            const mtls = await Promise.all(libs.map(lib =>
+                                MeshHandler.getMesh(dir + lib)
+                                    .then(mtl => utf8Text(mtl, dir + lib))
+                                    .catch((e) => {
+                                        mtlFailed++;
+                                        console.warn(`[useRobotModel] ${lib} for ${path}: ${formatCaughtError(e)}`);
+                                        return '';
+                                    }),
+                            ));
+                            const mtl = mtls.join('\n')
+                                .replace(/^[^\S\r\n]*(?:map_\w+|bump|disp|decal|refl)[^\S\r\n].*$/gm, '');
+                            const objLoader = new OBJLoader();
+                            if (mtl.trim()) objLoader.setMaterials(mtlLoader.parse(mtl, ''));
+                            // Drop loose-edge `l` and point `p` records: one turns OBJLoader's whole object into line segments (wireframe jaw).
+                            const group = objLoader.parse(obj.replace(/^[^\S\r\n]*(?:l|lod|p)(?:[^\S\r\n].*)?$/gm, ''));
+                            Object.assign(group, { materialLibraries: [] });
+                            if (!group.children.some(c => c instanceof THREE.Mesh)) {
+                                throw new Error(`no faces in ${path}`);
+                            }
+                            done(!mtl.trim() && group.children.length === 1 ? group.children[0] : group);
                         } else {
                             throw new Error(`unsupported mesh type: ${path}`);
                         }
@@ -138,11 +193,13 @@ export function useRobotModel(): UseRobotModelReturn {
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
                     } finally {
                         completed++;
-                        if (total > 0) setProgress(Math.min(0.99, completed / total));
-                        setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+                        if (!stale()) {
+                            if (total > 0) setProgress(Math.min(0.99, completed / total));
+                            setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+                        }
                     }
                 });
-                if (path.toLowerCase().endsWith('.stl')) stlCount++;
+                if (/\.(stl|obj)$/i.test(path)) largeCount++;
             };
             const loadedRobot = loader.parse(urdf);
             total = tasks.length;
@@ -152,13 +209,14 @@ export function useRobotModel(): UseRobotModelReturn {
             // while meshes load. Mark this URDF as in-flight to block a duplicate
             // parse if the latched topic re-delivers it mid-load.
             loadedUrdfRef.current = urdf;
-            setRobot(loadedRobot);
+            showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            const concurrency = stlCount > 0
-                ? MESH_FETCH_CONCURRENCY_STL
+            const concurrency = largeCount > 0
+                ? MESH_FETCH_CONCURRENCY_LARGE
                 : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks, concurrency);
+            if (stale()) return;
 
             if (total > 0 && failed === total) {
                 throw new Error(
@@ -168,9 +226,16 @@ export function useRobotModel(): UseRobotModelReturn {
                 );
             }
 
-            // Commit to the session cache only once we have a usable model, so a
-            // total failure doesn't leave an empty robot cached for later mounts.
-            globalCache = { ready: true, urdf, robot: loadedRobot };
+            // Commit to the session cache only once every mesh loaded, so a partial
+            // load is retried by the next mount instead of keeping its holes.
+            if (failed === 0 && mtlFailed === 0) {
+                globalCache = { ready: true, urdf, robot: loadedRobot };
+            } else {
+                console.warn(
+                    `[useRobotModel] ${failed} mesh(es) and ${mtlFailed} material file(s) failed to load ` +
+                    `(${lastError || 'see above'}); the model will reload on the next open`,
+                );
+            }
 
             const linkCount = Object.keys(loadedRobot.links).length;
             const jointCount = Object.keys(loadedRobot.joints).length;
@@ -186,12 +251,13 @@ export function useRobotModel(): UseRobotModelReturn {
             setLoading(false);
 
         } catch (err) {
+            if (stale()) return;
             // Clear the in-flight guard so a retry (or topic re-delivery) re-parses.
             loadedUrdfRef.current = null;
             setError(err instanceof Error ? err.message : 'Failed to load robot model');
             setLoading(false);
         }
-    }, []);
+    }, [showRobot]);
 
     useEffect(() => {
         let cancelled = false;
@@ -236,13 +302,14 @@ export function useRobotModel(): UseRobotModelReturn {
         RobotDescriptionHandler.getInstance().resubscribe();
         globalCache = { ready: false };
         loadedUrdfRef.current = null;
-        setRobot(null);
+        runRef.current++;
+        showRobot(null);
         setLoading(true);
         setProgress(0);
         setError(null);
         setLoadingStatus('');
         setReloadToken(t => t + 1);
-    }, []);
+    }, [showRobot]);
 
     return { robot, loading, loadingStatus, progress, error, reload };
 }

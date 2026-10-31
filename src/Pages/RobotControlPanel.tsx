@@ -44,7 +44,9 @@ import type { Dock as DockName } from '../contexts/DockContext.tsx';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
+    clampServoRad,
     jointRadToServoRad,
+    servoRadToJointRad,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
 import { describeClient } from '../Utils/clientIdentity';
@@ -475,11 +477,17 @@ export const RobotControlPanel: React.FC = () => {
         if (!isSendingRef.current) return;
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const clampedX = Math.max(joint.minValue, y * joint.maxValue);
-                if (joint.name === jointName) {
-                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
-                }
-                return joint;
+                if (joint.name !== jointName) return joint;
+                const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                const a = servoRadToJointRad(joint.minValue, mapping);
+                const b = servoRadToJointRad(joint.maxValue, mapping);
+                const lo = Math.min(a, b);
+                const servo = clampServoRad(
+                    jointRadToServoRad(lo + y * (Math.max(a, b) - lo), mapping),
+                    joint.minValue,
+                    joint.maxValue,
+                );
+                return { ...joint, currentValue: servo, targetValue: servo };
             })
         );
     }

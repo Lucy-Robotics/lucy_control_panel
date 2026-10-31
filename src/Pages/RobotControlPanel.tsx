@@ -187,7 +187,10 @@ export const RobotControlPanel: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-    const [isSending, setIsSending] = useState(false);
+    const [activeControllerId, setActiveControllerId] = useState(
+        () => ControlModeHandler.getInstance().currentControllerId
+    );
+    const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -288,7 +291,6 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
-            setIsSending(false);
             return;
         }
 
@@ -355,19 +357,14 @@ export const RobotControlPanel: React.FC = () => {
 
 
     useEffect(() => {
-        if (!isConnected) return;
         const handler = ControlModeHandler.getInstance();
-        const unsubscribe = handler.onControllerChanged((controllerId) => {
-            if (controllerId === handler.clientId) return;
-            if (isSendingRef.current) {
-                if (controllerId !== '') {
-                    setShowControlTakenModal(true);
-                }
-                setIsSending(false);
+        return handler.onControllerChanged((controllerId) => {
+            if (isSendingRef.current && controllerId !== '' && controllerId !== handler.clientId) {
+                setShowControlTakenModal(true);
             }
+            setActiveControllerId(controllerId);
         });
-        return unsubscribe;
-    }, [isConnected]);
+    }, []);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -437,7 +434,6 @@ export const RobotControlPanel: React.FC = () => {
     }, [isSending]);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
-        setIsSending(shouldControl);
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
         if (shouldControl) {

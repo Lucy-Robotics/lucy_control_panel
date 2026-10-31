@@ -126,9 +126,9 @@ const PaginatedJointCategories = ({
         tabRefs.current.get(next)?.focus();
     };
 
-    // On mobile the page scrolls, so the strip sticks just above the fixed bottom nav
+    // On mobile the page scrolls, so the strip sticks just above the fixed bottom toolbar
     const stripStyle: React.CSSProperties = isMobile
-        ? { position: 'sticky', bottom: 'calc(var(--mobile-nav-height, 48px) + 8px)', zIndex: 3 }
+        ? { position: 'sticky', bottom: 'calc(var(--mobile-nav-height, 0px) + 8px)', zIndex: 3 }
         : { marginRight: navInset };
 
     return (

@@ -71,8 +71,8 @@ import {
     UI_WARNING,
     UI_BORDER_DIM,
     UI_GRADIENT_MODAL_HEADER,
-    PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
+import { getScreenPadding } from '../Constants/theme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
 import { CONTROL_OFF_HINT, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
@@ -202,6 +202,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+    const screenPadding = getScreenPadding(screens);
 
     const headerHeight = useContext(HeaderHeightContext);
 
@@ -215,6 +216,17 @@ export const RobotControlPanel: React.FC = () => {
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
+
+    // Lets sticky elements (the category strip) sit above the bottom toolbar on phones
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isMobile && railHeight > 0) {
+            root.style.setProperty('--mobile-nav-height', `${railHeight}px`);
+        } else {
+            root.style.removeProperty('--mobile-nav-height');
+        }
+        return () => { root.style.removeProperty('--mobile-nav-height'); };
+    }, [isMobile, railHeight]);
 
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
@@ -692,6 +704,7 @@ export const RobotControlPanel: React.FC = () => {
             childrens={{
                 '3D_VIEW': (
                     <Robot3DViewer
+                        docked
                         isControlOn={isSending}
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
@@ -882,10 +895,12 @@ export const RobotControlPanel: React.FC = () => {
                         flexDirection: 'column',
                         height: isMobile
                             ? 'auto'
-                            : `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                            : `calc(100dvh - ${headerHeight}px - ${screenPadding * 2}px)`,
                         minHeight: isMobile
-                            ? `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`
+                            ? `calc(100dvh - ${headerHeight}px - ${screenPadding * 2}px - ${railHeight}px)`
                             : 0,
+                        // Keeps the last content clear of the fixed bottom toolbar
+                        paddingBottom: isMobile ? railHeight : 0,
                     }}
                 >
                     {isMobile && (
@@ -894,7 +909,7 @@ export const RobotControlPanel: React.FC = () => {
                             orientation="horizontal"
                             groups={railGroups}
                             arm={railArm}
-                            style={{ position: 'sticky', top: headerHeight + 8, zIndex: 5, marginBottom: 12 }}
+                            className="command-rail-bottom"
                         />
                     )}
 
@@ -944,7 +959,7 @@ export const RobotControlPanel: React.FC = () => {
                                     style={{
                                         width: '100%',
                                         position: 'sticky',
-                                        top: headerHeight + 8 + railHeight + 12,
+                                        top: headerHeight + screenPadding,
                                         zIndex: 4,
                                         backgroundColor: 'var(--color-main)',
                                         height: '34vh',

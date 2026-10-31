@@ -158,7 +158,8 @@ export function useRobotModel(): UseRobotModelReturn {
             const concurrency = stlCount > 0
                 ? MESH_FETCH_CONCURRENCY_STL
                 : MESH_FETCH_CONCURRENCY_DAE;
-            await runWithConcurrency(tasks, concurrency);
+            await runWithConcurrency(tasks.slice(0, 1), 1);
+            await runWithConcurrency(tasks.slice(1), concurrency);
 
             if (total > 0 && failed === total) {
                 throw new Error(

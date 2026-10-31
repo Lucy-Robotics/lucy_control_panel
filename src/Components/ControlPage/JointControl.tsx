@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
-import { storageService } from '../../Services/storage.service.ts';
 import { useJointPreview } from '../../hooks/useJointPreview.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
@@ -43,7 +42,6 @@ interface TrackMarkerProps {
 }
 
 const MARKER_HIT_SIZE = 12;
-const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
@@ -101,74 +99,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
   const previewValue = useJointPreview(joint.name);
-  const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
-  const currentValueRef = useRef(joint.currentValue);
-  const loadedPositionKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    currentValueRef.current = joint.currentValue;
-  }, [joint.currentValue]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    loadedPositionKeyRef.current = null;
-    setPositionStorageLoaded(false);
-
-    const loadStoredPosition = async () => {
-      try {
-        const storedValue = await storageService.loadData(
-          storageKey,
-          'session'
-        );
-        const parsedValue = storedValue === null ? NaN : Number(storedValue);
-
-        if (!cancelled && Number.isFinite(parsedValue)) {
-          const clampedValue = Math.max(
-            joint.minValue,
-            Math.min(joint.maxValue, parsedValue)
-          );
-          if (clampedValue !== currentValueRef.current) {
-            onValueChange(joint.name, clampedValue);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to load position for joint ${joint.name}:`, error);
-      } finally {
-        if (!cancelled) {
-          loadedPositionKeyRef.current = storageKey;
-          setPositionStorageLoaded(true);
-        }
-      }
-    };
-
-    void loadStoredPosition();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
-
-  useEffect(() => {
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    if (
-      !positionStorageLoaded ||
-      loadedPositionKeyRef.current !== storageKey ||
-      !Number.isFinite(joint.currentValue)
-    ) {
-      return;
-    }
-
-    void storageService
-      .saveData(
-        String(joint.currentValue),
-        storageKey,
-        'session'
-      )
-      .catch((error) => {
-        console.warn(`Failed to save position for joint ${joint.name}:`, error);
-      });
-  }, [joint.name, joint.currentValue, positionStorageLoaded]);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);
@@ -258,8 +188,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.actualValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
@@ -271,8 +201,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.restValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
     if (actuatorValue) {
@@ -310,7 +240,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               textTransform: 'uppercase',
             }}
           >
-            {joint.type}
+            {joint.inverted ? 'inverted · ' : ''}{joint.type}
           </span>
         </div>
 
@@ -322,6 +252,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 max={maxDisplay}
                 step={showDegrees ? 0.1 : 0.001}
                 value={currentDisplay}
+                // Inverted servo in servo angles: max on the left so it moves like the others.
+                reverse={joint.inverted}
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
@@ -393,7 +325,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: joint.inverted ? 'row-reverse' : 'row',
+            justifyContent: 'space-between',
+            fontSize: '10px',
+            color: UI_TEXT_SECONDARY_MUTED,
+          }}
+        >
           <Text type="secondary" style={{ fontSize: '10px' }}>
             Min: {minDisplay}{showDegrees ? '°' : 'rad'}
           </Text>

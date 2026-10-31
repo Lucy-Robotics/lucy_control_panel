@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useEffect, useState } from 'react';
-import ROSLIB from 'roslib';
-import { RosBridgeService } from '../Services/ros/ros.service';
+import { useEffect, useMemo, useState } from 'react';
+import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
+import { isMockHardware } from '../Utils/productionMode';
 
 export interface UrdfJointLimitRad {
   lowerRad: number;
@@ -44,36 +44,33 @@ export function parseUrdfJointLimits(urdfXml: string): Map<string, UrdfJointLimi
   return out;
 }
 
+export interface RobotDescription {
+  jointLimits: Map<string, UrdfJointLimitRad>;
+  /** `null` until /robot_description arrives. */
+  mockHardware: boolean | null;
+}
+
 /**
- * Subscribe to latched /robot_description and expose URDF joint limits in radians.
+ * Follow the robot description and expose URDF joint limits in radians
+ * and whether ros2_control runs on mock hardware.
  */
-export function useUrdfJointLimits(isConnected: boolean): Map<string, UrdfJointLimitRad> {
-  const [limits, setLimits] = useState<Map<string, UrdfJointLimitRad>>(() => new Map());
+export function useRobotDescription(isConnected: boolean): RobotDescription {
+  const [urdf, setUrdf] = useState('');
 
   useEffect(() => {
     if (!isConnected) {
-      setLimits(new Map());
+      setUrdf('');
       return;
     }
-
-    const ros = RosBridgeService.getInstance().rosConnection;
-    if (!ros) return;
-
-    const topic = new ROSLIB.Topic({
-      ros,
-      name: '/robot_description',
-      messageType: 'std_msgs/msg/String',
-    });
-
-    const onMessage = (msg: ROSLIB.Message) => {
-      const data = (msg as unknown as { data?: string }).data;
-      if (typeof data !== 'string' || !data.trim()) return;
-      setLimits(parseUrdfJointLimits(data));
-    };
-
-    topic.subscribe(onMessage);
-    return () => topic.unsubscribe();
+    return RobotDescriptionHandler.getInstance().subscribe((v) => setUrdf(v ?? ''));
   }, [isConnected]);
 
-  return limits;
+  return useMemo(() => ({
+    jointLimits: parseUrdfJointLimits(urdf),
+    mockHardware: urdf ? isMockHardware(urdf) : null,
+  }), [urdf]);
+}
+
+export function useUrdfJointLimits(isConnected: boolean): Map<string, UrdfJointLimitRad> {
+  return useRobotDescription(isConnected).jointLimits;
 }

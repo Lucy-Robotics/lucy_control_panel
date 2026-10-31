@@ -178,12 +178,14 @@ export const RobotControlPanel: React.FC = () => {
 
     const {
         controllerConfigsFromActive,
+        productionMode,
         activeHardwareLoading,
         activeHardwareError,
         refetchActiveHardware,
     } = useActiveHardwareRos();
 
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
+    const slidersProductionModeRef = useRef(productionMode);
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
     const [jointPreviewStore] = useState(createJointPreviewStore);
@@ -264,10 +266,13 @@ export const RobotControlPanel: React.FC = () => {
                 let minValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.min;
                 let maxValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.max;
                 let restValue: number | undefined;
+                let inverted = false;
                 if (lim) {
                     minValue = lim.minRad;
                     maxValue = lim.maxRad;
                     restValue = lim.defaultRad;
+                    // Joint angles (production mode) carry an identity mapping, so never inverted there.
+                    inverted = lim.mapping.direction * lim.mapping.scale < 0;
                 }
                 joints.push({
                     name,
@@ -278,6 +283,7 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    inverted,
                     ...(restValue !== undefined && { restValue }),
                 });
             }
@@ -324,17 +330,33 @@ export const RobotControlPanel: React.FC = () => {
                 mapByJoint.set(name, lim?.mapping ?? DEFAULT_ACTUATOR_MAPPING);
             }
         }
+        // Switching between servo and joint sliders: carry each value over through both mappings
+        // so the servo stays where it is (keeping the raw number would move it, e.g. 170 deg -> 2.97 rad).
+        const prevMapByJoint = actuatorMappingByJointRef.current;
+        const modeSwitched = slidersProductionModeRef.current !== productionMode;
+        slidersProductionModeRef.current = productionMode;
+        const carry = (name: string, value: number) =>
+            modeSwitched
+                ? jointRadToServoRad(
+                    servoRadToJointRad(value, prevMapByJoint.get(name) ?? DEFAULT_ACTUATOR_MAPPING),
+                    mapByJoint.get(name) ?? DEFAULT_ACTUATOR_MAPPING,
+                )
+                : value;
         actuatorMappingByJointRef.current = mapByJoint;
-        setJoints((prev) => {
-            const byName = new Map(prev.map((j) => [j.name, j]));
-            const next = buildJointsFromControllerConfig(ctrls);
-            return next.map((j) => {
-                const existing = byName.get(j.name);
-                return existing
-                    ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue }
-                    : j;
-            });
+        if (modeSwitched) actualPositionsRef.current.clear();
+        const byName = new Map(jointsRef.current.map((j) => [j.name, j]));
+        const nextJoints = buildJointsFromControllerConfig(ctrls).map((j) => {
+            const existing = byName.get(j.name);
+            return existing
+                ? {
+                    ...j,
+                    currentValue: carry(j.name, existing.currentValue),
+                    targetValue: carry(j.name, existing.targetValue),
+                }
+                : j;
         });
+        jointsRef.current = nextJoints;
+        setJoints(nextJoints);
         setCategoryOrder((prevOrder) => {
             const nextCats = [...new Set(ctrls.map((c) => c.defaultCategory))];
             const preserved = prevOrder.filter((c) => nextCats.includes(c));
@@ -346,6 +368,7 @@ export const RobotControlPanel: React.FC = () => {
         activeHardwareLoading,
         activeHardwareError,
         controllerConfigsFromActive,
+        productionMode,
         buildJointsFromControllerConfig,
     ]);
 
@@ -549,14 +572,27 @@ export const RobotControlPanel: React.FC = () => {
         return categories;
     }, [joints]);
 
+    const poseJoints = useMemo(
+        () => joints.map((joint) => ({
+            ...joint,
+            currentValue: servoRadToJointRad(
+                joint.currentValue,
+                actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING,
+            ),
+        })),
+        [joints],
+    );
+
     const handleLoadPose = useCallback(
         (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
             setJoints((prevJoints) =>
-                prevJoints.map((joint) => ({
-                    ...joint,
-                    currentValue: poseJoints[joint.name] ?? joint.currentValue,
-                    targetValue: poseJoints[joint.name] ?? joint.targetValue,
-                }))
+                prevJoints.map((joint) => {
+                    const jointRad = poseJoints[joint.name];
+                    if (jointRad === undefined) return joint;
+                    const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                    const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+                    return { ...joint, currentValue: value, targetValue: value };
+                })
             );
 
             if (categoryOrder) {
@@ -859,7 +895,7 @@ export const RobotControlPanel: React.FC = () => {
             />
 
             <ManagePosesModal
-                joints={joints}
+                joints={poseJoints}
                 controlEnabled={isSending}
                 onLoadPose={handleLoadPose}
                 onPlayAnimation={handlePlayAnimation}

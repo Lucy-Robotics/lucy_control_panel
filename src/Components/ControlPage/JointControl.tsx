@@ -10,6 +10,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { useJointPreview } from '../../hooks/useJointPreview.ts';
+import { ControlModeHandler } from '../../Services/ros/handlers/ControlMode.handler';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -179,6 +180,9 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
   const torqueOn = !useDisabledJoints().has(joint.name);
+  // The supervisor only enables torque while some client holds Control Robot.
+  const [robotControlled, setRobotControlled] = useState(() => ControlModeHandler.getInstance().isControlled);
+  useEffect(() => ControlModeHandler.getInstance().onControllerChanged((id) => setRobotControlled(id !== '')), []);
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
@@ -245,12 +249,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             >
               {joint.inverted ? 'inverted · ' : ''}{joint.type}
             </span>
-            <Tooltip title={torqueOn
-              ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
-              : 'Torque off: stays limp even while Control Robot is ON.'}>
+            <Tooltip title={!robotControlled
+              ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
+              : torqueOn
+                ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+                : 'Torque off: stays limp even while Control Robot is ON.'}>
               <Switch
                 size="small"
                 checked={torqueOn}
+                style={robotControlled ? undefined : { opacity: 0.45 }}
                 onChange={(on) => setJointTorqueEnabled(joint.name, on)}
                 aria-label={`Torque on ${joint.displayName ?? joint.name}`}
               />

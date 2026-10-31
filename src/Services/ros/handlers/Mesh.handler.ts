@@ -18,8 +18,9 @@ const MESH_SERVICE_NAME = '/mesh/get';
 const MESH_SERVICE_TYPE = 'lucy_msgs/srv/GetMesh';
 /** Client-side wait; must stay ≥ rosbridge `default_call_service_timeout`. */
 const MESH_SERVICE_TIMEOUT_MS = 60_000;
-/** Passed to rosbridge so it does not cancel mid-transfer (default is 5s). */
-const MESH_SERVICE_ROSBRIDGE_TIMEOUT_S = 60.0;
+/** Passed to rosbridge; a reply lost in DDS fails after this and is retried. */
+const MESH_SERVICE_ROSBRIDGE_TIMEOUT_S = 10.0;
+const MESH_SERVICE_ATTEMPTS = 3;
 
 export type MeshEncoding = 'utf8' | 'zlib_base64' | string;
 
@@ -65,7 +66,17 @@ function inferEncoding(path: string, encoding: string | undefined): MeshEncoding
 
 export class MeshHandler {
     /** Resolve to mesh payload (data + encoding), or reject on failure/timeout. */
-    static getMesh(path: string): Promise<MeshPayload> {
+    static async getMesh(path: string): Promise<MeshPayload> {
+        for (let attempt = 1; ; attempt++) {
+            try {
+                return await MeshHandler.request(path);
+            } catch (e) {
+                if (attempt >= MESH_SERVICE_ATTEMPTS) throw e;
+            }
+        }
+    }
+
+    private static request(path: string): Promise<MeshPayload> {
         const ros = RosBridgeService.getInstance().rosConnection as RosWithEmitter | null;
         if (!ros) return Promise.reject(new Error('ROS bridge is not connected.'));
 

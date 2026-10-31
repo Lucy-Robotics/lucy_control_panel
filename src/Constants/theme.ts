@@ -76,6 +76,64 @@ export function adjustBrightness(hex: string, percent: number): string {
     return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`;
 }
 
+export function isHexColor(value: string): boolean {
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
+}
+
+/** Lightens (positive) or darkens (negative) any CSS color; exact hex math when possible. */
+export function shade(color: string, percent: number): string {
+    if (isHexColor(color)) return adjustBrightness(color, percent);
+    const mixWith = percent >= 0 ? 'white' : 'black';
+    return `color-mix(in srgb, ${color}, ${mixWith} ${Math.abs(percent)}%)`;
+}
+
+/** Applies alpha to any CSS color; exact rgba() for hex input. */
+export function alpha(color: string, value: number): string {
+    if (isHexColor(color)) return rgba(color, value);
+    return `color-mix(in srgb, ${color} ${Math.round(value * 100)}%, transparent)`;
+}
+
+export interface ThemeBaseColors {
+    main: string;
+    secondary: string;
+    highlight: string;
+    text: string;
+}
+
+/**
+ * Derives the full surface/line/grid token set from the four base colors.
+ * Single source of truth for elevation tiers, used by the baseline map,
+ * the theme service (for tokens a theme does not define) and Quick Colors.
+ */
+export function deriveSurfaceTokens({ main, secondary, highlight, text }: ThemeBaseColors): Record<string, string> {
+    const surface1 = shade(main, 3);
+    const surface2 = shade(main, 6);
+    return {
+        '--color-bg': main,
+        '--color-surface-1': surface1,
+        '--color-surface-2': surface2,
+        '--color-surface-3': shade(main, 10),
+        '--color-main-surface': surface1,
+        '--color-main-elevated': surface2,
+        '--color-main-deep': shade(main, -4),
+
+        '--color-line': alpha(secondary, 0.45),
+        '--color-line-strong': secondary,
+        '--color-secondary-subtle': alpha(secondary, 0.4),
+        '--color-secondary-hover': shade(secondary, 15),
+
+        '--color-highlight-light': shade(highlight, 15),
+        '--color-highlight-dark': shade(highlight, -15),
+        '--color-highlight-soft': alpha(highlight, 0.1),
+        '--color-highlight-glow': alpha(highlight, 0.25),
+        '--color-highlight-glow-strong': alpha(highlight, 0.55),
+        '--color-highlight-glow-subtle': alpha(highlight, 0.12),
+
+        '--color-grid-dot': alpha(text, 0.2),
+        '--color-grid-line': alpha(text, 0.09),
+    };
+}
+
 export const colors = {
     mainColor: MAIN_COLOR,
     secondaryColor: SECONDARY_COLOR,
@@ -83,8 +141,8 @@ export const colors = {
 
     main: {
         base: MAIN_COLOR,
-        surface: MAIN_COLOR,
-        elevated: adjustBrightness(MAIN_COLOR, 4),
+        surface: adjustBrightness(MAIN_COLOR, 3),
+        elevated: adjustBrightness(MAIN_COLOR, 6),
         deep: adjustBrightness(MAIN_COLOR, -4),
         contrastText: TEXT_PRIMARY,
     },
@@ -95,7 +153,7 @@ export const colors = {
         subtleBorder: rgba(SECONDARY_COLOR, 0.4),
         hover: adjustBrightness(SECONDARY_COLOR, 15),
         dark: adjustBrightness(SECONDARY_COLOR, -15),
-        panel: MAIN_COLOR,
+        panel: adjustBrightness(MAIN_COLOR, 3),
         text: TEXT_SECONDARY,
     },
 
@@ -129,6 +187,7 @@ export const colors = {
     decorations: {
         border: SECONDARY_COLOR,
         subtleBorder: rgba(SECONDARY_COLOR, 0.35),
+        line: rgba(SECONDARY_COLOR, 0.45),
         divider: rgba(SECONDARY_COLOR, 0.5),
         gridLines: rgba(SECONDARY_COLOR, 0.25),
         titlePrefix: HIGHLIGHT_COLOR,
@@ -187,6 +246,7 @@ export const borders = {
     radius: '0px', // Strict crisp cybernetic 0px
     standard: `1px solid ${SECONDARY_COLOR}`,
     subtle: `1px solid ${rgba(SECONDARY_COLOR, 0.4)}`,
+    line: '1px solid var(--color-line)',
     highlight: `1px solid ${HIGHLIGHT_COLOR}`,
     highlightThick: `2px solid ${HIGHLIGHT_COLOR}`,
 } as const;
@@ -256,6 +316,11 @@ export const CSS_VARIABLES_MAP: Record<string, string> = {
     '--ui-text-on-accent': TEXT_ON_HIGHLIGHT,
     '--ui-switch-disabled-bg': '#334455',
     '--ui-switch-disabled-border': SECONDARY_COLOR,
+
+    // Surface tiers, lines, grid & glow (derived; overrides the raw entries above)
+    ...deriveSurfaceTokens({ main: MAIN_COLOR, secondary: SECONDARY_COLOR, highlight: HIGHLIGHT_COLOR, text: TEXT_PRIMARY }),
+    '--shadow-1': '0 2px 8px rgba(0, 0, 0, 0.35)',
+    '--shadow-2': '0 12px 32px rgba(0, 0, 0, 0.55)',
 };
 
 /**
@@ -286,6 +351,9 @@ export const THEME_CONFIG = {
     rgba,
     hexToRgb,
     adjustBrightness,
+    shade,
+    alpha,
+    deriveSurfaceTokens,
     injectThemeVariables,
 } as const;
 

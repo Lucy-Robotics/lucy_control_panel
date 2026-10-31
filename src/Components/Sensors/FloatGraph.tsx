@@ -181,8 +181,6 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
             <div
                 style={{
                     marginBottom: '12px',
-                    borderBottom: '1px solid var(--color-secondary)',
-                    paddingBottom: '8px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -216,7 +214,7 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                         size="small"
                         onClick={() => setPaused(!isPaused)}
                         style={{
-                            borderColor: 'var(--color-secondary)',
+                            borderColor: 'var(--color-line)',
                             color: 'var(--color-text-primary)',
                             borderRadius: 0,
                         }}
@@ -226,12 +224,12 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
                 </div>
             </div>
             <div
-                className="chamfer-box-sm"
+                className="chamfer-box chamfer-box-sm"
                 style={{
                     height: '280px',
                     padding: '8px 0',
                     overflow: 'hidden',
-                    '--box-bg': '#0a0a0a',
+                    '--fill': 'var(--color-main-deep)',
                 } as React.CSSProperties}
             >
                 {renderGraph()}

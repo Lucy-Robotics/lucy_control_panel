@@ -149,7 +149,7 @@ function App() {
             <Router>
                 <PaginatedCategoriesProvider>
                     <ActiveHardwareRosProvider>
-                        <Layout style={{ minHeight: '100vh', backgroundColor: 'var(--color-main)' }}>
+                        <Layout style={{ minHeight: '100vh' }}>
                             <RoutedPage />
                             <Navigation />
                             <GettingStartedModal />

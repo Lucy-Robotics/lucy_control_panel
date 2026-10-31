@@ -3,14 +3,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import { ROUTES } from '../Constants/routes.ts';
-import {
-    SECONDARY_COLOR,
-} from '../Constants/theme.ts';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 
 const { useBreakpoint } = Grid;
 
@@ -24,6 +22,17 @@ export const Navigation: React.FC = () => {
     const location = useLocation();
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+    const [mobileNavRef, mobileNavHeight] = useMeasuredHeight<HTMLDivElement>();
+
+    // Lets sticky page elements (e.g. the category strip) sit above the fixed mobile nav
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isMobile && mobileNavHeight > 0) {
+            root.style.setProperty('--mobile-nav-height', `${mobileNavHeight}px`);
+        } else {
+            root.style.removeProperty('--mobile-nav-height');
+        }
+    }, [isMobile, mobileNavHeight]);
 
     const desktopStyle: React.CSSProperties = {
         position: 'fixed',
@@ -39,8 +48,10 @@ export const Navigation: React.FC = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
-        backgroundColor: `rgba(20, 20, 20, 0.98)`,
-        borderTop: `1px solid ${SECONDARY_COLOR}`,
+        background: 'color-mix(in srgb, var(--color-surface-1) 92%, transparent)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.45)',
         display: 'flex',
         justifyContent: 'space-around',
         padding: '8px 8px',
@@ -49,7 +60,7 @@ export const Navigation: React.FC = () => {
 
     if (isMobile) {
         return (
-            <div style={mobileStyle}>
+            <div ref={mobileNavRef} style={mobileStyle}>
                 {navigationItems.map(item => {
                     const isActive = location.pathname === item.to;
                     return (

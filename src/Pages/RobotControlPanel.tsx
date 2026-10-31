@@ -13,20 +13,16 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Alert, Spin, Tooltip, message, Dropdown, Select, Grid } from 'antd';
-import type { MenuProps } from 'antd';
+import { Typography, Space, Button, Alert, Spin, message, Grid } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
     StopOutlined,
-    MenuOutlined,
     VideoCameraOutlined,
     EyeOutlined,
     CodeSandboxOutlined,
-    ExperimentOutlined,
-    SettingOutlined,
-    DownOutlined,
-    UpOutlined,
+    UnorderedListOutlined,
+    LayoutOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -43,6 +39,7 @@ import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
+import type { Dock as DockName } from '../contexts/DockContext.tsx';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -58,7 +55,6 @@ import {
 
 import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
-import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
 import { MovableModal } from '../Components/MovableModal';
@@ -73,20 +69,21 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
     UI_WARNING,
-    UI_PANEL_BG,
-    UI_BORDER_MUTED,
     UI_BORDER_DIM,
     UI_GRADIENT_MODAL_HEADER,
     PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
-import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
+import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
+import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
+import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -164,6 +161,15 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
     </MovableModal>
 );
 
+/** Value printed under the rail's Dock button. */
+const DOCK_SHORT_LABEL: Record<DockName, string> = {
+    NONE: 'NONE',
+    '3D_VIEW': '3D',
+    STREAM: 'STREAM',
+    TELEOPERATION: 'TELEOP',
+    SENSOR_DISPLAY: 'SENSORS',
+};
+
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const { currentDock, setCurrentDock, isDockLoaded } = useDock();
@@ -208,9 +214,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
-    const [showHeaderActions, setShowHeaderActions] = useState(false);
-
-    const [subHeaderRef, subHeaderHeight] = useMeasuredHeight<HTMLDivElement>();
+    const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
 
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
@@ -709,55 +713,127 @@ export const RobotControlPanel: React.FC = () => {
     // Control Robot OFF publishes nothing, so every command control is inert.
     const readOnlyReason = isSending ? undefined : CONTROL_OFF_HINT;
 
-    const switches = () => (
-        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-            <span style={{ display: 'inline-flex', cursor: 'help' }}>
-                <ToggleSwitch
-                    isOn={isSending}
-                    onToggle={handleControlRobotToggle}
-                    title="Control Robot"
-                    titlePlacement="inline"
-                    rightIcon={<ThunderboltOutlined />}
-                    width={180}
-                />
-            </span>
-        </Tooltip>
-    );
+    const dockLabel = (dock: DockName) => {
+        if (dock === 'NONE') return 'No dock';
+        if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
+        if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
+        return dock.replace('_', ' ');
+    };
 
-    const items: MenuProps['items'] = [
+    const railArm = {
+        isOn: isSending,
+        onToggle: () => handleControlRobotToggle(!isSending),
+        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
+    };
+
+    const railGroups: RailGroup[] = [
         {
-            key: '3d-view',
-            label: showVisualizerWindow ? 'HIDE 3D VIEW' : 'SHOW 3D VIEW',
-            icon: <CodeSandboxOutlined />,
-            onClick: () => setIsVisualizerVisible(v => !v),
-            disabled: isVisualizerDocked,
-            title: isVisualizerDocked ? '3D view is currently displayed in the dock' : undefined,
+            key: 'pose',
+            code: 'POSE',
+            items: [
+                {
+                    key: 'reset',
+                    icon: <ReloadOutlined />,
+                    label: 'Reset all joints',
+                    caption: 'RESET',
+                    onClick: handleResetAll,
+                    disabled: !isSending,
+                    disabledReason: CONTROL_OFF_HINT,
+                },
+                isAnimating
+                    ? {
+                        key: 'stop',
+                        icon: <StopOutlined />,
+                        label: 'Stop animation',
+                        caption: 'STOP',
+                        onClick: handleStopAnimation,
+                        danger: true,
+                    }
+                    : {
+                        key: 'random',
+                        icon: <ShuffleOutlined />,
+                        label: 'Random pose',
+                        caption: 'RANDOM',
+                        onClick: handleRandomPose,
+                        disabled: !isSending,
+                        disabledReason: CONTROL_OFF_HINT,
+                    },
+                {
+                    key: 'poses',
+                    icon: <UnorderedListOutlined />,
+                    label: 'Manage poses & animations',
+                    caption: 'POSES',
+                    onClick: () => setIsManagePosesVisible(true),
+                },
+            ],
         },
         {
-            key: 'stream',
-            label: showStreamWindow ? 'HIDE STREAM' : 'SHOW STREAM',
-            icon: <VideoCameraOutlined />,
-            onClick: () => setIsStreamVisible(v => !v),
-            disabled: isStreamDisabled,
-            title: isStreamDocked
-                ? 'Stream is currently displayed in the dock'
-                : 'No camera is publishing',
+            key: 'mode',
+            code: 'MODE',
+            items: [
+                {
+                    key: 'teleop',
+                    icon: <EyeOutlined />,
+                    label: `Teleoperation${isSending ? '' : ` (${CONTROL_OFF_HINT})`}`,
+                    caption: 'TELEOP',
+                    onClick: () => setIsWebcamActive(v => !v),
+                    active: isWebcamActive,
+                    disabled: isTeleoperationDocked,
+                    disabledReason: 'Teleoperation is currently displayed in the dock',
+                },
+            ],
         },
         {
-            key: 'webcam',
-            label: 'TELEOPERATION',
-            icon: <EyeOutlined />,
-            onClick: () => setIsWebcamActive(v => !v),
-            title: isSending ? undefined : CONTROL_OFF_HINT,
-            style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
+            key: 'layout',
+            code: 'LAYOUT',
+            pinEnd: true,
+            items: [
+                {
+                    key: '3d-view',
+                    icon: <CodeSandboxOutlined />,
+                    label: showVisualizerWindow ? 'Hide 3D view window' : 'Show 3D view window',
+                    caption: '3D VIEW',
+                    onClick: () => setIsVisualizerVisible(v => !v),
+                    active: showVisualizerWindow,
+                    disabled: isVisualizerDocked,
+                    disabledReason: '3D view is currently displayed in the dock',
+                },
+                {
+                    key: 'stream',
+                    icon: <VideoCameraOutlined />,
+                    label: showStreamWindow ? 'Hide stream window' : 'Show stream window',
+                    caption: 'STREAM',
+                    onClick: () => setIsStreamVisible(v => !v),
+                    active: showStreamWindow,
+                    disabled: isStreamDisabled,
+                    disabledReason: isStreamDocked
+                        ? 'Stream is currently displayed in the dock'
+                        : 'No camera is publishing',
+                },
+                {
+                    key: 'dock',
+                    icon: <LayoutOutlined />,
+                    label: `Docked panel: ${dockLabel(currentDock)} (click to change)`,
+                    caption: 'DOCK',
+                    detail: DOCK_SHORT_LABEL[currentDock],
+                    menu: {
+                        selectable: true,
+                        selectedKeys: [currentDock],
+                        onClick: ({ key }) => setCurrentDock(key as DockName),
+                        items: [
+                            { key: 'dock-title', type: 'group', label: 'DOCKED PANEL' },
+                            ...availableDock.map((dock) => ({
+                                key: dock,
+                                label: dockLabel(dock),
+                                disabled: (dock === 'STREAM' && !hasLiveCamera)
+                                    || (dock === 'SENSOR_DISPLAY' && !hasSensors),
+                            })),
+                        ],
+                    },
+                },
+            ],
         },
     ];
-
-    const dropdownOverlayStyle = {
-        backgroundColor: UI_PANEL_BG,
-        border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: 0,
-    };
 
     return (
         <JointPreviewContext.Provider value={jointPreviewStore}>
@@ -812,153 +888,15 @@ export const RobotControlPanel: React.FC = () => {
                             : 0,
                     }}
                 >
-                    <div
-                        ref={subHeaderRef}
-                        style={{
-                            position: 'sticky',
-                            top: headerHeight,
-                            zIndex: 5,
-                            backgroundColor: 'var(--color-main)',
-                            borderBottom: '1px solid var(--color-secondary)',
-                            margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 8px`,
-                            padding: isMobile ? '6px 12px' : '6px 30px',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 12,
-                            }}
-                        >
-                            {(!isMobile || showHeaderActions) && (
-                                <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                                    <ReadOnlyHint reason={readOnlyReason}>
-                                        <Button
-                                            icon={<ReloadOutlined />}
-                                            onClick={handleResetAll}
-                                            disabled={!isSending}
-                                            style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                        >
-                                            RESET ALL
-                                        </Button>
-                                    </ReadOnlyHint>
-                                    <ReadOnlyHint reason={readOnlyReason}>
-                                        <Button
-                                            icon={<ExperimentOutlined />}
-                                            onClick={handleRandomPose}
-                                            disabled={!isSending}
-                                            style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                        >
-                                            RANDOM POSE
-                                        </Button>
-                                    </ReadOnlyHint>
-                                    <Button
-                                        icon={<SettingOutlined />}
-                                        onClick={() => setIsManagePosesVisible(true)}
-                                        style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
-                                    >
-                                        MANAGE POSES
-                                    </Button>
-                                    {isAnimating && (
-                                        <Button danger icon={<StopOutlined />} onClick={handleStopAnimation}>
-                                            STOP
-                                        </Button>
-                                    )}
-                                    <Dropdown
-                                        menu={{ items }}
-                                        trigger={['click']}
-                                        dropdownRender={menu => (
-                                            <div style={dropdownOverlayStyle}>{menu}</div>
-                                        )}
-                                    >
-                                        <Button
-                                            icon={<MenuOutlined />}
-                                            style={{
-                                                backgroundColor: UI_COLOR_TRANSPARENT,
-                                                borderColor: UI_BORDER_SOFT,
-                                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                            }}
-                                        >
-                                            VIEWS
-                                        </Button>
-                                    </Dropdown>
-                                    {isMobile && (
-                                        <Select
-                                            value={currentDock}
-                                            onChange={setCurrentDock}
-                                            options={availableDock.map((dock) => ({
-                                                label: dock === 'NONE'
-                                                    ? 'No dock'
-                                                    : dock === 'SENSOR_DISPLAY'
-                                                        ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
-                                                        : dock === 'STREAM'
-                                                            ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
-                                                            : dock.replace('_', ' '),
-                                                value: dock,
-                                                disabled: (dock === 'STREAM' && !hasLiveCamera)
-                                                    || (dock === 'SENSOR_DISPLAY' && !hasSensors),
-                                            }))}
-                                            aria-label="Select dock"
-                                            style={{ minWidth: 150 }}
-                                            popupMatchSelectWidth={false}
-                                            getPopupContainer={() => document.body}
-                                        />
-                                    )}
-                                </Space>
-                            )}
-
-                            {!isMobile && <Space wrap>
-                                <Select
-                                    value={currentDock}
-                                    onChange={setCurrentDock}
-                                    options={availableDock.map((dock) => ({
-                                        label: dock === 'NONE'
-                                            ? 'No dock'
-                                            : dock === 'SENSOR_DISPLAY'
-                                                ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
-                                                : dock === 'STREAM'
-                                                    ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
-                                                    : dock.replace('_', ' '),
-                                        value: dock,
-                                        disabled: (dock === 'STREAM' && !hasLiveCamera)
-                                            || (dock === 'SENSOR_DISPLAY' && !hasSensors),
-                                    }))}
-                                    aria-label="Select dock"
-                                    style={{ minWidth: isMobile ? 150 : 180 }}
-                                    popupMatchSelectWidth={false}
-                                    getPopupContainer={() => document.body}
-                                    styles={{
-                                        popup: {
-                                            root: {
-                                                zIndex: 1100,
-                                            },
-                                        },
-                                    }}
-                                />
-                                {switches()}
-                            </Space>}
-                            {isMobile && (
-                                <Space wrap size="small" style={{ width: '100%' }}>
-                                    {switches()}
-                                    <Button
-                                        icon={showHeaderActions ? <UpOutlined /> : <DownOutlined />}
-                                        onClick={() => setShowHeaderActions(v => !v)}
-                                        aria-expanded={showHeaderActions}
-                                        aria-label={showHeaderActions ? 'Hide actions' : 'Show actions'}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                    />
-                                </Space>
-                            )}
-                        </div>
-                    </div>
+                    {isMobile && (
+                        <CommandRail
+                            ref={railRef}
+                            orientation="horizontal"
+                            groups={railGroups}
+                            arm={railArm}
+                            style={{ position: 'sticky', top: headerHeight + 8, zIndex: 5, marginBottom: 12 }}
+                        />
+                    )}
 
                     {isMobile && isWebcamActive && (
                         <div
@@ -1006,7 +944,7 @@ export const RobotControlPanel: React.FC = () => {
                                     style={{
                                         width: '100%',
                                         position: 'sticky',
-                                        top: headerHeight + subHeaderHeight,
+                                        top: headerHeight + 8 + railHeight + 12,
                                         zIndex: 4,
                                         backgroundColor: 'var(--color-main)',
                                         height: '34vh',
@@ -1037,27 +975,36 @@ export const RobotControlPanel: React.FC = () => {
                                 width: '100%',
                                 flex: 1,
                                 minHeight: 0,
-                                overflow: 'hidden',
+                                display: 'flex',
+                                gap: 16,
                             }}
                         >
-                            <ResizablePanels
-                                direction="horizontal"
-                                proportions={currentDock === "NONE" ? [100] : [30, 70]}
-                                minSize={25}
-                                gap={20}
-                            >
-                                <PaginatedJointCategories
-                                    categoryOrder={categoryOrder}
-                                    categorizedJoints={categorizedJoints}
-                                    onJointValueChange={handleJointValueChange}
-                                    onResetCategory={handleResetCategory}
-                                    onResetJoint={handleResetJoint}
-                                    showDegrees={showDegrees}
-                                    disabled={!isSending}
-                                />
+                            <CommandRail
+                                orientation="vertical"
+                                groups={railGroups}
+                                arm={railArm}
+                                style={{ alignSelf: 'stretch', flexShrink: 0, width: COMMAND_RAIL_WIDTH }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+                                <ResizablePanels
+                                    direction="horizontal"
+                                    proportions={currentDock === "NONE" ? [100] : [30, 70]}
+                                    minSize={25}
+                                    gap={20}
+                                >
+                                    <PaginatedJointCategories
+                                        categoryOrder={categoryOrder}
+                                        categorizedJoints={categorizedJoints}
+                                        onJointValueChange={handleJointValueChange}
+                                        onResetCategory={handleResetCategory}
+                                        onResetJoint={handleResetJoint}
+                                        showDegrees={showDegrees}
+                                        disabled={!isSending}
+                                    />
 
-                                {currentDock !== "NONE" && dockContent}
-                            </ResizablePanels>
+                                    {currentDock !== "NONE" && dockContent}
+                                </ResizablePanels>
+                            </div>
                         </div>
                     )}
                 </div>

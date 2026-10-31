@@ -120,25 +120,22 @@ export const AppHeader: React.FC = () => {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
-        padding: isMobile ? '3px 8px' : '4px 12px',
-        minWidth: 0,
+        padding: isMobile ? '0 8px' : '0 12px',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
     };
 
-    const dotStyle: React.CSSProperties = {
-        width: 8,
-        height: 8,
-        borderRadius: 0, // Sharp square technical indicator
-    };
+    // Tint the status box frame with the state colour
+    const statusFrame = (color: string) =>
+        ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)` }) as React.CSSProperties;
 
     const statusIndicators = (
         <>
             <Tooltip title="Number of connected clients to the ROS Bridge.">
-                <div style={statusStyle} className="header-status-box chamfer-box-sm">
+                <div style={statusFrame(bridgeColor)} className="header-status-box">
                     <span
-                        style={{
-                            ...dotStyle,
-                            backgroundColor: bridgeColor,
-                        }}
+                        className={`status-led${connectionStatus === 'connecting' ? ' status-led-pulse' : ''}`}
+                        style={{ color: bridgeColor }}
                     />
                     <Text
                         style={{
@@ -146,6 +143,7 @@ export const AppHeader: React.FC = () => {
                             fontFamily: fonts.mono,
                             fontSize: 11,
                             letterSpacing: '0.5px',
+                            lineHeight: 1,
                         }}
                     >
                         {isMobile ? `${countState}` : `ROS BRIDGE:${countState > 0 ? ` ${countState}` : ''} ${getConnectionStatusText()}`}
@@ -153,19 +151,15 @@ export const AppHeader: React.FC = () => {
                 </div>
             </Tooltip>
             <Tooltip title={activeControllerId !== '' ? 'A client is currently controlling the robot.' : 'No client is currently controlling the robot.'}>
-                <div style={statusStyle} className="header-status-box chamfer-box-sm">
-                    <span
-                        style={{
-                            ...dotStyle,
-                            backgroundColor: controllerColor,
-                        }}
-                    />
+                <div style={statusFrame(controllerColor)} className="header-status-box">
+                    <span className="status-led" style={{ color: controllerColor }} />
                     <Text
                         style={{
                             color: controllerColor,
                             fontFamily: fonts.mono,
                             fontSize: 11,
                             letterSpacing: '0.5px',
+                            lineHeight: 1,
                         }}
                     >
                         {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}

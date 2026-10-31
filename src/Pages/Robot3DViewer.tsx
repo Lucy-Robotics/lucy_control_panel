@@ -198,8 +198,8 @@ const InfoBadge: React.FC<{
             gap: 10,
             zIndex: 10,
             pointerEvents: 'none',
-            // chamfer-box draws its border from this variable
-            '--box-border': FOCUS_COLOR,
+            // chamfer-box draws its frame from this variable
+            '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
         <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
@@ -682,7 +682,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     return (
         <div
-            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-secondary)' }}
+            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-line)' }}
             onPointerEnter={() => { isPointerInsideRef.current = true; }}
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
@@ -809,7 +809,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 style={{
                                     width: '100%',
                                     background: 'var(--color-main)',
-                                    border: '1px solid var(--color-secondary)',
+                                    border: '1px solid var(--color-line)',
                                     color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
                                     fontFamily: 'monospace',
                                     fontSize: 10,
@@ -858,7 +858,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         width: '100%',
                         padding: '3px 6px',
                         background: 'transparent',
-                        border: '1px solid var(--color-secondary)',
+                        border: '1px solid var(--color-line)',
                         color: UI_TEXT_SECONDARY_MUTED,
                         cursor: 'pointer',
                         fontSize: 10,

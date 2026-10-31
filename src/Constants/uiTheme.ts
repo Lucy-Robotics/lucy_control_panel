@@ -19,14 +19,11 @@
  */
 
 import {
-    MAIN_COLOR,
-    SECONDARY_COLOR,
     HIGHLIGHT_COLOR,
     STATUS_ERROR,
     STATUS_WARNING,
     STATUS_INFO,
     SPACING_SCREEN_BORDER,
-    colors,
     rgba,
 } from './theme.ts';
 import { themeService } from '../Services/theme.service.ts';
@@ -53,9 +50,9 @@ export function uiErrorRgba(alpha: number): string {
 }
 
 // 75% Dominant Main Surface (resolved dynamically via CSS custom properties)
-export const UI_PANEL_BG = 'var(--color-main)';
+export const UI_PANEL_BG = 'var(--color-surface-1)';
 export const UI_BG_BLACK = 'var(--color-main)';
-export const UI_INPUT_SURFACE = 'var(--color-main)';
+export const UI_INPUT_SURFACE = 'var(--color-main-deep)';
 
 // 10% Secondary: Borders & Framing only (resolved dynamically via CSS custom properties)
 export const UI_BORDER_MUTED = 'var(--color-secondary)';
@@ -76,19 +73,19 @@ export const UI_ACCENT_BLUE = STATUS_INFO;
 export const UI_DECORATIVE_CORAL = STATUS_ERROR;
 
 // Component surfaces (resolved dynamically via CSS custom properties)
-export const UI_LIST_ROW_BG = 'var(--color-main)';
+export const UI_LIST_ROW_BG = 'var(--color-surface-1)';
 export const UI_CHROME_SURFACE = 'var(--color-main)';
-export const UI_MODAL_SURFACE = 'var(--color-main)';
-export const UI_MODAL_HEADER_TOP = 'var(--color-main)';
+export const UI_MODAL_SURFACE = 'var(--color-surface-1)';
+export const UI_MODAL_HEADER_TOP = 'var(--color-surface-2)';
 export const UI_TOGGLE_TRACK_BORDER = 'var(--color-secondary)';
 
 export const UI_SWITCH_DISABLED_BG = 'var(--color-secondary)';
 export const UI_SWITCH_DISABLED_BORDER = 'var(--color-secondary)';
 
-export const UI_MODAL_MASK_BG = 'rgba(20, 20, 20, 0.85)';
-export const UI_NAV_BAR_BG = 'rgba(20, 20, 20, 0.95)';
-export const UI_OVERLAY_BACKDROP_SOFT = 'rgba(20, 20, 20, 0.75)';
-export const UI_SHADOW_ELEVATED = `0 8px 32px rgba(0, 0, 0, 0.6), 0 0 1px ${SECONDARY_COLOR}`;
+export const UI_MODAL_MASK_BG = 'color-mix(in srgb, var(--color-bg) 85%, transparent)';
+export const UI_NAV_BAR_BG = 'color-mix(in srgb, var(--color-surface-1) 95%, transparent)';
+export const UI_OVERLAY_BACKDROP_SOFT = 'color-mix(in srgb, var(--color-bg) 75%, transparent)';
+export const UI_SHADOW_ELEVATED = 'var(--shadow-2)';
 
 export const UI_COLOR_TRANSPARENT = 'transparent';
 
@@ -107,7 +104,7 @@ export const UI_TAG_LOADED_PRESET = 'blue' as const;
 export const UI_ACCENT_TEXT_SHADOW = `0 0 10px ${rgba(HIGHLIGHT_COLOR, 0.6)}`;
 export const UI_ACCENT_BOX_SHADOW_SOFT = `0 0 8px ${rgba(HIGHLIGHT_COLOR, 0.3)}`;
 export const UI_ACCENT_BOX_SHADOW_STRONG = `0 0 16px ${rgba(HIGHLIGHT_COLOR, 0.6)}`;
-export const UI_PAGE_HEADER_BORDER_BOTTOM = `1px solid ${SECONDARY_COLOR}`;
+export const UI_PAGE_HEADER_BORDER_BOTTOM = '1px solid var(--color-line)';
 
 /**
  * Shared shell padding for main app pages (screen border = 30px per specification).
@@ -121,8 +118,8 @@ export const PAGE_CONTENT_STYLE = {
  * Dynamic card surface style that adapts to the active theme.
  */
 export const UI_CARD_SURFACE_STYLE = {
-    background: 'var(--color-main)',
-    borderColor: 'var(--color-secondary)',
+    background: 'var(--color-surface-1)',
+    borderColor: 'var(--color-line)',
 } as const;
 
 /**
@@ -135,8 +132,8 @@ export const UI_PRIMARY_GREEN_BUTTON_STYLE = {
     fontWeight: 'bold',
 } as const;
 
-export const UI_GRADIENT_AUTH_PAGE = `radial-gradient(ellipse at center, ${colors.main.elevated} 0%, ${MAIN_COLOR} 100%)`;
-export const UI_GRADIENT_MODAL_HEADER = `linear-gradient(180deg, ${colors.main.elevated}, ${MAIN_COLOR})`;
+export const UI_GRADIENT_AUTH_PAGE = 'radial-gradient(ellipse at center, var(--color-surface-2) 0%, var(--color-bg) 100%)';
+export const UI_GRADIENT_MODAL_HEADER = 'var(--color-surface-2)';
 
 /**
  * @deprecated Legacy hook. Runtime theme injection is managed centrally by `themeService.init()`.

@@ -10,20 +10,29 @@ export const LUCY_THEME_TEMPLATE_CSS = `/**
  * - 75% Dominant: --color-main (Surfaces & Backgrounds)
  * - 10% Secondary: --color-secondary (Borders & Framing)
  * - 15% Highlight: --color-highlight (Brand Accent & Active States)
+ *
+ * Only the four base colors are required. Surface tiers, lines and grid tints
+ * are derived from them automatically; define any of them to override.
  */
 
 :root {
   /* Surfaces & Backgrounds (75%) */
-  --color-main: #141414;
-  --color-main-surface: #141414;
-  --color-main-elevated: #1e1e1e;
+  --color-main: #141414;          /* page canvas */
+  --color-surface-1: #1c1c1c;     /* cards & panels */
+  --color-surface-2: #232323;     /* headers, inputs, modals */
+  --color-surface-3: #2e2e2e;     /* hover & active fills */
   --color-main-deep: #0a0a0a;
+
+  /* Background grid (set to transparent to disable) */
+  --color-grid-dot: rgba(247, 241, 229, 0.2);
+  --color-grid-line: rgba(247, 241, 229, 0.09);
 
   /* Borders & Framing (10%) */
   --color-secondary: #2B3E50;
   --color-secondary-border: #2B3E50;
   --color-secondary-subtle: rgba(43, 62, 80, 0.4);
   --color-secondary-hover: #3d5873;
+  --color-line: rgba(43, 62, 80, 0.45);   /* soft dividers & frames */
 
   /* Brand Highlight (15%) */
   --color-highlight: #00FF41;

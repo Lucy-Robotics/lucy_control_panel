@@ -159,19 +159,18 @@ body {
 }
 
 /* ─── Page Background Grid ────────────────────────────────────────────────── */
-/* Dot grid (48px major dots, dotted 8px minor rules) with a faint highlight
-   glow at the top. Tinted entirely by theme tokens. */
+/* Dot grid (48px major dots, dotted 8px minor rules), tinted entirely by
+   theme tokens. */
 .lucy-grid-bg,
 .ant-layout.lucy-grid-bg {
   background-color: var(--color-bg) !important;
   background-image:
-    radial-gradient(ellipse 1200px 520px at 50% -8%, var(--color-highlight-soft), transparent 70%),
     radial-gradient(circle at 1px 1px, var(--color-grid-dot) 1.2px, transparent 1.2px),
     radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px),
     radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px) !important;
-  background-size: 100% 100%, 48px 48px, 8px 48px, 48px 8px !important;
-  background-position: 0 0, 0 0, 0 0, 0 0 !important;
-  background-repeat: no-repeat, repeat, repeat, repeat !important;
+  background-size: 48px 48px, 8px 48px, 48px 8px !important;
+  background-position: 0 0, 0 0, 0 0 !important;
+  background-repeat: repeat !important;
   background-attachment: fixed !important;
 }
 
@@ -326,11 +325,13 @@ h6 {
    driven by the same four variables:
      --chamfer  cut size          --frame  border colour
      --fill     background        --hud    corner-bracket colour (containers)
-   The straight edges are a real border; the two diagonals are thin gradient
-   stripes so the frame keeps the same width all the way round.
+   The frame is one clip-path ring (outer outline minus the inset outline) on
+   an overlay, so straight edges and diagonals share the same anti-aliasing
+   and stay one even width at any zoom. Elements that cannot host an overlay
+   (inputs, popups, scrollers) fall back to a border + gradient diagonals.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Shared geometry & frame (leaf controls and containers) */
+/* Shared geometry (leaf controls and containers) */
 .chamfer-box,
 .tui-container,
 .tui-container-dark,
@@ -378,32 +379,25 @@ h6 {
     transform var(--motion-fast) var(--motion-ease) !important;
 }
 
-/* Leaf controls draw the diagonals in their own background (inputs cannot
-   have pseudo-elements, and no child paints over their corners). Popups and
-   scrollable boxes use it too: an overlay would add 1px of scroll overflow,
-   while a background stays pinned to the box as the content scrolls. */
-.ant-btn,
-.nav-item-btn,
-.header-status-box,
+/* Fallback: border for the straight edges, gradient stripes for the
+   diagonals. Each stripe runs out past the cut so its outer edge is the
+   clip-path edge itself (no seam between the two). Popups and scrollable
+   boxes use it too: an overlay would add 1px of scroll overflow. */
 .ant-input-outlined,
 .ant-input-number-outlined,
 .ant-picker-outlined,
 .ant-select-outlined .ant-select-selector,
 .ant-input-number-group-addon,
 .ant-input-group-addon,
-.ant-tag,
 .ant-tooltip-inner,
 .ant-popover-inner,
 .ant-dropdown-menu,
 .ant-select-dropdown,
 .chamfer-box.chamfer-scroll,
-.command-rail,
-.rail-btn,
-.category-strip,
-.category-tab {
+.command-rail {
   background-image:
-    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width)), var(--frame) 50%, transparent 50%),
-    linear-gradient(to top right, transparent 50%, var(--frame) 50%, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))) !important;
+    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width))),
+    linear-gradient(to top right, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))) !important;
   background-size: var(--chamfer) var(--chamfer) !important;
   background-position: top right, bottom left !important;
   background-repeat: no-repeat !important;
@@ -411,9 +405,9 @@ h6 {
   box-shadow: none !important;
 }
 
-/* Containers draw the diagonals (and optional HUD corner brackets) on an
-   overlay, above children that paint their own backgrounds (headers, rows). */
-.chamfer-box,
+/* Overlay frame: containers (drawn above children that paint their own
+   backgrounds, e.g. headers and rows) and leaf controls that can host it. */
+.chamfer-box:not(.chamfer-scroll),
 .tui-container,
 .tui-container-dark,
 .ant-card,
@@ -422,9 +416,19 @@ h6 {
 .ant-alert,
 .ant-table,
 .lucy-navigation-bar,
-.tui-toggle {
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-tag,
+.rail-btn,
+.category-strip,
+.category-tab {
   --hud: transparent;
   isolation: isolate;
+  border-color: transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: none !important;
 }
 
 .chamfer-box,
@@ -435,11 +439,18 @@ h6 {
 .ant-alert,
 .ant-table,
 .lucy-navigation-bar,
-.tui-toggle {
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-tag,
+.rail-btn,
+.category-strip,
+.category-tab {
   position: relative;
 }
 
-.chamfer-box::after,
+.chamfer-box:not(.chamfer-scroll)::after,
 .tui-container::after,
 .tui-container-dark::after,
 .ant-card::after,
@@ -448,33 +459,68 @@ h6 {
 .ant-alert::after,
 .ant-table::after,
 .lucy-navigation-bar::after,
-.tui-toggle::after {
+.tui-toggle::after,
+.ant-btn::after,
+.nav-item-btn::after,
+.header-status-box::after,
+.ant-tag::after,
+.rail-btn::after,
+.category-strip::after,
+.category-tab::after {
+  --b: var(--border-width);
+  /* A 45deg cut inset by b stays parallel when shortened by b * (2 - sqrt 2) */
+  --ci: calc(var(--chamfer) - 0.5858 * var(--b));
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--b));
+  z-index: 3;
+  pointer-events: none;
+  background: var(--frame);
+  clip-path: polygon(evenodd,
+      0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer)),
+      0 0,
+      var(--b) var(--b),
+      var(--b) calc(100% - var(--b) - var(--ci)),
+      calc(var(--b) + var(--ci)) calc(100% - var(--b)),
+      calc(100% - var(--b)) calc(100% - var(--b)),
+      calc(100% - var(--b)) calc(var(--b) + var(--ci)),
+      calc(100% - var(--b) - var(--ci)) var(--b),
+      var(--b) var(--b));
+}
+
+/* HUD corner brackets on the two square corners, above the frame */
+.chamfer-box:not(.chamfer-scroll)::before,
+.tui-container::before,
+.tui-container-dark::before,
+.ant-card::before,
+.ant-modal-content::before,
+.lucy-movable-modal::before,
+.ant-alert::before,
+.ant-table::before,
+.lucy-navigation-bar::before,
+.tui-toggle::before {
   content: "";
   position: absolute;
   inset: calc(-1 * var(--border-width));
-  z-index: 3;
+  z-index: 4;
   pointer-events: none;
   background-image:
-    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width)), var(--frame) 50%, transparent 50%),
-    linear-gradient(to top right, transparent 50%, var(--frame) 50%, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))),
     linear-gradient(var(--hud), var(--hud)),
     linear-gradient(var(--hud), var(--hud)),
     linear-gradient(var(--hud), var(--hud)),
     linear-gradient(var(--hud), var(--hud));
   background-size:
-    var(--chamfer) var(--chamfer),
-    var(--chamfer) var(--chamfer),
     var(--hud-length) var(--hud-width),
     var(--hud-width) var(--hud-length),
     var(--hud-length) var(--hud-width),
     var(--hud-width) var(--hud-length);
-  background-position: top right, bottom left, top left, top left, bottom right, bottom right;
+  background-position: top left, top left, bottom right, bottom right;
   background-repeat: no-repeat;
-}
-
-/* Scrollable chamfer boxes draw their diagonals as a leaf (see above) */
-.chamfer-box.chamfer-scroll::after {
-  content: none;
 }
 
 /* Size modifiers */
@@ -826,7 +872,13 @@ h6 {
 }
 
 /* ─── Slider ──────────────────────────────────────────────────────────────── */
+/* Enabled: the rail reads clearly against any card fill, and the handle is a
+   light knob ringed in the highlight so it stands out from the track. */
 .ant-slider-rail {
+  background-color: color-mix(in srgb, var(--color-text-primary) 24%, transparent) !important;
+}
+
+.ant-slider-disabled .ant-slider-rail {
   background-color: var(--color-surface-3) !important;
 }
 
@@ -836,8 +888,18 @@ h6 {
 }
 
 .ant-slider-handle {
-  border-color: var(--color-highlight) !important;
-  background-color: var(--color-highlight) !important;
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+
+.ant-slider-handle::after {
+  background-color: var(--color-text-primary) !important;
+  box-shadow: 0 0 0 2px var(--color-highlight) !important;
+}
+
+.ant-slider-disabled .ant-slider-handle::after {
+  background-color: var(--color-surface-3) !important;
+  box-shadow: 0 0 0 2px var(--color-text-muted) !important;
 }
 
 .ant-slider *:focus:not(:focus-visible) {
@@ -1048,6 +1110,10 @@ h6 {
   transition: transform 0.2s ease;
 }
 
+.viewer-overlay-box.collapsible:not(.expanded) {
+  cursor: pointer;
+}
+
 .viewer-overlay-box.collapsible:hover {
   --frame: var(--color-highlight);
   transform: translateY(-1px);
@@ -1057,14 +1123,15 @@ h6 {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 12px;
   cursor: pointer;
   user-select: none;
   outline: none;
-  transition: margin-bottom 0.25s ease;
+  transition: padding-bottom 0.25s ease;
 }
 
 .viewer-overlay-box.expanded .collapsible-header {
-  margin-bottom: 6px;
+  padding-bottom: 6px;
 }
 
 .viewer-overlay-box .collapsible-title {
@@ -1118,6 +1185,12 @@ h6 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0 12px;
+  transition: padding-bottom 0.25s ease;
+}
+
+.viewer-overlay-box.expanded .collapsible-body-inner {
+  padding-bottom: 8px;
 }
 
 /* ─── Joint Category Strip (pages of categories, under the cards) ─────────── */
@@ -1308,6 +1381,16 @@ h6 {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+}
+
+.command-rail.command-rail-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .command-rail[data-orientation="horizontal"] .rail-group {

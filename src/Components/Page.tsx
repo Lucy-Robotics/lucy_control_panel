@@ -8,9 +8,8 @@ import type { ReactNode } from 'react';
 import { Layout, Grid } from 'antd';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import {
-  SPACING_SCREEN_BORDER,
-  SPACING_SMALL,
   PAGE_CONTENT_STYLE,
+  getScreenPadding,
   fonts,
 } from '../Constants/theme.ts';
 import { AppHeader } from './AppHeader.tsx';
@@ -46,7 +45,7 @@ export const Page: React.FC<PageProps> = ({
 
   const [headerRef, headerHeight] = useMeasuredHeight<HTMLElement>();
 
-  const screenPadding = isMobile ? SPACING_SMALL : SPACING_SCREEN_BORDER; // 30px screen border desktop, 12px mobile
+  const screenPadding = getScreenPadding(screens);
 
   const defaultContentStyle: React.CSSProperties = {
     minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
@@ -65,7 +64,7 @@ export const Page: React.FC<PageProps> = ({
             ref={headerRef}
             className="lucy-page-header"
             style={{
-              padding: isMobile ? '8px 12px' : '8px 30px',
+              padding: `8px ${screenPadding}px`,
               height: 'auto',
               lineHeight: 'normal',
               minHeight: isMobile ? 0 : 48,

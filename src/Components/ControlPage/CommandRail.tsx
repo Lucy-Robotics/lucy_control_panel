@@ -61,7 +61,8 @@ interface CommandRailProps {
  */
 export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
     ({ groups, arm, orientation, className = '', style }, ref) => {
-        const placement = orientation === 'vertical' ? 'right' : 'bottom';
+        // The horizontal rail sits at the bottom of the screen, so it opens upwards
+        const placement = orientation === 'vertical' ? 'right' : 'top';
 
         const renderItem = (item: RailItem) => {
             const button = (
@@ -88,7 +89,7 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 >
                     <span className="rail-slot">
                         {item.menu && !item.disabled ? (
-                            <Dropdown menu={item.menu} trigger={['click']} placement={orientation === 'vertical' ? 'topLeft' : 'bottomLeft'}>
+                            <Dropdown menu={item.menu} trigger={['click']} placement="topLeft">
                                 {button}
                             </Dropdown>
                         ) : button}

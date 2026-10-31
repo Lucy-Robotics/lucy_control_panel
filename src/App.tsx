@@ -29,7 +29,6 @@ import { GettingStartedModal } from './Components/GettingStartedModal';
 
 /* Constants */
 import { ROUTES } from './Constants/routes.ts';
-import { PAGE_CONTENT_STYLE } from './Constants/uiTheme.ts';
 
 const { useBreakpoint } = Grid;
 
@@ -77,10 +76,6 @@ const RoutedPage = () => {
             showHeader
             title
             removeScrollbars={removeScrollbars}
-            contentStyle={{
-                ...PAGE_CONTENT_STYLE,
-                paddingBottom: !screens.md ? 72 : PAGE_CONTENT_STYLE.padding,
-            }}
         >
             {page ? (
                 <Suspense

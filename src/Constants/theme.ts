@@ -8,6 +8,14 @@ export const SPACING_SCREEN_BORDER = 30; // 30px - Screen border
 export const SPACING_STANDARD = 20;      // 20px - Standard spacing
 export const SPACING_LARGE = 40;         // 40px - Large spacing
 export const SPACING_SMALL = 12;         // 12px - Small spacing
+export const SPACING_MOBILE = 8;         // 8px - Screen border on phones
+
+/** Page screen border for the current antd breakpoints: 8px phone, 12px tablet, 30px desktop. */
+export const getScreenPadding = (screens: { md?: boolean; lg?: boolean }): number => {
+    if (!screens.md) return SPACING_MOBILE;
+    if (!screens.lg) return SPACING_SMALL;
+    return SPACING_SCREEN_BORDER;
+};
 
 export const spacing = {
     screenBorder: `${SPACING_SCREEN_BORDER}px`, // 30px

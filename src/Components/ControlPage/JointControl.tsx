@@ -6,6 +6,7 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Switch, Tooltip } from 'antd';
 import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
+import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
@@ -180,6 +181,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
   const torqueOn = !useDisabledJoints().has(joint.name);
+  const gazeboRunning = useGazeboRunning();
   // The supervisor only enables torque while some client holds Control Robot.
   const [robotControlled, setRobotControlled] = useState(() => ControlModeHandler.getInstance().isControlled);
   useEffect(() => ControlModeHandler.getInstance().onControllerChanged((id) => setRobotControlled(id !== '')), []);
@@ -249,19 +251,21 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             >
               {joint.inverted ? 'inverted · ' : ''}{joint.type}
             </span>
-            <Tooltip title={!robotControlled
-              ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
-              : torqueOn
-                ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
-                : 'Torque off: stays limp even while Control Robot is ON.'}>
-              <Switch
-                size="small"
-                checked={torqueOn}
-                style={robotControlled ? undefined : { opacity: 0.45 }}
-                onChange={(on) => setJointTorqueEnabled(joint.name, on)}
-                aria-label={`Torque on ${joint.displayName ?? joint.name}`}
-              />
-            </Tooltip>
+            {gazeboRunning !== true && (
+              <Tooltip title={!robotControlled
+                ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
+                : torqueOn
+                  ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+                  : 'Torque off: stays limp even while Control Robot is ON.'}>
+                <Switch
+                  size="small"
+                  checked={torqueOn}
+                  style={robotControlled ? undefined : { opacity: 0.45 }}
+                  onChange={(on) => setJointTorqueEnabled(joint.name, on)}
+                  aria-label={`Torque on ${joint.displayName ?? joint.name}`}
+                />
+              </Tooltip>
+            )}
           </span>
         </div>
 

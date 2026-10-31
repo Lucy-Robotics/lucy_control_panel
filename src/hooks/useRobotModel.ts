@@ -219,8 +219,8 @@ export function useRobotModel(): UseRobotModelReturn {
                 }
                 return;
             }
-            if (urdf === loadedUrdfRef.current) return; // already parsed this model
             window.clearTimeout(timeout);
+            if (urdf === loadedUrdfRef.current) return; // already parsed this model
             void parseAndLoad(urdf);
         });
 

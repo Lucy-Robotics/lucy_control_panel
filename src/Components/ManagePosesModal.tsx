@@ -82,29 +82,29 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     onVisibleChange,
     showTrigger = true,
 }) => {
-    const [internalVisible, setInternalVisible] = useState(false);
+    const [internalVisible, setInternalVisible] = useState<boolean>(false);
     const visible = controlledVisible ?? internalVisible;
     const setVisible = (nextVisible: boolean) => {
         setInternalVisible(nextVisible);
         onVisibleChange?.(nextVisible);
     };
-    const [poseName, setPoseName] = useState('');
+    const [poseName, setPoseName] = useState<string>('');
     const [poses, setPoses] = useState<SavedPose[]>([]);
-    const [poseSearch, setPoseSearch] = useState('');
-    const [posePage, setPosePage] = useState(1);
+    const [poseSearch, setPoseSearch] = useState<string>('');
+    const [posePage, setPosePage] = useState<number>(1);
     const [poseNames, setPoseNames] = useState<Record<string, string>>({});
     const [animations, setAnimations] = useState<SavedAnimation[]>([]);
-    const [animationSearch, setAnimationSearch] = useState('');
-    const [animationPage, setAnimationPage] = useState(1);
-    const [editorOpen, setEditorOpen] = useState(false);
+    const [animationSearch, setAnimationSearch] = useState<string>('');
+    const [animationPage, setAnimationPage] = useState<number>(1);
+    const [editorOpen, setEditorOpen] = useState<boolean>(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
-    const [animationName, setAnimationName] = useState('');
+    const [animationName, setAnimationName] = useState<string>('');
     const [sequence, setSequence] = useState<string[]>([]);
-    const [speed, setSpeed] = useState(1);
-    const [loop, setLoop] = useState(true);
-    const [loopCount, setLoopCount] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [speed, setSpeed] = useState<number>(1);
+    const [loop, setLoop] = useState<boolean>(true);
+    const [loopCount, setLoopCount] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(false);
 
     const filteredPoses = useMemo(() => {
         const query = poseSearch.trim().toLocaleLowerCase();

@@ -897,12 +897,12 @@ h6 {
   box-shadow: 0 0 0 2px var(--color-highlight) !important;
 }
 
-.joint-slider-dragging .ant-slider-track {
+.joint-slider-moving .ant-slider-track {
   background-color: var(--color-text-primary) !important;
   box-shadow: none;
 }
 
-.joint-slider-dragging .ant-slider-handle::after {
+.joint-slider-moving .ant-slider-handle::after {
   box-shadow: 0 0 0 2px var(--color-text-primary) !important;
 }
 

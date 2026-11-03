@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -18,13 +18,11 @@ import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
-import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
-import type { JointPositions } from '../hooks/usePhoneTeleop';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -473,7 +471,6 @@ export interface Robot3DViewerProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
-    teleopSolution?: JointPositions | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -482,17 +479,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     joints,
     onJointValueChange,
     teleopTarget = null,
-    teleopSolution = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
-    const sliderGhostPose = useSliderGhostPose(joints);
-    const ghostPose = teleopSolution ?? sliderGhostPose;
+    const targetPose = useTargetPose(isConnected);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -759,9 +753,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
-                {robot && <EndEffectorMarkers robot={robot} ghost={teleopSolution ? ghost : null} colors={themeColors} />}
+                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];
@@ -775,7 +769,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
                     onTargetChange={handleTargetChange}
                     onTargetCancel={handleTargetCancel}
                     getPendingTarget={getPendingTarget}

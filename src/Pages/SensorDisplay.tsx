@@ -37,7 +37,9 @@ const SensorDisplay: React.FC = () => {
                 height: '100%',
                 minWidth: 0,
                 minHeight: 0,
-                overflow: 'auto',
+                // The Row gutter's negative side margins must not open a horizontal scrollbar
+                overflowX: 'hidden',
+                overflowY: 'auto',
                 boxSizing: 'border-box',
             }}
         >

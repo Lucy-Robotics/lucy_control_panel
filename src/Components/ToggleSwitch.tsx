@@ -58,7 +58,6 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             style={{
                 width: width ? `${width}px` : 'auto',
                 display: 'flex',
-                border: '1px solid var(--color-secondary)',
                 backgroundColor: 'var(--color-main)',
                 opacity: disabled ? 0.4 : 1,
             }}

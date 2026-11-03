@@ -151,7 +151,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                         style={{
                             padding: '12px 14px',
                             backgroundColor: 'rgba(20, 20, 20, 0.6)',
-                            border: '1px solid var(--color-secondary)',
+                            border: '1px solid var(--color-line)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -175,7 +175,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                                     height: 30,
                                     padding: 0,
                                     cursor: 'pointer',
-                                    border: '1px solid var(--color-secondary)',
+                                    border: '1px solid var(--color-line)',
                                     backgroundColor: 'transparent',
                                 }}
                                 title={`Pick ${field.title}`}

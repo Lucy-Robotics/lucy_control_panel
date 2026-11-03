@@ -285,6 +285,7 @@ export function MovableModal({
             {/* Header Bar */}
             <div
                 onMouseDown={isPinned ? undefined : handleDragStart}
+                className="lucy-movable-modal-header"
                 style={{
                     height: HEADER_HEIGHT,
                     flex: `0 0 ${HEADER_HEIGHT}px`,
@@ -292,8 +293,6 @@ export function MovableModal({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 24px',
-                    backgroundColor: 'var(--color-main)',
-                    borderBottom: '1px solid var(--color-secondary)',
                     cursor: isPinned ? 'default' : 'move',
                     userSelect: 'none',
                 }}
@@ -367,7 +366,7 @@ export function MovableModal({
                         alignItems: 'center',
                         gap: 8,
                         padding: '12px 24px',
-                        borderTop: '1px solid var(--color-secondary)',
+                        borderTop: '1px solid var(--color-line)',
                         backgroundColor: 'var(--color-main)',
                         boxSizing: 'border-box',
                         flex: '0 0 auto',

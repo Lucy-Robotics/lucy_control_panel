@@ -71,7 +71,7 @@ export const SecurityViolationAlert: React.FC<SecurityViolationAlertProps> = ({ 
             showIcon
             closable
             onClose={onClose}
-            style={{ border: '1px solid var(--color-secondary)' }}
+            style={{ border: '1px solid var(--color-line)' }}
         />
     );
 };

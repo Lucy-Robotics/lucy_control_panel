@@ -13,7 +13,6 @@ import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
 const SIZE = 90;
 const CUBE_HALF_PX = SIZE / 2;
 const CUBE_MARGIN_PX = SIZE;
-const BOTTOM_OFFSET_PX = 50;
 const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
@@ -137,9 +136,10 @@ interface ViewCubeSceneProps {
     mainCamera: THREE.Camera;
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
+    bottomOffset: number;
 }
 
-const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView }) => {
+const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView, bottomOffset }) => {
     const size = useThree(s => s.size);
     const gl = useThree(s => s.gl);
     const events = useThree(s => s.events);
@@ -191,8 +191,8 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 
     const cubeCenter = useMemo(() => new THREE.Vector2(
         size.width / 2 - CUBE_MARGIN_PX,
-        -size.height / 2 + CUBE_MARGIN_PX + BOTTOM_OFFSET_PX,
-    ), [size]);
+        -size.height / 2 + CUBE_MARGIN_PX + bottomOffset,
+    ), [size, bottomOffset]);
 
     useFrame(() => {
         const cube = cubeRef.current;
@@ -269,13 +269,15 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 export interface ViewCubeProps {
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
+    /** Extra lift from the bottom edge, in px (e.g. to clear the page navbar). */
+    bottomOffset?: number;
 }
 
-export const ViewCube: React.FC<ViewCubeProps> = ({ colors, onSelectView }) => {
+export const ViewCube: React.FC<ViewCubeProps> = ({ colors, onSelectView, bottomOffset = 0 }) => {
     const mainCamera = useThree(s => s.camera);
     return (
         <Hud renderPriority={1}>
-            <ViewCubeScene mainCamera={mainCamera} colors={colors} onSelectView={onSelectView} />
+            <ViewCubeScene mainCamera={mainCamera} colors={colors} onSelectView={onSelectView} bottomOffset={bottomOffset} />
         </Hud>
     );
 };

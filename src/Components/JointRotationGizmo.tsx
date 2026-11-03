@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -13,6 +13,7 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../Utils/actuatorJointMapping';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
+import { JointMoveContext } from '../hooks/useJointMove';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
@@ -45,7 +46,6 @@ export interface JointRotationGizmoProps {
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    onValuePreview?: (name: string, value: number | null) => void;
     onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
     /** A drag on `name` was aborted without committing (joint switched, control disabled). */
     onTargetCancel?: (name: string) => void;
@@ -61,7 +61,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     isControlOn,
     joints,
     onJointValueChange,
-    onValuePreview,
     onTargetChange,
     onTargetCancel,
     getPendingTarget,
@@ -71,6 +70,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     colors,
 }) => {
     const { gl } = useThree();
+    const jointMove = useContext(JointMoveContext);
     const groupRef = useRef<THREE.Group>(null);
     const isDraggingRef = useRef<boolean>(false);
     const isHoveredRef = useRef<boolean>(false);
@@ -169,8 +169,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
         lastEmittedValueRef.current = null;
-        if (emitted) onValuePreview?.(emitted.name, null);
-    }, [onValuePreview]);
+        if (emitted) jointMove?.release();
+    }, [jointMove]);
 
     useEffect(() => clearEmittedValue, [clearEmittedValue]);
 
@@ -323,7 +323,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         onTargetChange?.(name, targetRad, true);
         const value = toSliderValue(targetRad);
         lastEmittedValueRef.current = { name, value };
-        onValuePreview?.(name, value);
+        jointMove?.move(name, value);
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {

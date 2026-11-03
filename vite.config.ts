@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = env.VITE_ALLOWED_HOST
     ? env.VITE_ALLOWED_HOST.split(",").map((h) => h.trim()).filter(Boolean)
     : undefined;
+  const port = parseInt(env.VITE_PORT || "4004");
 
   return {
     plugins: [react()],
@@ -41,9 +42,9 @@ export default defineConfig(({ mode }) => {
       https,
       host: true,
       allowedHosts,
-      port: parseInt(env.VITE_PORT || "4004"),
+      port,
       hmr: https
-        ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "4004") }
+        ? { protocol: "wss", clientPort: port }
         : undefined,
       proxy: {
         "^/rosbridge": {
@@ -55,5 +56,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    preview: { port, strictPort: true },
   };
 });

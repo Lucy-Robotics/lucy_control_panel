@@ -9,10 +9,12 @@ import { RosBridgeService } from '../Services/ros/ros.service';
 import { parseRobotList } from '../Utils/robotPackages';
 import type { RobotList } from '../Utils/robotPackages';
 import type { StackStatus } from '../Utils/stackStatus';
+import { forgetRobotModel } from './useRobotModel';
 
 const ROBOTS_TOPIC = '/lucy/robots';
 const SELECT_ROBOT_TOPIC = '/lucy/select_robot';
 const SWITCH_TIMEOUT_MS = 180_000;
+const RECONNECT_INTERVAL_MS = 2_000;
 
 export function useRobotSelection(isConnected: boolean, stackStatus: StackStatus | null) {
     const [robots, setRobots] = useState<RobotList | null>(null);
@@ -54,9 +56,19 @@ export function useRobotSelection(isConnected: boolean, stackStatus: StackStatus
         return () => clearTimeout(timer);
     }, [switchingTo]);
 
+    useEffect(() => {
+        if (!switchingTo || isConnected) return;
+        const service = RosBridgeService.getInstance();
+        const timer = setInterval(() => {
+            if (service.connectionStatus === 'disconnected') service.connect(service.currentUrl).catch(() => undefined);
+        }, RECONNECT_INTERVAL_MS);
+        return () => clearInterval(timer);
+    }, [switchingTo, isConnected]);
+
     const selectRobot = useCallback((robotPackage: string) => {
         if (!selectTopicRef.current) return;
         selectTopicRef.current.publish(new ROSLIB.Message({ data: robotPackage }));
+        forgetRobotModel();
         setSwitchTimedOut(false);
         setSwitchingTo(robotPackage);
     }, []);

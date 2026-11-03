@@ -30,6 +30,8 @@ import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { useRobotSelection } from '../hooks/useRobotSelection.ts';
+import { robotLabel } from '../Utils/robotPackages.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -79,6 +81,8 @@ import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -157,6 +161,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
+    const { currentDock, setCurrentDock, isDockLoaded } = useDock();
+    const { robots, switchingTo, selectRobot } = useRobotSelection(isConnected);
 
     const {
         controllerConfigsFromActive,
@@ -694,7 +700,23 @@ export const RobotControlPanel: React.FC = () => {
     // Control Robot OFF publishes nothing, so every command control is inert.
     const readOnlyReason = isSending ? undefined : CONTROL_OFF_HINT;
 
+    const dockLabel = (dock: DockName) => {
+        if (dock === 'NONE') return 'No dock';
+        if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
+        if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
+        return dock.replace('_', ' ');
+    };
+
+    const railArm = {
+        isOn: isSending,
+        onToggle: () => handleControlRobotToggle(!isSending),
+        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
+    };
+
+    const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: selectRobot });
+
     const railGroups: RailGroup[] = [
+        ...(robotGroup ? [robotGroup] : []),
         {
             key: 'pose',
             label: 'Pose',
@@ -782,7 +804,9 @@ export const RobotControlPanel: React.FC = () => {
 
             {!isConnected ? (
                 <LucyLoader
-                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
+                    label={switchingTo
+                        ? `SWITCHING TO ${robotLabel(switchingTo).toUpperCase()}`
+                        : isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
                     connectButton={!isConnecting}
                     detail={
                         isConnecting

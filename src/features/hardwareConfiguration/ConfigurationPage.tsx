@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useContext, useMemo, useState } from 'react';
+import { type Key, useContext, useMemo, useState } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
@@ -22,7 +22,7 @@ const { useBreakpoint } = Grid;
 
 const UNASSIGNED_BOARD_KEY = '__unassigned__';
 
-function omitBoardColumn<T extends { key?: string }>(columns: T[]): T[] {
+function omitBoardColumn<T extends { key?: Key }>(columns: T[]): T[] {
     return columns.filter((col) => col.key !== 'board');
 }
 

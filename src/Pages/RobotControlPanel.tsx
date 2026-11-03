@@ -655,7 +655,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
-    usePublishTargetPose(jointMoveStore, joints, isSending, phoneTeleop.solution);
+    usePublishTargetPose(jointMoveStore, joints, isSending);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (

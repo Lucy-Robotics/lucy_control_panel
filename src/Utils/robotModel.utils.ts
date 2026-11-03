@@ -36,11 +36,6 @@ export function getJointAngle(joint: URDFJoint): number {
     return joint.angle ?? joint.jointValue?.[0] ?? 0;
 }
 
-export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
-    const diff = target - actual;
-    return joint.jointType === 'continuous' ? wrapAngle(diff) : diff;
-}
-
 export function urdfNameOf(obj: URDFLink | URDFJoint): string {
     return obj.urdfName || obj.name;
 }

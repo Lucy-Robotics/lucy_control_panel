@@ -16,6 +16,9 @@ import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
+import type { JointPositions } from '../hooks/usePhoneTeleop';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -494,6 +497,7 @@ export interface Robot3DViewerProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
+    teleopSolution?: JointPositions | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -504,18 +508,17 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudCenter,
     onJointValueChange,
     teleopTarget = null,
+    teleopSolution = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const motorOverheat = useContext(MotorOverheatContext);
-    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
-    const targetPose = useTargetPose(isConnected);
-    const isGhostVisible = useGhostVisible();
-    const isTeleopGhostVisible = useTeleopGhostVisible();
-    const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
+    const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const sliderGhostPose = useSliderGhostPose(joints);
+    const ghostPose = teleopSolution ?? sliderGhostPose;
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -758,7 +761,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
+
+                {robot && <EndEffectorMarkers robot={robot} ghost={teleopSolution ? ghost : null} colors={themeColors} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];

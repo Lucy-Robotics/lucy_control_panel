@@ -46,6 +46,10 @@ type GlobalCache =
 
 let globalCache: GlobalCache = { ready: false };
 
+export function forgetRobotModel(): void {
+    globalCache = { ready: false };
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------

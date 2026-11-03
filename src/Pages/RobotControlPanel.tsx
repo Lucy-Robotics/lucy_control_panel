@@ -18,6 +18,9 @@ import {
     ReloadOutlined,
     StopOutlined,
     VideoCameraOutlined,
+    CodeSandboxOutlined,
+    UnorderedListOutlined,
+    LayoutOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -81,7 +84,6 @@ import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
-import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
@@ -162,6 +164,14 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         </Space>
     </MovableModal>
 );
+
+const DOCK_SHORT_LABEL: Record<DockName, string> = {
+    NONE: 'NONE',
+    '3D_VIEW': '3D',
+    STREAM: 'STREAM',
+    TELEOPERATION: 'HANDS',
+    SENSOR_DISPLAY: 'SENSORS',
+};
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
@@ -731,6 +741,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const dockLabel = (dock: DockName) => {
         if (dock === 'NONE') return 'No dock';
+        if (dock === 'TELEOPERATION') return 'Hands';
         if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
         if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
         return dock.replace('_', ' ');
@@ -797,6 +808,25 @@ export const RobotControlPanel: React.FC = () => {
                     caption: 'HANDS',
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
+                    disabled: isTeleoperationDocked,
+                    disabledReason: 'Hands is currently displayed in the dock',
+                },
+            ],
+        },
+        {
+            key: 'layout',
+            code: 'LAYOUT',
+            pinEnd: true,
+            items: [
+                {
+                    key: '3d-view',
+                    icon: <CodeSandboxOutlined />,
+                    label: showVisualizerWindow ? 'Hide 3D view window' : 'Show 3D view window',
+                    caption: '3D VIEW',
+                    onClick: () => setIsVisualizerVisible(v => !v),
+                    active: showVisualizerWindow,
+                    disabled: isVisualizerDocked,
+                    disabledReason: '3D view is currently displayed in the dock',
                 },
                 {
                     key: 'stream',

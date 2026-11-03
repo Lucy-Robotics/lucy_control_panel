@@ -35,6 +35,9 @@ import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import { useEndEffector } from '../hooks/useEndEffector.ts';
+import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
+import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -93,6 +96,7 @@ import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -173,6 +177,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const stackStatus = useStackStatus(isConnected);
+    const endEffector = useEndEffector(isConnected);
+    const hasMotionSensors = useDeviceMotionAvailable();
     const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
     const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
     useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
@@ -680,6 +686,22 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    const handleIkSolution = useCallback((positions: JointPositions) => {
+        if (!isSendingRef.current) return;
+        const next = jointsRef.current.map((joint) => {
+            const jointRad = positions[joint.name];
+            if (jointRad === undefined) return joint;
+            const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+            const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+            return { ...joint, currentValue: value, targetValue: value };
+        });
+        jointsRef.current = next;
+        setJoints(next);
+        JointStateHandler.getInstance().publishJointStates(next);
+    }, []);
+
+    const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+
     usePublishTargetPose(jointMoveStore, joints, isSending);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
@@ -766,6 +788,7 @@ export const RobotControlPanel: React.FC = () => {
             joints={joints}
             onJointValueChange={handleGizmoJointCommit}
             isHandsOn={isHandsOn}
+            teleopTarget={phoneTeleop.target}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton
@@ -849,6 +872,13 @@ export const RobotControlPanel: React.FC = () => {
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
                 },
+                phoneTeleopRailItem({
+                    isOn: phoneTeleop.isOn,
+                    onToggle: phoneTeleop.toggle,
+                    isSending,
+                    hasMotionSensors,
+                    hasEndEffector: endEffector !== null,
+                }),
                 {
                     key: 'stream',
                     icon: <VideoCameraOutlined />,

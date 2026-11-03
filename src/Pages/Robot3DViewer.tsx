@@ -24,6 +24,9 @@ import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
 import { useGhostOpacity } from '../hooks/useGhostOpacity';
 import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
 import { useTargetPose } from '../hooks/useTargetPose';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -505,6 +508,7 @@ export interface Robot3DViewerProps {
     hudRight?: React.ReactNode;
     hudCenter?: React.ReactNode;
     isHandsOn?: boolean;
+    teleopTarget?: Vec3 | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -515,9 +519,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudCenter,
     onJointValueChange,
     isHandsOn = false,
+    teleopTarget = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const motorOverheat = useContext(MotorOverheatContext);
@@ -768,6 +774,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
@@ -821,6 +829,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
+
+            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

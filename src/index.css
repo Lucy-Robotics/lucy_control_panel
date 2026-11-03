@@ -897,6 +897,15 @@ h6 {
   box-shadow: 0 0 0 2px var(--color-highlight) !important;
 }
 
+.joint-slider-moving .ant-slider-track {
+  background-color: var(--color-text-primary) !important;
+  box-shadow: none;
+}
+
+.joint-slider-moving .ant-slider-handle::after {
+  box-shadow: 0 0 0 2px var(--color-text-primary) !important;
+}
+
 .ant-slider-disabled .ant-slider-handle::after {
   background-color: var(--color-surface-3) !important;
   box-shadow: 0 0 0 2px var(--color-text-muted) !important;

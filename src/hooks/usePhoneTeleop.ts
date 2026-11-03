@@ -9,17 +9,11 @@ import { RosBridgeService } from '../Services/ros/ros.service';
 import { REST_MOTION, integrateMotion, teleopTarget } from '../Utils/phoneMotion';
 import type { Vec3 } from '../Utils/phoneMotion';
 import { grantMotionPermission } from './useDeviceMotionAvailable';
+import { jointPositionsOf, type JointPositions, type JointStateMessage } from '../Utils/jointStateMessage';
 
 const IK_TARGET_TOPIC = '/lucy/ik/target';
 const IK_SOLUTION_TOPIC = '/lucy/ik/solution';
 const PUBLISH_PERIOD_MS = 50;
-
-export type JointPositions = Record<string, number>;
-
-interface JointStateMessage {
-    name: string[];
-    position: number[];
-}
 
 export interface PhoneTeleop {
     isOn: boolean;
@@ -62,8 +56,7 @@ export function usePhoneTeleop(
         const targetTopic = new ROSLIB.Topic({ ros, name: IK_TARGET_TOPIC, messageType: 'geometry_msgs/msg/Point' });
         const solutionTopic = new ROSLIB.Topic({ ros, name: IK_SOLUTION_TOPIC, messageType: 'sensor_msgs/msg/JointState' });
         solutionTopic.subscribe((msg: ROSLIB.Message) => {
-            const { name, position } = msg as unknown as JointStateMessage;
-            onSolutionRef.current(Object.fromEntries(name.map((joint, i) => [joint, position[i]])));
+            onSolutionRef.current(jointPositionsOf(msg as unknown as JointStateMessage));
         });
 
         let motion = REST_MOTION;

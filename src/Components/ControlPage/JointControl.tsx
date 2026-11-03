@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef, useContext } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { storageService } from '../../Services/storage.service.ts';
-import { useJointPreview } from '../../hooks/useJointPreview.ts';
+import { JointMoveContext, useMovingValue } from '../../hooks/useJointMove.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -100,7 +100,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
-  const previewValue = useJointPreview(joint.name);
+  const movingValue = useMovingValue(joint.name);
+  const jointMove = useContext(JointMoveContext);
   const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
   const currentValueRef = useRef(joint.currentValue);
   const loadedPositionKeyRef = useRef<string | null>(null);
@@ -174,15 +175,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     setLocalValue(joint.currentValue);
   }, [joint.currentValue]);
 
-  const handleSliderChange = useCallback((value: number | null) => {
-    if (value !== null) {
-      setLocalValue(value);
-    }
-  }, []);
+  const handleSliderChange = useCallback((value: number) => {
+    setLocalValue(value);
+    jointMove?.move(joint.name, value);
+  }, [joint.name, jointMove]);
 
   const handleSliderAfterChange = useCallback((value: number) => {
     onValueChange(joint.name, value);
-  }, [joint.name, onValueChange]);
+    jointMove?.release();
+  }, [joint.name, onValueChange, jointMove]);
 
   const handleInputChange = useCallback((value: number | null) => {
     if (value !== null) {
@@ -234,10 +235,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const [minDisplay, maxDisplay] = getDisplayRange();
-    const currentDisplay = getDisplayValue(previewValue ?? localValue);
+    const currentDisplay = getDisplayValue(movingValue ?? localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, previewValue, showDegrees, actuatorValue]);
+  }, [joint.minValue, joint.maxValue, localValue, movingValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
     if (actuatorValue) {
@@ -325,6 +326,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
+                className={movingValue === undefined ? undefined : 'joint-slider-moving'}
                 style={{ margin: 0 }}
                 tooltip={{
                   formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,

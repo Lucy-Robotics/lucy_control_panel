@@ -25,7 +25,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -39,7 +39,9 @@ import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
-import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
+import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
@@ -199,7 +201,7 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -667,6 +669,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    usePublishTargetPose(jointMoveStore, joints, isSending);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -906,7 +909,7 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointPreviewContext.Provider value={jointPreviewStore}>
+        <JointMoveContext.Provider value={jointMoveStore}>
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
@@ -1161,6 +1164,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

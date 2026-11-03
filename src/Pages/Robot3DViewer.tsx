@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -12,15 +12,16 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -481,7 +482,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const targetPose = useTargetPose(isConnected);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -538,49 +540,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
     const pendingClickTimerRef = useRef<number | null>(null);
@@ -611,8 +570,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (effectiveControlOn) return;
         cancelPendingClick();
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
     }, [effectiveControlOn, cancelPendingClick]);
 
     useEffect(() => cancelPendingClick, [cancelPendingClick]);
@@ -770,24 +727,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
+                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
-                    onTargetChange={handleTargetChange}
-                    onTargetCancel={handleTargetCancel}
-                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />

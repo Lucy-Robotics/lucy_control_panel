@@ -111,8 +111,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   }, [joint.name, jointMove]);
 
   const handleSliderAfterChange = useCallback((value: number) => {
-    jointMove?.release();
     onValueChange(joint.name, value);
+    jointMove?.release();
   }, [joint.name, onValueChange, jointMove]);
 
   const handleInputChange = useCallback((value: number | null) => {

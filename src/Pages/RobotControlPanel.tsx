@@ -35,6 +35,9 @@ import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
+import { useEndEffector } from '../hooks/useEndEffector.ts';
+import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
+import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -83,6 +86,7 @@ import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
@@ -174,6 +178,8 @@ export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const { currentDock, setCurrentDock, isDockLoaded } = useDock();
     const stackStatus = useStackStatus(isConnected);
+    const endEffector = useEndEffector(isConnected);
+    const hasMotionSensors = useDeviceMotionAvailable();
     const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
     const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
     useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
@@ -629,6 +635,22 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    const handleIkSolution = useCallback((positions: JointPositions) => {
+        if (!isSendingRef.current) return;
+        const next = jointsRef.current.map((joint) => {
+            const jointRad = positions[joint.name];
+            if (jointRad === undefined) return joint;
+            const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+            const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+            return { ...joint, currentValue: value, targetValue: value };
+        });
+        jointsRef.current = next;
+        setJoints(next);
+        JointStateHandler.getInstance().publishJointStates(next);
+    }, []);
+
+    const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
             <StackProgress
@@ -700,18 +722,21 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
-    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
+    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
+    const showStreamWindow = isStreamVisible && !isStreamDocked;
+    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
+    const hasSensors = sensorSources.length > 0;
 
-    const viewer = (
-        <Robot3DViewer
-            isControlOn={isSending}
-            joints={joints}
-            onJointValueChange={handleGizmoJointCommit}
-            hudLeft={serverRobotPackage
-                ? (
-                    <RobotMenuButton
-                        robotPackage={serverRobotPackage}
-                        controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
+    const dockContent = (
+        <Dock
+            childrens={{
+                '3D_VIEW': (
+                    <Robot3DViewer
+                        docked
+                        isControlOn={isSending}
+                        joints={joints}
+                        onJointValueChange={handleGizmoJointCommit}
+                        teleopTarget={phoneTeleop.target}
                     />
                 )
                 : null}
@@ -800,6 +825,13 @@ export const RobotControlPanel: React.FC = () => {
                     disabled: isTeleoperationDocked,
                     disabledReason: 'Hands is currently displayed in the dock',
                 },
+                phoneTeleopRailItem({
+                    isOn: phoneTeleop.isOn,
+                    onToggle: phoneTeleop.toggle,
+                    isSending,
+                    hasMotionSensors,
+                    hasEndEffector: endEffector !== null,
+                }),
             ],
         },
         {
@@ -833,6 +865,15 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <JointPreviewContext.Provider value={jointPreviewStore}>
+            <Robot3DViewerModal
+                isVisible={showVisualizerWindow}
+                onClose={() => setIsVisualizerVisible(false)}
+                isControlOn={isSending}
+                joints={joints}
+                onJointValueChange={handleGizmoJointCommit}
+                teleopTarget={phoneTeleop.target}
+            />
+
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}

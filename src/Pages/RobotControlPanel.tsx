@@ -31,6 +31,7 @@ import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { SERVO_POSE_HINT, isJointAnglePose } from '../Utils/poseUnits.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -650,6 +651,8 @@ export const RobotControlPanel: React.FC = () => {
 
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
+
+    usePublishTargetPose(jointMoveStore, joints, isSending);
 
     if (isConnected && loading) {
         return (

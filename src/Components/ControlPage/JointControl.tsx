@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef, useContext } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
 import { storageService } from '../../Services/storage.service.ts';
 import { useJointPreview } from '../../hooks/useJointPreview.ts';
+import { SliderDragContext } from '../../hooks/useSliderDrag.ts';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -101,6 +102,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
   const previewValue = useJointPreview(joint.name);
+  const sliderDrag = useContext(SliderDragContext);
+  const [dragging, setDragging] = useState(false);
   const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
   const currentValueRef = useRef(joint.currentValue);
   const loadedPositionKeyRef = useRef<string | null>(null);
@@ -174,15 +177,17 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     setLocalValue(joint.currentValue);
   }, [joint.currentValue]);
 
-  const handleSliderChange = useCallback((value: number | null) => {
-    if (value !== null) {
-      setLocalValue(value);
-    }
-  }, []);
+  const handleSliderChange = useCallback((value: number) => {
+    setLocalValue(value);
+    setDragging(true);
+    sliderDrag?.move(joint.name, value);
+  }, [joint.name, sliderDrag]);
 
   const handleSliderAfterChange = useCallback((value: number) => {
+    setDragging(false);
+    sliderDrag?.release();
     onValueChange(joint.name, value);
-  }, [joint.name, onValueChange]);
+  }, [joint.name, onValueChange, sliderDrag]);
 
   const handleInputChange = useCallback((value: number | null) => {
     if (value !== null) {
@@ -325,6 +330,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 onChange={(value) => handleSliderChange(convertInputValue(value))}
                 onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                 disabled={disabled}
+                className={dragging ? 'joint-slider-dragging' : undefined}
                 style={{ margin: 0 }}
                 tooltip={{
                   formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,

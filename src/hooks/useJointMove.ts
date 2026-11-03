@@ -5,8 +5,6 @@
 
 import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
 
-const RELEASE_HOLD_MS = 1000;
-
 export interface JointMove {
     name: string;
     value: number;
@@ -21,7 +19,6 @@ export interface JointMoveStore {
 
 export function createJointMoveStore(): JointMoveStore {
     let current: JointMove | null = null;
-    let releaseTimer: number | undefined;
     const listeners = new Set<() => void>();
     const publish = (next: JointMove | null) => {
         current = next;
@@ -30,14 +27,8 @@ export function createJointMoveStore(): JointMoveStore {
 
     return {
         get: () => current,
-        move: (name, value) => {
-            window.clearTimeout(releaseTimer);
-            publish({ name, value });
-        },
-        release: () => {
-            window.clearTimeout(releaseTimer);
-            releaseTimer = window.setTimeout(() => publish(null), RELEASE_HOLD_MS);
-        },
+        move: (name, value) => publish({ name, value }),
+        release: () => publish(null),
         subscribe: listener => {
             listeners.add(listener);
             return () => listeners.delete(listener);

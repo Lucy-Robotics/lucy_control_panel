@@ -33,8 +33,7 @@ import { SERVO_POSE_HINT } from '../Constants/poses.ts';
 import { isJointAnglePose } from '../Utils/poseUnits.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
-import { useStackStatus } from '../hooks/useStackStatus.ts';
-import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import { robotLabel } from '../Utils/robotPackages.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -93,6 +92,8 @@ import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -172,10 +173,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
-    const stackStatus = useStackStatus(isConnected);
-    const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
-    const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
-    useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
+    const { currentDock, setCurrentDock, isDockLoaded } = useDock();
+    const { robots, switchingTo, selectRobot } = useRobotSelection(isConnected);
 
     const {
         controllerConfigsFromActive,
@@ -796,7 +795,23 @@ export const RobotControlPanel: React.FC = () => {
     // Control Robot OFF publishes nothing, so every command control is inert.
     const readOnlyReason = isSending ? undefined : CONTROL_OFF_HINT;
 
+    const dockLabel = (dock: DockName) => {
+        if (dock === 'NONE') return 'No dock';
+        if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
+        if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
+        return dock.replace('_', ' ');
+    };
+
+    const railArm = {
+        isOn: isSending,
+        onToggle: () => handleControlRobotToggle(!isSending),
+        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
+    };
+
+    const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: selectRobot });
+
     const railGroups: RailGroup[] = [
+        ...(robotGroup ? [robotGroup] : []),
         {
             key: 'pose',
             label: 'Pose',
@@ -884,7 +899,20 @@ export const RobotControlPanel: React.FC = () => {
                 showTrigger={false}
             />
 
-            {(
+            {!isConnected ? (
+                <LucyLoader
+                    label={switchingTo
+                        ? `SWITCHING TO ${robotLabel(switchingTo).toUpperCase()}`
+                        : isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
+                    connectButton={!isConnecting}
+                    detail={
+                        isConnecting
+                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
+                            : 'Use Quick Connect in the header to start the link.'
+                    }
+                    showSpinner={isConnecting}
+                />
+            ) : (
                 <div
                     style={{
                         position: 'relative',

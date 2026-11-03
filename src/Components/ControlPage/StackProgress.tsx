@@ -7,15 +7,13 @@ import { Alert, Button, Progress, Steps } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import { LucyLoader } from '../LucyLoader.tsx';
 import { robotLabel } from '../../Utils/robotPackages.ts';
-import { panelProgress } from '../../Utils/stackStatus.ts';
+import { CORE_STAGES } from '../../Utils/stackStatus.ts';
 import type { StackStatus } from '../../Utils/stackStatus.ts';
 import { UI_ACCENT_GREEN, UI_BORDER_SOFT, UI_COLOR_TRANSPARENT, UI_TEXT_PRIMARY_ON_DARK } from '../../Constants/uiTheme.ts';
 
 interface StackProgressProps {
     target: string | null;
-    robot: string | null;
     status: StackStatus | null;
-    isConnected: boolean;
     timedOut: boolean;
     connectButton: boolean;
     onDismiss: () => void;
@@ -27,24 +25,27 @@ const failureOf = (status: StackStatus | null, timedOut: boolean): string | null
     return null;
 };
 
-export function StackProgress({ target, robot, status, isConnected, timedOut, connectButton, onDismiss }: StackProgressProps) {
+export function StackProgress({ target, status, timedOut, connectButton, onDismiss }: StackProgressProps) {
     const stage = status?.status === 'loading' && status.index > 0 && (!target || status.robot === target) ? status : null;
     const failure = failureOf(status, timedOut);
-    const { titles, current, percent, counter } = panelProgress(stage, isConnected);
-    const robotName = target ?? status?.robot ?? robot;
+    const total = stage?.total || CORE_STAGES.length;
+    const titles = [
+        ...(target ? ['Restarting Lucy'] : []),
+        ...Array.from({ length: total }, (_, i) => (i + 1 === stage?.index ? stage.label : CORE_STAGES[i] ?? `Stage ${i + 1}`)),
+    ];
+    const current = stage ? stage.index - 1 + (target ? 1 : 0) : 0;
 
     return (
         <LucyLoader
-            title="LUCY IS STARTING…"
-            label={robotName ? `ROBOT: ${robotLabel(robotName).toUpperCase()}` : undefined}
-            detail={stage ? `${counter} ${stage.label}` : isConnected ? status?.label : connectButton ? 'Waiting for the ROS bridge' : 'Connecting to the ROS bridge'}
+            title={robotLabel(target ?? status?.robot ?? '').toUpperCase() || 'LUCY'}
+            label={target ? 'SWITCHING ROBOT' : 'LUCY IS STARTING'}
+            detail={stage ? `${stage.index}/${stage.total} ${stage.label}` : status?.label ?? 'Waiting for Lucy to restart'}
             showSpinner={!failure}
             connectButton={connectButton && !failure}
         >
             <div style={{ width: 'min(420px, 100%)', marginTop: 24 }}>
                 <Progress
-                    className="lucy-progress"
-                    percent={percent}
+                    percent={stage ? Math.round(((stage.index - 1) / stage.total) * 100) : 0}
                     status={failure ? 'exception' : 'active'}
                     strokeColor={UI_ACCENT_GREEN}
                 />

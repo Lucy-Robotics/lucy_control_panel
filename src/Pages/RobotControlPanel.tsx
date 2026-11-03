@@ -19,7 +19,6 @@ import {
     ThunderboltOutlined,
     StopOutlined,
     VideoCameraOutlined,
-    EyeOutlined,
     CodeSandboxOutlined,
     UnorderedListOutlined,
     LayoutOutlined,
@@ -84,6 +83,7 @@ import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
+import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
@@ -170,7 +170,7 @@ const DOCK_SHORT_LABEL: Record<DockName, string> = {
     NONE: 'NONE',
     '3D_VIEW': '3D',
     STREAM: 'STREAM',
-    TELEOPERATION: 'TELEOP',
+    TELEOPERATION: 'HANDS',
     SENSOR_DISPLAY: 'SENSORS',
 };
 
@@ -750,6 +750,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const dockLabel = (dock: DockName) => {
         if (dock === 'NONE') return 'No dock';
+        if (dock === 'TELEOPERATION') return 'Hands';
         if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
         if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
         return dock.replace('_', ' ');
@@ -810,14 +811,14 @@ export const RobotControlPanel: React.FC = () => {
             code: 'MODE',
             items: [
                 {
-                    key: 'teleop',
-                    icon: <EyeOutlined />,
-                    label: `Teleoperation${isSending ? '' : ` (${CONTROL_OFF_HINT})`}`,
-                    caption: 'TELEOP',
+                    key: 'hands',
+                    icon: <HandOutlined />,
+                    label: `Hands: the robot follows your hand through the camera${isSending ? '' : ` (${CONTROL_OFF_HINT})`}`,
+                    caption: 'HANDS',
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
                     disabled: isTeleoperationDocked,
-                    disabledReason: 'Teleoperation is currently displayed in the dock',
+                    disabledReason: 'Hands is currently displayed in the dock',
                 },
             ],
         },

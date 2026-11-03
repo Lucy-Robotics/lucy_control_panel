@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -21,7 +21,6 @@ import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -499,7 +498,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const ghostPose = useSliderGhostPose(joints);
     const isMobile = !AntGrid.useBreakpoint().md;
@@ -789,7 +787,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
                     onTargetChange={handleTargetChange}
                     onTargetCancel={handleTargetCancel}
                     getPendingTarget={getPendingTarget}

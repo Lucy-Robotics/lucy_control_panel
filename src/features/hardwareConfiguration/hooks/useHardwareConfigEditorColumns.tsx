@@ -25,6 +25,8 @@ export interface HardwareConfigEditorColumnsParams {
     deleteActuatorAt: (index: number) => void;
     deletePressureSensorAt: (index: number) => void;
     urdfJointLimits: Map<string, UrdfJointLimitRad>;
+    setBoardSerial: (boardId: string, serialId: string) => void;
+    onWarn?: (message: string) => void;
 }
 
 export function useHardwareConfigEditorColumns({
@@ -36,6 +38,8 @@ export function useHardwareConfigEditorColumns({
     deleteActuatorAt,
     deletePressureSensorAt,
     urdfJointLimits,
+    setBoardSerial,
+    onWarn,
 }: HardwareConfigEditorColumnsParams) {
     const outlineBorders = useMemo(() => hardwareOutlineBorders(), []);
 
@@ -47,8 +51,8 @@ export function useHardwareConfigEditorColumns({
     }, [serverFieldErrors]);
 
     const boardColumns = useMemo(
-        () => buildBoardColumns(serverFieldErrors, outlineBorders),
-        [serverFieldErrors, outlineBorders],
+        () => buildBoardColumns(serverFieldErrors, outlineBorders, setBoardSerial),
+        [serverFieldErrors, outlineBorders, setBoardSerial],
     );
 
     const actuatorColumns = useMemo(
@@ -62,6 +66,7 @@ export function useHardwareConfigEditorColumns({
                 actuatorIdOnFocusRef,
                 deleteActuatorAt,
                 urdfJointLimits,
+                onWarn,
             }),
         [
             yamlDoc,
@@ -72,6 +77,7 @@ export function useHardwareConfigEditorColumns({
             actuatorIdOnFocusRef,
             deleteActuatorAt,
             urdfJointLimits,
+            onWarn,
         ],
     );
 

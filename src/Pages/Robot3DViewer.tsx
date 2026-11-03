@@ -13,6 +13,9 @@ import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { RobotGhost } from '../Components/RobotGhost';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -497,6 +500,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const ghostPose = useSliderGhostPose(joints);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -769,6 +774,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         actuatedJointNames={actuatedJointNames}
                     />
                 )}
+
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];

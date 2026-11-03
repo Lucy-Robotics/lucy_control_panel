@@ -12,18 +12,10 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointEffortGauges } from '../Components/JointEffortGauges';
-import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
-import { JointEffortDebug } from '../Components/JointEffortDebug';
-import { overheatMock } from '../Services/overheatMock';
-import { JointReadingsLine } from '../Components/JointReadingsLine';
-import { RobotGhost } from '../Components/RobotGhost';
-import { useGhostRobot } from '../hooks/useGhostRobot';
-import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
-import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
-import { useGhostOpacity } from '../hooks/useGhostOpacity';
-import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
-import { useTargetPose } from '../hooks/useTargetPose';
+import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -501,10 +493,7 @@ export interface Robot3DViewerProps {
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    hudLeft?: React.ReactNode;
-    hudRight?: React.ReactNode;
-    hudCenter?: React.ReactNode;
-    isHandsOn?: boolean;
+    teleopTarget?: Vec3 | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -514,10 +503,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     hudCenter,
     onJointValueChange,
-    isHandsOn = false,
+    teleopTarget = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const motorOverheat = useContext(MotorOverheatContext);
@@ -768,9 +758,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
+                {robot && ghostJointNames.map(name => {
+                    const joint = robot.joints[name];
+                    return joint ? (
+                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
+                    ) : null;
+                })}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -821,6 +816,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
+
+            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

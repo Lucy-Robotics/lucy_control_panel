@@ -11,7 +11,7 @@ import { RosBridgeService } from '../ros.service.ts';
  * `lucy_config_services` node.
  *
  * Encodings (see lucy_msgs/srv/GetMesh.srv):
- *   utf8        — Collada/DAE text
+ *   utf8        — Collada/DAE, OBJ and MTL text
  *   zlib_base64 — zlib-compressed binary (STL), then base64
  */
 const MESH_SERVICE_NAME = '/mesh/get';

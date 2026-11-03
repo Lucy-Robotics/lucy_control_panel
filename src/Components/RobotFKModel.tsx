@@ -6,7 +6,7 @@
 /**
  * Robot render component backed by urdf-loader.
  *
- * urdf-loader handles URDF parsing, FK, Collada/STL loading, and visual
+ * urdf-loader handles URDF parsing, FK, Collada/STL/OBJ loading, and visual
  * origins natively — we just render the resulting Three.js scene graph via
  * React Three Fiber's <primitive> and update joint angles every frame.
  * (Mesh bytes themselves are fetched via MeshHandler in useRobotModel.)

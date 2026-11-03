@@ -62,7 +62,7 @@ export interface SensorSource {
   /** ROS topic for the board's Float32Array payload (e.g. `/sensors/left_arm`). */
   topic: string;
   messageType: string;
-  /** Index into the Float32Array for this sensor (board sensors sorted by `virtual_pin`). */
+  /** Index into the Float32Array for this sensor (board sensors in YAML list order). */
   arrayIndex: number;
   type: string;
   boardId: string;

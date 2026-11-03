@@ -106,6 +106,7 @@ class RosBridgeService {
             Diagnostics.record('connection', 'socket', 'error', 'connection closed');
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
+            if (this.ros === ros) this.pendingConnectReject?.(new Error(describeRosBridgeFailure('connection closed', this.url)));
         });
 
         return ros;

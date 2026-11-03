@@ -739,6 +739,7 @@ export const RobotControlPanel: React.FC = () => {
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={phoneTeleop.target}
+                        teleopSolution={phoneTeleop.solution}
                     />
                 )
                 : null}
@@ -875,6 +876,7 @@ export const RobotControlPanel: React.FC = () => {
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={phoneTeleop.target}
+                teleopSolution={phoneTeleop.solution}
             />
 
             <StreamPlayerModal

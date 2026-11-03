@@ -45,32 +45,3 @@ export function parseStackStatus(json: unknown): StackStatus | null {
         return null;
     }
 }
-
-export const STAGES_BEFORE_BRIDGE = CORE_STAGES.indexOf('Opening Rosbridge port') + 1;
-
-export interface PanelProgress {
-    titles: string[];
-    current: number;
-    percent: number;
-    counter: string | null;
-}
-
-export function panelProgress(stage: StackStatus | null, isConnected: boolean): PanelProgress {
-    const total = stage?.total || CORE_STAGES.length;
-    const hidden = Math.min(STAGES_BEFORE_BRIDGE, total);
-    const visibleTotal = Math.max(1, total - hidden);
-    const visibleIndex = stage ? Math.max(1, stage.index - hidden) : 1;
-    const titles = [
-        'Connecting to the ROS bridge',
-        ...Array.from({ length: total - hidden }, (_, i) => {
-            const index = hidden + i + 1;
-            return index === stage?.index ? stage.label : CORE_STAGES[index - 1] ?? `Stage ${index}`;
-        }),
-    ];
-    return {
-        titles,
-        current: isConnected ? visibleIndex : 0,
-        percent: stage ? Math.round(((visibleIndex - 1) / visibleTotal) * 100) : 0,
-        counter: stage ? `${visibleIndex}/${visibleTotal}` : null,
-    };
-}

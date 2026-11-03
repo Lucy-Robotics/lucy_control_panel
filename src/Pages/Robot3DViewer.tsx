@@ -18,6 +18,9 @@ import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
 import { overheatMock } from '../Services/overheatMock';
 import { JointReadingsLine } from '../Components/JointReadingsLine';
+import { RobotGhost } from '../Components/RobotGhost';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -515,6 +518,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
     const motorOverheat = useContext(MotorOverheatContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const ghostPose = useSliderGhostPose(joints);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -801,6 +806,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         motorTemperatures={heatMapOn ? motorOverheat?.temperatures : undefined}
                     />
                 )}
+
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];

@@ -6,7 +6,7 @@
 import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { URDFRobot } from 'urdf-loader';
-import type { JointPositions } from '../hooks/usePhoneTeleop';
+import type { JointPositions } from '../Utils/jointStateMessage';
 
 export const RobotGhost: React.FC<{ ghost: URDFRobot; robot: URDFRobot; pose: JointPositions | null }> = ({
     ghost,

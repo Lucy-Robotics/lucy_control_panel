@@ -622,11 +622,13 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
-    if (switchingTo || (isConnected && stackStatus?.status === 'loading')) {
+    if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
             <StackProgress
                 target={switchingTo}
+                robot={robots?.active ?? null}
                 status={stackStatus}
+                isConnected={isConnected}
                 timedOut={switchTimedOut}
                 connectButton={!isConnected && !isConnecting}
                 onDismiss={dismissSwitch}
@@ -829,18 +831,7 @@ export const RobotControlPanel: React.FC = () => {
                 showTrigger={false}
             />
 
-            {!isConnected ? (
-                <LucyLoader
-                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
-                    connectButton={!isConnecting}
-                    detail={
-                        isConnecting
-                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use Quick Connect in the header to start the link.'
-                    }
-                    showSpinner={isConnecting}
-                />
-            ) : (
+            {(
                 <div
                     style={{
                         position: 'relative',

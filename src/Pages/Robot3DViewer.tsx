@@ -13,6 +13,9 @@ import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
@@ -465,6 +468,7 @@ export interface Robot3DViewerProps {
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    teleopTarget?: Vec3 | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -472,9 +476,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     isControlOn: isControlOnProp,
     joints,
     onJointValueChange,
+    teleopTarget = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
@@ -744,6 +750,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];
                     return joint ? (
@@ -801,6 +809,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
+
+            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

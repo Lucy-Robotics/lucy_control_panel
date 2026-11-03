@@ -29,7 +29,6 @@ export interface RailGroup {
     label: string;
     items: RailItem[];
     pinEnd?: boolean;
-    lead?: boolean;
 }
 
 interface CommandRailProps {
@@ -77,13 +76,6 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
             );
         };
 
-        const renderGroup = (group: RailGroup) => (
-            <div className="rail-group" role="group" aria-label={group.code}>
-                <span className="rail-code" aria-hidden>{group.code}</span>
-                {group.items.map(renderItem)}
-            </div>
-        );
-
         return (
             <div
                 ref={ref}
@@ -94,13 +86,6 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 className={`command-rail ${className}`.trim()}
                 style={style}
             >
-                {groups.filter((group) => group.lead).map((group) => (
-                    <React.Fragment key={group.key}>
-                        {renderGroup(group)}
-                        <span className="rail-divider" aria-hidden />
-                    </React.Fragment>
-                ))}
-
                 <div className="rail-group">
                     <span className="rail-code" aria-hidden>CONTROL</span>
                     <Tooltip placement={placement} title={arm.hint}>
@@ -120,10 +105,13 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                     </Tooltip>
                 </div>
 
-                {groups.filter((group) => !group.lead).map((group) => (
+                {groups.map((group) => (
                     <React.Fragment key={group.key}>
                         <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
-                        {renderGroup(group)}
+                        <div className="rail-group" role="group" aria-label={group.code}>
+                            <span className="rail-code" aria-hidden>{group.code}</span>
+                            {group.items.map(renderItem)}
+                        </div>
                     </React.Fragment>
                 ))}
             </div>

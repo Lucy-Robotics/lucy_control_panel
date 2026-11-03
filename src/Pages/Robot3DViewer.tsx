@@ -12,7 +12,6 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
@@ -541,49 +540,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
     const pendingClickTimerRef = useRef<number | null>(null);
@@ -614,8 +570,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (effectiveControlOn) return;
         cancelPendingClick();
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
     }, [effectiveControlOn, cancelPendingClick]);
 
     useEffect(() => cancelPendingClick, [cancelPendingClick]);
@@ -777,21 +731,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
-
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onTargetChange={handleTargetChange}
-                    onTargetCancel={handleTargetCancel}
-                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />

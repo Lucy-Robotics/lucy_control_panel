@@ -27,6 +27,7 @@ export interface LucyLoaderProps {
     compact?: boolean;
     /** Show the spinner animation. */
     showSpinner?: boolean;
+    children?: React.ReactNode;
 }
 
 /**
@@ -40,6 +41,7 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
     detail,
     compact = false,
     showSpinner = true,
+    children,
 }) => {
     const { connect, currentUrl, connectionStatus } = useRosConnection();
 
@@ -106,6 +108,7 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                         CONNECT
                     </Button>
                 )}
+                {children}
             </div>
         </div>
     );

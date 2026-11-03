@@ -31,7 +31,7 @@ import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
-import { robotLabel } from '../Utils/robotPackages.ts';
+import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -82,6 +82,8 @@ import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -162,7 +164,10 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const { currentDock, setCurrentDock, isDockLoaded } = useDock();
-    const { robots, switchingTo, selectRobot } = useRobotSelection(isConnected);
+    const stackStatus = useStackStatus(isConnected);
+    const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
+    const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
+    useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
 
     const {
         controllerConfigsFromActive,
@@ -615,6 +620,18 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    if (switchingTo || (isConnected && stackStatus?.status === 'loading')) {
+        return (
+            <StackProgress
+                target={switchingTo}
+                status={stackStatus}
+                timedOut={switchTimedOut}
+                connectButton={!isConnected && !isConnecting}
+                onDismiss={dismissSwitch}
+            />
+        );
+    }
+
     if (isConnected && loading) {
         return (
             <>
@@ -713,7 +730,7 @@ export const RobotControlPanel: React.FC = () => {
         hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
     };
 
-    const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: selectRobot });
+    const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: setRobotToConfirm });
 
     const railGroups: RailGroup[] = [
         ...(robotGroup ? [robotGroup] : []),
@@ -804,9 +821,7 @@ export const RobotControlPanel: React.FC = () => {
 
             {!isConnected ? (
                 <LucyLoader
-                    label={switchingTo
-                        ? `SWITCHING TO ${robotLabel(switchingTo).toUpperCase()}`
-                        : isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
+                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
                     connectButton={!isConnecting}
                     detail={
                         isConnecting
@@ -981,6 +996,15 @@ export const RobotControlPanel: React.FC = () => {
                     retakeCountRef.current += 1;
                     setShowControlTakenModal(false);
                     applyControlToggle(true);
+                }}
+            />
+
+            <RobotSwitchConfirmModal
+                robotPackage={robotToConfirm}
+                onCancel={() => setRobotToConfirm(null)}
+                onConfirm={(robotPackage) => {
+                    setRobotToConfirm(null);
+                    selectRobot(robotPackage);
                 }}
             />
 

@@ -29,6 +29,7 @@ export interface RailGroup {
     label: string;
     items: RailItem[];
     pinEnd?: boolean;
+    lead?: boolean;
 }
 
 interface CommandRailProps {
@@ -76,6 +77,13 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
             );
         };
 
+        const renderGroup = (group: RailGroup) => (
+            <div className="rail-group" role="group" aria-label={group.code}>
+                <span className="rail-code" aria-hidden>{group.code}</span>
+                {group.items.map(renderItem)}
+            </div>
+        );
+
         return (
             <div
                 ref={ref}
@@ -86,14 +94,36 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 className={`command-rail ${className}`.trim()}
                 style={style}
             >
-                {groups.map((group, index) => (
+                {groups.filter((group) => group.lead).map((group) => (
                     <React.Fragment key={group.key}>
-                        {index > 0 && (
-                            <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
-                        )}
-                        <div className="rail-group" role="group" aria-label={group.label}>
-                            {group.items.map(renderItem)}
-                        </div>
+                        {renderGroup(group)}
+                        <span className="rail-divider" aria-hidden />
+                    </React.Fragment>
+                ))}
+
+                <div className="rail-group">
+                    <span className="rail-code" aria-hidden>CONTROL</span>
+                    <Tooltip placement={placement} title={arm.hint}>
+                        <span className="rail-slot">
+                            <button
+                                type="button"
+                                className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
+                                aria-label="Control Robot"
+                                aria-pressed={arm.isOn}
+                                onClick={arm.onToggle}
+                            >
+                                <span className="rail-icon"><ThunderboltOutlined /></span>
+                                <span className="rail-caption">ROBOT</span>
+                                <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
+                            </button>
+                        </span>
+                    </Tooltip>
+                </div>
+
+                {groups.filter((group) => !group.lead).map((group) => (
+                    <React.Fragment key={group.key}>
+                        <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
+                        {renderGroup(group)}
                     </React.Fragment>
                 ))}
             </div>

@@ -25,8 +25,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
-import { SliderDragContext, createSliderDragStore } from '../hooks/useSliderDrag';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -200,8 +199,7 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
-    const [sliderDragStore] = useState(createSliderDragStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -909,8 +907,7 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointPreviewContext.Provider value={jointPreviewStore}>
-        <SliderDragContext.Provider value={sliderDragStore}>
+        <JointMoveContext.Provider value={jointMoveStore}>
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
@@ -1166,7 +1163,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </SliderDragContext.Provider>
-        </JointPreviewContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

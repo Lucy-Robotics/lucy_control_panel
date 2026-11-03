@@ -774,7 +774,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 

@@ -12,7 +12,6 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
@@ -47,8 +46,10 @@ import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
+    UI_ACCENT_GREEN_HEX,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
+    TEXT_PRIMARY,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -73,8 +74,10 @@ const getInitialUnselectedOpacity = (): number => {
 
 const OVERLAY_MARGIN_PX = 10;
 const SETTINGS_BOX_WIDTH = 165;
-const VIEW_CUBE_GAP_PX = 6;
+/** Lifts the view cube clear of the page navbar, which overlaps the docked view. */
+const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
 const FOCUS_COLOR = 'var(--color-highlight)';
+const CLICK_DELAY_MS = 250;
 const MOUSE_HINTS = [
     'L-drag · rotate',
     'scroll · zoom',
@@ -142,11 +145,10 @@ const SwitchRow: React.FC<{
     </div>
 );
 
-/** Matches the `.collapsible-body` transition in index.css. */
-const COLLAPSE_DURATION_MS = 250;
-
-const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
-
+/**
+ * Overlay panel that starts collapsed to its title and expands on click.
+ * Collapsed, the whole box is the toggle; expanded, its full-width header is.
+ */
 const CollapsibleOverlay: React.FC<{
     title: string;
     style?: React.CSSProperties;
@@ -229,7 +231,7 @@ const InfoBadge: React.FC<{
             gap: 10,
             zIndex: 10,
             pointerEvents: 'none',
-            // chamfer-box draws its border from this variable
+            // chamfer-box draws its frame from this variable
             '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
@@ -276,7 +278,7 @@ const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
                     position: 'absolute',
                     top: 0,
                     bottom: 0,
-                    background: 'var(--color-highlight-fill, var(--color-highlight))',
+                    background: 'var(--color-highlight)',
                     ...(indeterminate
                         ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
                         : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
@@ -480,6 +482,8 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
+    /** Rendered in the page dock (under the navbar) rather than a floating window. */
+    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
@@ -558,63 +562,39 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
+    const pendingClickTimerRef = useRef<number | null>(null);
+
+    const cancelPendingClick = useCallback(() => {
+        if (pendingClickTimerRef.current !== null) {
+            window.clearTimeout(pendingClickTimerRef.current);
+            pendingClickTimerRef.current = null;
+        }
+    }, []);
+
+    // Single clicks wait out the double-click window, so a double-click
+    // focuses without briefly opening the gizmo first.
+    const scheduleClick = useCallback((action: () => void) => {
+        cancelPendingClick();
+        pendingClickTimerRef.current = window.setTimeout(() => {
+            pendingClickTimerRef.current = null;
+            action();
+        }, CLICK_DELAY_MS);
+    }, [cancelPendingClick]);
 
     const handlePartClick = useCallback((name: string) => {
         if (!effectiveControlOn) return;
-        setGizmoPartName(prev => (prev === name ? null : name));
-    }, [effectiveControlOn]);
+        scheduleClick(() => setGizmoPartName(prev => (prev === name ? null : name)));
+    }, [effectiveControlOn, scheduleClick]);
 
     useEffect(() => {
         if (effectiveControlOn) return;
+        cancelPendingClick();
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
-    }, [effectiveControlOn]);
+    }, [effectiveControlOn, cancelPendingClick]);
+
+    useEffect(() => cancelPendingClick, [cancelPendingClick]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -677,14 +657,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const handlePartDoubleClick = (partName: string) => {
+        cancelPendingClick();
         setSelectedPartName(prev => (prev === partName ? null : partName));
     };
 
     const handlePointerMissed = (e: MouseEvent) => {
         if (e.type === 'dblclick') {
+            cancelPendingClick();
             setSelectedPartName(null);
         } else if (e.type === 'click' && e.detail <= 1) {
-            setGizmoPartName(null);
+            scheduleClick(() => setGizmoPartName(null));
         }
     };
 
@@ -743,7 +725,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color={themeColors.accent} />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN_HEX} />
 
                 {showGrid && (
                     <Grid
@@ -752,7 +734,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         cellThickness={0}
                         sectionSize={2}
                         sectionThickness={1}
-                        sectionColor={themeColors.text}
+                        sectionColor={TEXT_PRIMARY}
                         fadeDistance={20}
                         fadeStrength={1}
                     />
@@ -777,21 +759,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
-
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onTargetChange={handleTargetChange}
-                    onTargetCancel={handleTargetCancel}
-                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />

@@ -1,0 +1,86 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { Alert, Button, Progress, Steps } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
+import { LucyLoader } from '../LucyLoader.tsx';
+import { robotLabel } from '../../Utils/robotPackages.ts';
+import { CORE_STAGES } from '../../Utils/stackStatus.ts';
+import type { StackStatus } from '../../Utils/stackStatus.ts';
+import { UI_ACCENT_GREEN, UI_BORDER_SOFT, UI_COLOR_TRANSPARENT, UI_TEXT_PRIMARY_ON_DARK } from '../../Constants/uiTheme.ts';
+
+interface StackProgressProps {
+    target: string | null;
+    status: StackStatus | null;
+    timedOut: boolean;
+    connectButton: boolean;
+    onDismiss: () => void;
+}
+
+const failureOf = (status: StackStatus | null, timedOut: boolean): string | null => {
+    if (status?.status === 'crashed') return `Lucy crashed (${status.label}). Check the Lucy TUI.`;
+    if (timedOut) return 'Lucy is still not ready after 3 minutes. Check the Lucy TUI.';
+    return null;
+};
+
+export function StackProgress({ target, status, timedOut, connectButton, onDismiss }: StackProgressProps) {
+    const stage = status?.status === 'loading' && status.index > 0 && (!target || status.robot === target) ? status : null;
+    const failure = failureOf(status, timedOut);
+    const total = stage?.total || CORE_STAGES.length;
+    const titles = [
+        ...(target ? ['Restarting Lucy'] : []),
+        ...Array.from({ length: total }, (_, i) => (i + 1 === stage?.index ? stage.label : CORE_STAGES[i] ?? `Stage ${i + 1}`)),
+    ];
+    const current = stage ? stage.index - 1 + (target ? 1 : 0) : 0;
+
+    return (
+        <LucyLoader
+            title={robotLabel(target ?? status?.robot ?? '').toUpperCase() || 'LUCY'}
+            label={target ? 'SWITCHING ROBOT' : 'LUCY IS STARTING'}
+            detail={stage ? `${stage.index}/${stage.total} ${stage.label}` : status?.label ?? 'Waiting for Lucy to restart'}
+            showSpinner={!failure}
+            connectButton={connectButton && !failure}
+        >
+            <div style={{ width: 'min(420px, 100%)', marginTop: 24 }}>
+                <Progress
+                    percent={stage ? Math.round(((stage.index - 1) / stage.total) * 100) : 0}
+                    status={failure ? 'exception' : 'active'}
+                    strokeColor={UI_ACCENT_GREEN}
+                />
+                <Steps
+                    direction="vertical"
+                    size="small"
+                    current={current}
+                    status={failure ? 'error' : 'process'}
+                    items={titles.map((title, i) => ({
+                        title,
+                        icon: i === current && !failure ? <LoadingOutlined style={{ color: UI_ACCENT_GREEN }} /> : undefined,
+                    }))}
+                    style={{ marginTop: 16 }}
+                />
+                {failure && (
+                    <Alert
+                        type="error"
+                        showIcon
+                        message={failure}
+                        action={
+                            <Button
+                                size="small"
+                                onClick={onDismiss}
+                                style={{
+                                    backgroundColor: UI_COLOR_TRANSPARENT,
+                                    borderColor: UI_BORDER_SOFT,
+                                    color: UI_TEXT_PRIMARY_ON_DARK,
+                                }}
+                            >
+                                Dismiss
+                            </Button>
+                        }
+                    />
+                )}
+            </div>
+        </LucyLoader>
+    );
+}

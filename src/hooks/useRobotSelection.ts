@@ -5,18 +5,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ROSLIB from 'roslib';
-import { message } from 'antd';
 import { RosBridgeService } from '../Services/ros/ros.service';
-import { parseRobotList, robotLabel } from '../Utils/robotPackages';
+import { parseRobotList } from '../Utils/robotPackages';
 import type { RobotList } from '../Utils/robotPackages';
+import type { StackStatus } from '../Utils/stackStatus';
+import { forgetRobotModel } from './useRobotModel';
 
 const ROBOTS_TOPIC = '/lucy/robots';
 const SELECT_ROBOT_TOPIC = '/lucy/select_robot';
-const SWITCH_TIMEOUT_MS = 90_000;
+const SWITCH_TIMEOUT_MS = 180_000;
+const RECONNECT_INTERVAL_MS = 2_000;
 
-export function useRobotSelection(isConnected: boolean) {
+export function useRobotSelection(isConnected: boolean, stackStatus: StackStatus | null) {
     const [robots, setRobots] = useState<RobotList | null>(null);
     const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+    const [switchTimedOut, setSwitchTimedOut] = useState(false);
     const selectTopicRef = useRef<ROSLIB.Topic | null>(null);
 
     useEffect(() => {
@@ -33,9 +36,7 @@ export function useRobotSelection(isConnected: boolean) {
         selectTopicRef.current = selectTopic;
 
         robotsTopic.subscribe((msg: ROSLIB.Message) => {
-            const list = parseRobotList((msg as unknown as { data?: unknown }).data);
-            setRobots(list);
-            setSwitchingTo((target) => (target === list?.active ? null : target));
+            setRobots(parseRobotList((msg as unknown as { data?: unknown }).data));
         });
 
         return () => {
@@ -46,19 +47,33 @@ export function useRobotSelection(isConnected: boolean) {
     }, [isConnected]);
 
     useEffect(() => {
+        if (stackStatus?.ready && stackStatus.robot === switchingTo) setSwitchingTo(null);
+    }, [stackStatus, switchingTo]);
+
+    useEffect(() => {
         if (!switchingTo) return;
-        const timer = setTimeout(() => {
-            setSwitchingTo(null);
-            message.error(`Switching to ${robotLabel(switchingTo)} timed out`);
-        }, SWITCH_TIMEOUT_MS);
+        const timer = setTimeout(() => setSwitchTimedOut(true), SWITCH_TIMEOUT_MS);
         return () => clearTimeout(timer);
     }, [switchingTo]);
+
+    useEffect(() => {
+        if (!switchingTo || isConnected) return;
+        const service = RosBridgeService.getInstance();
+        const timer = setInterval(() => {
+            if (service.connectionStatus === 'disconnected') service.connect(service.currentUrl).catch(() => undefined);
+        }, RECONNECT_INTERVAL_MS);
+        return () => clearInterval(timer);
+    }, [switchingTo, isConnected]);
 
     const selectRobot = useCallback((robotPackage: string) => {
         if (!selectTopicRef.current) return;
         selectTopicRef.current.publish(new ROSLIB.Message({ data: robotPackage }));
+        forgetRobotModel();
+        setSwitchTimedOut(false);
         setSwitchingTo(robotPackage);
     }, []);
 
-    return { robots, switchingTo, selectRobot };
+    const dismissSwitch = useCallback(() => setSwitchingTo(null), []);
+
+    return { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch };
 }

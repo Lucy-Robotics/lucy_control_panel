@@ -18,8 +18,7 @@ import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
-import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
-import type { JointPositions } from '../hooks/usePhoneTeleop';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -485,7 +484,6 @@ export interface Robot3DViewerProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
-    teleopSolution?: JointPositions | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -495,7 +493,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     onJointValueChange,
     teleopTarget = null,
-    teleopSolution = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -503,8 +500,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
-    const sliderGhostPose = useSliderGhostPose(joints);
-    const ghostPose = teleopSolution ?? sliderGhostPose;
+    const targetPose = useTargetPose(isConnected);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -777,9 +773,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
+                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
-                {robot && <EndEffectorMarkers robot={robot} ghost={teleopSolution ? ghost : null} colors={themeColors} />}
+                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];

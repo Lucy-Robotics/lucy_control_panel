@@ -37,7 +37,9 @@ import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
-import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
+import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -653,6 +655,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    usePublishTargetPose(jointMoveStore, joints, isSending, phoneTeleop.solution);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -740,7 +743,6 @@ export const RobotControlPanel: React.FC = () => {
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={phoneTeleop.target}
-                        teleopSolution={phoneTeleop.solution}
                     />
                 )
                 : null}
@@ -876,7 +878,6 @@ export const RobotControlPanel: React.FC = () => {
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={phoneTeleop.target}
-                teleopSolution={phoneTeleop.solution}
             />
 
             <StreamPlayerModal

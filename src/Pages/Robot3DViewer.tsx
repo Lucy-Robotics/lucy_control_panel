@@ -26,7 +26,6 @@ import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import {
     findJointForLink,
@@ -516,7 +515,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
     const motorOverheat = useContext(MotorOverheatContext);
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const ghostPose = useSliderGhostPose(joints);
@@ -823,7 +821,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
                     onTargetChange={handleTargetChange}
                     onTargetCancel={handleTargetCancel}
                     getPendingTarget={getPendingTarget}

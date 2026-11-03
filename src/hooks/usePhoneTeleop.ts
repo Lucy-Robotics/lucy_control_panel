@@ -24,6 +24,7 @@ interface JointStateMessage {
 export interface PhoneTeleop {
     isOn: boolean;
     target: Vec3 | null;
+    solution: JointPositions | null;
     toggle: () => void;
 }
 
@@ -34,6 +35,7 @@ export function usePhoneTeleop(
 ): PhoneTeleop {
     const [isOn, setIsOn] = useState(false);
     const [target, setTarget] = useState<Vec3 | null>(null);
+    const [solution, setSolution] = useState<JointPositions | null>(null);
     const endEffectorRef = useRef(endEffector);
     const onSolutionRef = useRef(onSolution);
 
@@ -63,7 +65,9 @@ export function usePhoneTeleop(
         const solutionTopic = new ROSLIB.Topic({ ros, name: IK_SOLUTION_TOPIC, messageType: 'sensor_msgs/msg/JointState' });
         solutionTopic.subscribe((msg: ROSLIB.Message) => {
             const { name, position } = msg as unknown as JointStateMessage;
-            onSolutionRef.current(Object.fromEntries(name.map((joint, i) => [joint, position[i]])));
+            const positions = Object.fromEntries(name.map((joint, i) => [joint, position[i]]));
+            setSolution(positions);
+            onSolutionRef.current(positions);
         });
 
         let motion = REST_MOTION;
@@ -90,8 +94,9 @@ export function usePhoneTeleop(
             solutionTopic.unsubscribe();
             targetTopic.unadvertise();
             setTarget(null);
+            setSolution(null);
         };
     }, [isOn]);
 
-    return { isOn, target, toggle };
+    return { isOn, target, solution, toggle };
 }

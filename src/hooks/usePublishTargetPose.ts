@@ -9,8 +9,8 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { RosBridgeService } from '../Services/ros/ros.service';
 import { targetPoseTopic } from '../Services/ros/targetPoseTopic';
 import { jointStateMessageOf, type JointPositions } from '../Utils/jointStateMessage';
-import { targetPoseOf } from '../Utils/targetPose';
-import { useJointMove, type JointMoveStore } from './useJointMove';
+import { useActiveTargetPose } from './useActiveTargetPose';
+import type { JointMoveStore } from './useJointMove';
 
 const REPUBLISH_MS = 500;
 
@@ -18,16 +18,8 @@ function publish(topic: ROSLIB.Topic, pose: JointPositions | null) {
     topic.publish(new ROSLIB.Message(jointStateMessageOf(pose)));
 }
 
-export function usePublishTargetPose(
-    store: JointMoveStore,
-    joints: JointControlState[],
-    isSending: boolean,
-): void {
-    const move = useJointMove(store);
-    const pose = useMemo(
-        () => (isSending ? targetPoseOf(joints, move) : null),
-        [isSending, joints, move],
-    );
+export function usePublishTargetPose(store: JointMoveStore, joints: JointControlState[], isSending: boolean): void {
+    const pose = useActiveTargetPose(store, joints, isSending);
     const isActive = pose !== null;
     const ros = RosBridgeService.getInstance().rosConnection;
     const topic = useMemo(() => (ros ? targetPoseTopic(ros) : null), [ros]);

@@ -14,8 +14,8 @@ import {
 } from '../Constants/theme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import { CustomTitle } from './CustomTitle.tsx';
-import { Navigation } from './Navigation.tsx';
+import { DockProvider } from '../contexts/DockContext.tsx';
+import { CustomTitle, TitleNote } from './CustomTitle.tsx';
 
 const { Header, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -29,6 +29,8 @@ interface PageProps {
   className?: string;
   background?: 'grid' | 'plain';
 }
+
+const lucyVersion: string | undefined = import.meta.env.VITE_LUCY_VERSION;
 
 export const Page: React.FC<PageProps> = ({
   children,
@@ -106,6 +108,7 @@ export const Page: React.FC<PageProps> = ({
                     prefix=""
                     separator="//"
                     subtitle="CONTROL PANEL"
+                    note={isMobile ? undefined : lucyVersion}
                     level={isMobile ? 3 : 2}
                     underlineSubtitle={false}
                     style={{
@@ -126,8 +129,15 @@ export const Page: React.FC<PageProps> = ({
                   />
                 </div>
               )}
-              <Navigation />
-              <div style={{ gridColumn: 3, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                justifyContent: isMobile ? 'space-between' : 'flex-end',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                {isMobile && lucyVersion && <TitleNote text={lucyVersion} />}
                 <AppHeader />
               </div>
             </div>

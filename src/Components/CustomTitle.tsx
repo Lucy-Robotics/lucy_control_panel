@@ -15,6 +15,7 @@ export interface CustomTitleProps {
     prefix?: string;
     separator?: string;
     subtitle?: string;
+    note?: string;
     underlineSubtitle?: boolean;
     level?: 1 | 2 | 3 | 4 | 5 | 'graphical';
     style?: React.CSSProperties;
@@ -24,11 +25,30 @@ export interface CustomTitleProps {
     align?: 'left' | 'center' | 'right';
 }
 
+export const TitleNote: React.FC<{ text: string }> = ({ text }) => (
+    <span
+        className="terminal-title-note"
+        style={{
+            color: 'var(--color-text-secondary)',
+            fontFamily: fonts.mono,
+            fontSize: 10,
+            fontWeight: fontWeights.regular,
+            letterSpacing: 0,
+            opacity: 0.6,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+        }}
+    >
+        {text}
+    </span>
+);
+
 export const CustomTitle: React.FC<CustomTitleProps> = ({
     title,
     prefix = '>',
     separator = '',
     subtitle,
+    note,
     underlineSubtitle = true,
     level = 2,
     style,
@@ -112,6 +132,7 @@ export const CustomTitle: React.FC<CustomTitleProps> = ({
                     <span className="terminal-title-subtitle" style={computedSubtitleStyle}>{subtitle}</span>
                 </>
             )}
+            {note && <TitleNote text={note} />}
         </div>
     );
 };

@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useCallback, useState, useEffect, useContext } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Button, Checkbox, Tooltip } from 'antd';
+import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
 import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -245,11 +245,12 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                   : torqueOn
                     ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
                     : 'Torque off: stays limp even while Control Robot is ON.'}>
-                  <Checkbox
-                    className="joint-torque-box"
-                    checked={torqueOn}
+                  <button
+                    type="button"
+                    className="chamfer-box joint-torque-box"
+                    aria-pressed={torqueOn}
                     style={robotControlled ? undefined : { opacity: 0.45 }}
-                    onChange={(e) => setJointTorqueEnabled(joint.name, e.target.checked)}
+                    onClick={() => setJointTorqueEnabled(joint.name, !torqueOn)}
                     aria-label={`Torque on ${joint.displayName ?? joint.name}`}
                   />
                 </Tooltip>

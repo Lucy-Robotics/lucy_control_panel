@@ -542,14 +542,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return getLinkBoundingBox(link);
     }, [robot, selectedPartName]);
 
-    const loadedOnMountRef = useRef(robot !== null && !loading);
-    const userMovedCameraRef = useRef(false);
     useEffect(() => {
-        if (!robot || loading || framedRobot === robot) return;
+        if (!robot || framedRobot === robot) return;
         framedRobot = robot;
-        if (userMovedCameraRef.current) return;
-        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
-    }, [robot, loading, handleSelectView]);
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), true);
+    }, [robot, handleSelectView]);
 
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
 
@@ -781,7 +778,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
-                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate

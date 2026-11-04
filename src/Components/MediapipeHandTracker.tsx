@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
+import type { Results, NormalizedLandmark, Handedness } from "@mediapipe/hands";
 import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
-import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
+import { drawConnectors, drawLandmarks, HAND_CONNECTIONS, Hands } from "../Utils/mediapipe";
 import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
 import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
 
@@ -92,7 +92,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const reportedRatioRef = useRef<number | null>(null);
     const aspectRatioCallbackRef = useRef(onAspectRatioChange);
     aspectRatioCallbackRef.current = onAspectRatioChange;
-    const handsRef = useRef<Hands | null>(null);
+    const handsRef = useRef<InstanceType<typeof Hands> | null>(null);
 
     const { serverRobotPackage } = useActiveHardwareRos();
     const controlMode = useMemo(

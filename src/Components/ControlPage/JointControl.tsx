@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Button, Switch, Tooltip } from 'antd';
+import React, { useMemo, useCallback, useState, useEffect, useContext } from 'react';
+import { Card, Slider, InputNumber, Typography, Space, Button, Checkbox, Tooltip } from 'antd';
 import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
 import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
-import { useJointPreview } from '../../hooks/useJointPreview.ts';
+import { JointMoveContext, useMovingValue } from '../../hooks/useJointMove.ts';
 import { ControlModeHandler } from '../../Services/ros/handlers/ControlMode.handler';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
@@ -108,21 +108,22 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
-  const previewValue = useJointPreview(joint.name);
+  const movingValue = useMovingValue(joint.name);
+  const jointMove = useContext(JointMoveContext);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);
   }, [joint.currentValue]);
 
-  const handleSliderChange = useCallback((value: number | null) => {
-    if (value !== null) {
-      setLocalValue(value);
-    }
-  }, []);
+  const handleSliderChange = useCallback((value: number) => {
+    setLocalValue(value);
+    jointMove?.move(joint.name, value);
+  }, [joint.name, jointMove]);
 
   const handleSliderAfterChange = useCallback((value: number) => {
     onValueChange(joint.name, value);
-  }, [joint.name, onValueChange]);
+    jointMove?.release();
+  }, [joint.name, onValueChange, jointMove]);
 
   const handleInputChange = useCallback((value: number | null) => {
     if (value !== null) {
@@ -174,10 +175,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const [minDisplay, maxDisplay] = getDisplayRange();
-    const currentDisplay = getDisplayValue(previewValue ?? localValue);
+    const currentDisplay = getDisplayValue(movingValue ?? localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, previewValue, showDegrees, actuatorValue]);
+  }, [joint.minValue, joint.maxValue, localValue, movingValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
     if (actuatorValue) {
@@ -244,36 +245,36 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       >
         <Space direction="vertical" style={{ width: '100%' }} size="small">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-              {joint.displayName ?? joint.name}
-            </Text>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  color: UI_TEXT_SECONDARY_MUTED,
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.5px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {joint.inverted ? 'inverted · ' : ''}{joint.type}
-              </span>
               {gazeboRunning !== true && (
                 <Tooltip title={!robotControlled
                   ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
                   : torqueOn
                     ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
                     : 'Torque off: stays limp even while Control Robot is ON.'}>
-                  <Switch
-                    size="small"
+                  <Checkbox
+                    className="joint-torque-box"
                     checked={torqueOn}
                     style={robotControlled ? undefined : { opacity: 0.45 }}
-                    onChange={(on) => setJointTorqueEnabled(joint.name, on)}
+                    onChange={(e) => setJointTorqueEnabled(joint.name, e.target.checked)}
                     aria-label={`Torque on ${joint.displayName ?? joint.name}`}
                   />
                 </Tooltip>
               )}
+              <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+                {joint.displayName ?? joint.name}
+              </Text>
+            </span>
+            <span
+              style={{
+                color: UI_TEXT_SECONDARY_MUTED,
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {joint.inverted ? 'inverted · ' : ''}{joint.type}
             </span>
           </div>
 
@@ -290,6 +291,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                   onChange={(value) => handleSliderChange(convertInputValue(value))}
                   onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
                   disabled={disabled}
+                  className={movingValue === undefined ? undefined : 'joint-slider-moving'}
                   style={{ margin: 0 }}
                   tooltip={{
                     formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,

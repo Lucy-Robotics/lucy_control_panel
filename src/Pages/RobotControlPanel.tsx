@@ -40,6 +40,7 @@ import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
@@ -668,6 +669,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -755,6 +757,7 @@ export const RobotControlPanel: React.FC = () => {
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={phoneTeleop.target}
+                        phoneOrientation={phoneOrientation}
                     />
                 ),
                 'STREAM': <StreamPlayer />,
@@ -915,6 +918,7 @@ export const RobotControlPanel: React.FC = () => {
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={phoneTeleop.target}
+                phoneOrientation={phoneOrientation}
             />
 
             <StreamPlayerModal

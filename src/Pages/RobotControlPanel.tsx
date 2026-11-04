@@ -46,6 +46,8 @@ import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
+import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
 import type { Dock as DockName } from '../contexts/DockContext.tsx';
@@ -204,6 +206,9 @@ export const RobotControlPanel: React.FC = () => {
         refetchActiveHardware,
     } = useActiveHardwareRos();
 
+    useSyncDisabledJoints(isConnected);
+    const hardwareWarnings = useHardwareWarnings(isConnected);
+    const unreachableBoards = useUnreachableBoards(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 
@@ -319,6 +324,7 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    board: c.boardId,
                     inverted,
                     ...(restValue !== undefined && { restValue }),
                 });
@@ -603,10 +609,11 @@ export const RobotControlPanel: React.FC = () => {
             if (!categories[key]) {
                 categories[key] = [];
             }
-            categories[key].push(joint);
+            const reason = joint.board && unreachableBoards[joint.board];
+            categories[key].push(reason ? { ...joint, unreachable: `${joint.board} ${reason}` } : joint);
         });
         return categories;
-    }, [joints]);
+    }, [joints, unreachableBoards]);
 
     const poseJoints = useMemo(
         () => joints.map((joint) => ({
@@ -1026,6 +1033,10 @@ export const RobotControlPanel: React.FC = () => {
                             className="command-rail-bottom"
                         />
                     )}
+
+                    {hardwareWarnings.map((warning) => (
+                        <Alert key={warning} type="warning" showIcon message={warning} style={{ marginBottom: 8 }} />
+                    ))}
 
                     {isMobile && isWebcamActive && (
                         <div

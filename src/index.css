@@ -748,6 +748,16 @@ h6 {
   --frame: var(--color-highlight) !important;
 }
 
+/* Category with a joint on a board its bridge cannot reach */
+.joint-category-card.joint-unreachable::after {
+  background: var(--color-status-error);
+}
+
+/* CustomTitle styles its ">" inline */
+.joint-category-card.joint-unreachable .terminal-title-prefix {
+  color: var(--color-status-error) !important;
+}
+
 /* Theme Modal Preset Card */
 .preset-card {
   --chamfer: 8px;

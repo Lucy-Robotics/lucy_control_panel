@@ -14,6 +14,7 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { RobotGhost } from '../Components/RobotGhost';
 import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useGhostVisible } from '../hooks/useGhostVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -499,6 +500,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const themeColors = useThemeColors3D();
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -727,7 +729,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+                {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}

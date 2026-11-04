@@ -21,10 +21,12 @@ import {
     CodeSandboxOutlined,
     UnorderedListOutlined,
     LayoutOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -37,8 +39,9 @@ import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
-import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
-import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
+import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -88,7 +91,6 @@ import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
-import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
@@ -197,7 +199,7 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -224,6 +226,7 @@ export const RobotControlPanel: React.FC = () => {
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+    const isGhostVisible = useGhostVisible();
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
@@ -644,7 +647,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
-    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
+    usePublishTargetPose(jointMoveStore, joints, isSending);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -732,7 +735,6 @@ export const RobotControlPanel: React.FC = () => {
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={phoneTeleop.target}
-                        phoneOrientation={phoneOrientation}
                     />
                 )
                 : null}
@@ -836,6 +838,16 @@ export const RobotControlPanel: React.FC = () => {
             pinEnd: true,
             items: [
                 {
+                    key: 'ghost',
+                    icon: <UserOutlined />,
+                    label: isGhostVisible
+                        ? 'Hide the ghost: where the robot is heading'
+                        : 'Show the ghost: where the robot is heading',
+                    caption: 'GHOST',
+                    onClick: () => setGhostVisible(!isGhostVisible),
+                    active: isGhostVisible,
+                },
+                {
                     key: '3d-view',
                     icon: <CodeSandboxOutlined />,
                     label: showVisualizerWindow ? 'Hide 3D view window' : 'Show 3D view window',
@@ -860,7 +872,7 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointPreviewContext.Provider value={jointPreviewStore}>
+        <JointMoveContext.Provider value={jointMoveStore}>
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
@@ -868,7 +880,6 @@ export const RobotControlPanel: React.FC = () => {
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={phoneTeleop.target}
-                phoneOrientation={phoneOrientation}
             />
 
             <StreamPlayerModal
@@ -1058,8 +1069,6 @@ export const RobotControlPanel: React.FC = () => {
                 }}
             />
 
-            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
-
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}
                 onCancel={() => setRobotToConfirm(null)}
@@ -1114,6 +1123,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

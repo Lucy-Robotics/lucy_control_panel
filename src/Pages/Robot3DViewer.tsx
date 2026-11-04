@@ -17,6 +17,7 @@ import { RobotGhost } from '../Components/RobotGhost';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useGhostVisible } from '../hooks/useGhostVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -484,6 +485,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const themeColors = useThemeColors3D();
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -727,7 +729,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+                {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
 

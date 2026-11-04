@@ -50,13 +50,16 @@ export function usePhoneTeleop(
         cancelCalibration();
     }, [canRun, cancelCalibration]);
 
+    const isCalibrating = calibration.phase !== 'idle';
+
     const toggle = useCallback(() => {
-        if (isOn) {
+        if (isOn || isCalibrating) {
             setIsOn(false);
+            cancelCalibration();
             return;
         }
         void grantMotionPermission().then((granted) => granted && startCalibration());
-    }, [isOn, startCalibration]);
+    }, [isOn, isCalibrating, startCalibration, cancelCalibration]);
 
     useEffect(() => {
         const origin = endEffectorRef.current;
@@ -96,5 +99,5 @@ export function usePhoneTeleop(
         };
     }, [isOn]);
 
-    return { isOn, target, toggle, calibration };
+    return { isOn: isOn || isCalibrating, target, toggle, calibration };
 }

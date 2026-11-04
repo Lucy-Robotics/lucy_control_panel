@@ -12,6 +12,7 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
+    UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
     UI_WARNING,
@@ -21,16 +22,28 @@ const { Text } = Typography;
 
 export function TeleopCalibrationModal({ calibration }: { calibration: MotionCalibration }) {
     const secondsLeft = Math.ceil(CALIBRATION_S * (1 - calibration.progress));
+    const isMeasuring = calibration.phase === 'measuring';
 
     return (
         <MovableModal
             modalName="CALIBRATING TELEOP"
-            isVisible={calibration.isCalibrating}
+            isVisible={calibration.phase !== 'idle'}
             onClose={calibration.cancel}
             centered
             initialSize={{ w: 420, h: 280 }}
             header={<MobileOutlined style={{ color: UI_ACCENT_GREEN }} />}
             footer={[
+                !isMeasuring && (
+                    <Button
+                        key="ready"
+                        type="primary"
+                        icon={<MobileOutlined />}
+                        onClick={calibration.measure}
+                        style={{ backgroundColor: UI_ACCENT_GREEN, borderColor: UI_ACCENT_GREEN, color: UI_TEXT_ON_ACCENT }}
+                    >
+                        My phone is on the table
+                    </Button>
+                ),
                 <Button
                     key="cancel"
                     onClick={calibration.cancel}
@@ -42,14 +55,18 @@ export function TeleopCalibrationModal({ calibration }: { calibration: MotionCal
         >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
-                    Lay your phone flat on the table and don't touch it for {CALIBRATION_S} seconds.
+                    {isMeasuring
+                        ? `Measuring the sensors: don't touch the phone for ${CALIBRATION_S} seconds.`
+                        : `Lay your phone flat on the table, then confirm. It must stay still for ${CALIBRATION_S} seconds.`}
                 </Text>
-                <Progress
-                    className="lucy-progress"
-                    percent={Math.round(calibration.progress * 100)}
-                    format={() => `${secondsLeft} s`}
-                    strokeColor={UI_ACCENT_GREEN}
-                />
+                {isMeasuring && (
+                    <Progress
+                        className="lucy-progress"
+                        percent={Math.round(calibration.progress * 100)}
+                        format={() => `${secondsLeft} s`}
+                        strokeColor={UI_ACCENT_GREEN}
+                    />
+                )}
                 {calibration.wasMoved && (
                     <Text style={{ color: UI_WARNING }}>The phone moved, starting over.</Text>
                 )}

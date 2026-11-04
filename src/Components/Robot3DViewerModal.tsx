@@ -7,6 +7,7 @@ import { FloatingViewerModal } from './FloatingViewerModal.tsx';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
 import type { JointControlState } from '../Constants/robotTypes';
 import type { Vec3 } from '../Utils/phoneMotion';
+import type { Quat } from '../Utils/phoneOrientation';
 
 interface Robot3DViewerModalProps {
     isVisible: boolean;
@@ -17,6 +18,7 @@ interface Robot3DViewerModalProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 export function Robot3DViewerModal({
@@ -28,6 +30,7 @@ export function Robot3DViewerModal({
     joints,
     onJointValueChange,
     teleopTarget,
+    phoneOrientation,
 }: Robot3DViewerModalProps) {
     return (
         <FloatingViewerModal
@@ -42,6 +45,7 @@ export function Robot3DViewerModal({
                 joints={joints}
                 onJointValueChange={onJointValueChange}
                 teleopTarget={teleopTarget}
+                phoneOrientation={phoneOrientation}
             />
         </FloatingViewerModal>
     );

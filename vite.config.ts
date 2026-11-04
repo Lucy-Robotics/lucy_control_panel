@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       https,
-      host: true,
+      host: env.VITE_HOST || "127.0.0.1",
       allowedHosts,
       port,
       hmr: https
@@ -56,6 +56,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    preview: { port, strictPort: true },
+    preview: { host: true, port, strictPort: true },
   };
 });

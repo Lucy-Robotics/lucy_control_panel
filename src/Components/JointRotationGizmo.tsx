@@ -14,7 +14,6 @@ import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import { JointMoveContext } from '../hooks/useJointMove';
-import { toJointRad } from '../Utils/targetPose';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
@@ -243,8 +242,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         setIsDragging(true);
         onDraggingChange?.(true);
 
-        const commanded = commandedValue();
-        const start = commanded === undefined ? getJointAngle(joint) : toJointRad(jointName, commanded);
+        const start = getJointAngle(joint);
         startTargetRadRef.current = start;
         currentTargetRadRef.current = start;
         accumulatedAngleRef.current = 0;

@@ -36,6 +36,8 @@ import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { useSensorSources } from '../hooks/useSensorSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { useRobotSelection } from '../hooks/useRobotSelection.ts';
+import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import { availableDock, useDock } from '../contexts/DockContext.tsx';
@@ -53,7 +55,6 @@ import {
     DEFAULT_JOINT_SLIDER_VALUE_RAD,
 } from '../Constants/hardwareConfigDefaults';
 
-import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
@@ -84,6 +85,9 @@ import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -173,6 +177,10 @@ const DOCK_SHORT_LABEL: Record<DockName, string> = {
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const { currentDock, setCurrentDock, isDockLoaded } = useDock();
+    const stackStatus = useStackStatus(isConnected);
+    const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
+    const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
+    useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
 
     const {
         controllerConfigsFromActive,
@@ -637,6 +645,20 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
+        return (
+            <StackProgress
+                target={switchingTo}
+                robot={robots?.active ?? null}
+                status={stackStatus}
+                isConnected={isConnected}
+                timedOut={switchTimedOut}
+                connectButton={!isConnected && !isConnecting}
+                onDismiss={dismissSwitch}
+            />
+        );
+    }
+
     if (isConnected && loading) {
         return (
             <>
@@ -739,7 +761,10 @@ export const RobotControlPanel: React.FC = () => {
         hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
     };
 
+    const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: setRobotToConfirm });
+
     const railGroups: RailGroup[] = [
+        ...(robotGroup ? [robotGroup] : []),
         {
             key: 'pose',
             code: 'POSE',
@@ -875,18 +900,7 @@ export const RobotControlPanel: React.FC = () => {
                 showTrigger={false}
             />
 
-            {!isConnected ? (
-                <LucyLoader
-                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
-                    connectButton={!isConnecting}
-                    detail={
-                        isConnecting
-                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use Quick Connect in the header to start the link.'
-                    }
-                    showSpinner={isConnecting}
-                />
-            ) : (
+            {(
                 <div
                     style={{
                         position: 'relative',
@@ -1057,6 +1071,15 @@ export const RobotControlPanel: React.FC = () => {
                     retakeCountRef.current += 1;
                     setShowControlTakenModal(false);
                     applyControlToggle(true);
+                }}
+            />
+
+            <RobotSwitchConfirmModal
+                robotPackage={robotToConfirm}
+                onCancel={() => setRobotToConfirm(null)}
+                onConfirm={(robotPackage) => {
+                    setRobotToConfirm(null);
+                    selectRobot(robotPackage);
                 }}
             />
 

@@ -5,8 +5,11 @@ import {
     REST_MOTION,
     TELEOP_GAIN,
     deviceToBase,
+    heldStill,
     integrateMotion,
+    meanAcceleration,
     teleopTarget,
+    withoutBias,
 } from '../src/Utils/phoneMotion.ts';
 import type { MotionState, Vec3 } from '../src/Utils/phoneMotion.ts';
 
@@ -51,4 +54,19 @@ test('the target stays within reach of the origin', () => {
     const origin: Vec3 = [0, -0.3, 0.2];
     const target = teleopTarget(origin, [5, 5, 5]);
     assert.ok(Math.abs(Math.hypot(...target.map((t, i) => t - origin[i])) - MAX_REACH_M) < 1e-9);
+});
+
+test('a constant sensor offset measured at rest no longer drifts the target', () => {
+    const offset: Vec3 = [0.4, -0.25, 0.2];
+    const bias = meanAcceleration(Array(150).fill(offset));
+    const drifting = run(Array(150).fill(offset));
+    const calibrated = run(Array(150).fill(offset).map((a: Vec3) => withoutBias(a, bias)));
+    assert.ok(Math.hypot(...drifting.displacement) > 0.1);
+    assert.deepEqual(calibrated.displacement, [0, 0, 0]);
+});
+
+test('calibration accepts sensor noise but not a moved phone', () => {
+    const noise: Vec3[] = Array.from({ length: 150 }, (_, i) => [0.4 + (i % 2 ? 0.05 : -0.05), 0, 0]);
+    assert.equal(heldStill(noise), true);
+    assert.equal(heldStill([...noise, [2, 0, 0]]), false);
 });

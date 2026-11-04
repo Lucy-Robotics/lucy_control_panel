@@ -95,6 +95,7 @@ import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
@@ -1155,6 +1156,8 @@ export const RobotControlPanel: React.FC = () => {
                     applyControlToggle(true);
                 }}
             />
+
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
 
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}

@@ -6,10 +6,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../Services/ros/ros.service';
-import { REST_MOTION, integrateMotion, teleopTarget } from '../Utils/phoneMotion';
+import { REST_MOTION, integrateMotion, teleopTarget, withoutBias } from '../Utils/phoneMotion';
 import type { Vec3 } from '../Utils/phoneMotion';
 import { grantMotionPermission } from './useDeviceMotionAvailable';
 import { jointPositionsOf, type JointPositions, type JointStateMessage } from '../Utils/jointStateMessage';
+import { useMotionCalibration, type MotionCalibration } from './useMotionCalibration';
 
 const IK_TARGET_TOPIC = '/lucy/ik/target';
 const IK_SOLUTION_TOPIC = '/lucy/ik/solution';
@@ -19,6 +20,7 @@ export interface PhoneTeleop {
     isOn: boolean;
     target: Vec3 | null;
     toggle: () => void;
+    calibration: MotionCalibration;
 }
 
 export function usePhoneTeleop(
@@ -30,6 +32,12 @@ export function usePhoneTeleop(
     const [target, setTarget] = useState<Vec3 | null>(null);
     const endEffectorRef = useRef(endEffector);
     const onSolutionRef = useRef(onSolution);
+    const biasRef = useRef<Vec3>([0, 0, 0]);
+    const calibration = useMotionCalibration((bias) => {
+        biasRef.current = bias;
+        setIsOn(true);
+    });
+    const { start: startCalibration, cancel: cancelCalibration } = calibration;
 
     useEffect(() => {
         endEffectorRef.current = endEffector;
@@ -37,16 +45,18 @@ export function usePhoneTeleop(
     });
 
     useEffect(() => {
-        if (!canRun) setIsOn(false);
-    }, [canRun]);
+        if (canRun) return;
+        setIsOn(false);
+        cancelCalibration();
+    }, [canRun, cancelCalibration]);
 
     const toggle = useCallback(() => {
         if (isOn) {
             setIsOn(false);
             return;
         }
-        void grantMotionPermission().then(setIsOn);
-    }, [isOn]);
+        void grantMotionPermission().then((granted) => granted && startCalibration());
+    }, [isOn, startCalibration]);
 
     useEffect(() => {
         const origin = endEffectorRef.current;
@@ -69,7 +79,7 @@ export function usePhoneTeleop(
             if (a?.x == null) return;
             const dt = lastEventMs === null ? 0 : (event.timeStamp - lastEventMs) / 1000;
             lastEventMs = event.timeStamp;
-            motion = integrateMotion(motion, [a.x, a.y ?? 0, a.z ?? 0], dt);
+            motion = integrateMotion(motion, withoutBias([a.x, a.y ?? 0, a.z ?? 0], biasRef.current), dt);
             if (event.timeStamp - lastPublishMs < PUBLISH_PERIOD_MS) return;
             lastPublishMs = event.timeStamp;
             const next = teleopTarget(origin, motion.displacement);
@@ -86,5 +96,5 @@ export function usePhoneTeleop(
         };
     }, [isOn]);
 
-    return { isOn, target, toggle };
+    return { isOn, target, toggle, calibration };
 }

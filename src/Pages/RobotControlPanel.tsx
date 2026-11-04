@@ -97,6 +97,7 @@ import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -1083,6 +1084,8 @@ export const RobotControlPanel: React.FC = () => {
                     applyControlToggle(true);
                 }}
             />
+
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
 
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}

@@ -49,3 +49,20 @@ export function teleopTarget(origin: Vec3, displacement: Vec3): Vec3 {
     const scale = length > MAX_REACH_M ? MAX_REACH_M / length : 1;
     return origin.map((o, i) => o + offset[i] * scale) as Vec3;
 }
+
+export const CALIBRATION_S = 3;
+export const CALIBRATION_STILL_MPS2 = 0.3;
+
+export function meanAcceleration(samples: readonly Vec3[]): Vec3 {
+    if (samples.length === 0) return [0, 0, 0];
+    return [0, 1, 2].map((i) => samples.reduce((sum, s) => sum + s[i], 0) / samples.length) as Vec3;
+}
+
+export function heldStill(samples: readonly Vec3[]): boolean {
+    const mean = meanAcceleration(samples);
+    return samples.every((s) => s.every((a, i) => Math.abs(a - mean[i]) <= CALIBRATION_STILL_MPS2));
+}
+
+export function withoutBias(acceleration: Vec3, bias: Vec3): Vec3 {
+    return acceleration.map((a, i) => a - bias[i]) as Vec3;
+}

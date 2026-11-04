@@ -42,7 +42,10 @@ export function safeViewDirection(direction: THREE.Vector3): THREE.Vector3 {
 export function getRobotBoundingBox(robot: URDFRobot): THREE.Box3 {
     robot.updateWorldMatrix(true, true);
     const box = new THREE.Box3();
-    for (const link of Object.values(robot.links)) box.union(getLinkBoundingBox(link));
+    for (const link of Object.values(robot.links)) {
+        box.union(getLinkBoundingBox(link));
+        box.expandByPoint(link.getWorldPosition(new THREE.Vector3()));
+    }
     return box;
 }
 

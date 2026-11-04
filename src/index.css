@@ -729,7 +729,7 @@ h6 {
 
 .joint-torque-box[aria-pressed="true"] {
   --frame: var(--color-highlight);
-  --fill: var(--color-highlight-soft);
+  --fill: color-mix(in srgb, var(--color-highlight) 25%, transparent);
 }
 
 .joint-torque-box:focus-visible {

@@ -25,6 +25,7 @@ import { useGhostOpacity } from '../hooks/useGhostOpacity';
 import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import type { Quat } from '../Utils/phoneOrientation';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { ViewCube } from '../Components/ViewCube';
@@ -509,6 +510,7 @@ export interface Robot3DViewerProps {
     hudCenter?: React.ReactNode;
     isHandsOn?: boolean;
     teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -520,6 +522,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     onJointValueChange,
     isHandsOn = false,
     teleopTarget = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -774,7 +777,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
+                {robot && (
+                    <EndEffectorMarkers
+                        robot={robot}
+                        ghost={targetPose ? ghost : null}
+                        target={teleopTarget}
+                        phoneOrientation={phoneOrientation}
+                        colors={themeColors}
+                    />
+                )}
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 

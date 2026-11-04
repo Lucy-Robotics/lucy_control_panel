@@ -38,6 +38,7 @@ import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -702,6 +703,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
     usePublishTargetPose(jointMoveStore, joints, isSending);
 
@@ -790,6 +792,7 @@ export const RobotControlPanel: React.FC = () => {
             onJointValueChange={handleGizmoJointCommit}
             isHandsOn={isHandsOn}
             teleopTarget={phoneTeleop.target}
+            phoneOrientation={phoneOrientation}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton

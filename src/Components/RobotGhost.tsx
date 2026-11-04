@@ -7,6 +7,7 @@ import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { URDFRobot } from 'urdf-loader';
 import type { JointPositions } from '../Utils/jointStateMessage';
+import { showDivergentLinks } from '../Utils/ghostLinks';
 
 export const RobotGhost: React.FC<{ ghost: URDFRobot; robot: URDFRobot; pose: JointPositions | null }> = ({
     ghost,
@@ -23,6 +24,7 @@ export const RobotGhost: React.FC<{ ghost: URDFRobot; robot: URDFRobot; pose: Jo
                 joint.setJointValue(...robot.joints[name].jointValue);
             }
         }
+        showDivergentLinks(ghost, robot);
     });
 
     return (

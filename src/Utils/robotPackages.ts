@@ -11,6 +11,7 @@ export interface RobotList {
 const ROBOT_LABELS: Record<string, string> = {
     inmoov_urdf: 'InMoov',
     inmoov_i2_urdf: 'InMoov i2',
+    marty_urdf: 'Marty',
     so_arm101_urdf: 'SO-ARM101',
 };
 

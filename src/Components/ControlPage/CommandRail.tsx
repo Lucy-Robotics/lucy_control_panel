@@ -41,6 +41,8 @@ export interface RailGroup {
     pinEnd?: boolean;
 }
 
+const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches !== false;
+
 interface CommandRailProps {
     groups: RailGroup[];
     arm: {
@@ -85,7 +87,7 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 <Tooltip
                     key={item.key}
                     placement={placement}
-                    title={item.disabled && item.disabledReason ? item.disabledReason : item.label}
+                    title={item.disabled ? (item.disabledReason ?? item.label) : (canHover ? item.label : undefined)}
                 >
                     <span className="rail-slot">
                         {item.menu && !item.disabled ? (
@@ -110,7 +112,7 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
             >
                 <div className="rail-group">
                     <span className="rail-code" aria-hidden>CONTROL</span>
-                    <Tooltip placement={placement} title={arm.hint}>
+                    <Tooltip placement={placement} title={canHover ? arm.hint : undefined}>
                         <span className="rail-slot">
                             <button
                                 type="button"

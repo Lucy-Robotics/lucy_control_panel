@@ -5,21 +5,29 @@
 
 import { useEffect, useState } from 'react';
 
-type PermissionGatedMotion = typeof DeviceMotionEvent & { requestPermission?: () => Promise<PermissionState> };
+type PermissionGated = { requestPermission?: () => Promise<PermissionState> };
 
-const motionEvent = (): PermissionGatedMotion | undefined =>
-    typeof DeviceMotionEvent === 'undefined' ? undefined : DeviceMotionEvent;
+const motionEvent = (): PermissionGated | undefined =>
+    typeof DeviceMotionEvent === 'undefined' ? undefined : (DeviceMotionEvent as PermissionGated);
+
+const orientationEvent = (): PermissionGated | undefined =>
+    typeof DeviceOrientationEvent === 'undefined' ? undefined : (DeviceOrientationEvent as PermissionGated);
 
 const needsMotionPermission = () => typeof motionEvent()?.requestPermission === 'function';
 
-export async function grantMotionPermission(): Promise<boolean> {
-    const motion = motionEvent();
-    if (!motion?.requestPermission) return true;
+async function grant(sensor: PermissionGated | undefined): Promise<boolean> {
+    if (!sensor?.requestPermission) return true;
     try {
-        return (await motion.requestPermission()) === 'granted';
+        return (await sensor.requestPermission()) === 'granted';
     } catch {
         return false;
     }
+}
+
+export async function grantMotionPermission(): Promise<boolean> {
+    if (!(await grant(motionEvent()))) return false;
+    await grant(orientationEvent());
+    return true;
 }
 
 export function useDeviceMotionAvailable(): boolean {

@@ -87,6 +87,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                             title="LUCY"
                             separator="//"
                             subtitle="CONTROL PANEL"
+                            note={import.meta.env.VITE_LUCY_VERSION}
                             level="graphical"
                             align="center"
                             style={{ fontSize: '28px' }}

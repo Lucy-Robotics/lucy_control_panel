@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useCallback, useState, useEffect, useContext } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Button, Switch, Tooltip } from 'antd';
+import { Card, Slider, InputNumber, Typography, Space, Button, Checkbox, Tooltip } from 'antd';
 import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
 import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -262,10 +262,26 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       >
         <Space direction="vertical" style={{ width: '100%' }} size="small">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-              {joint.displayName ?? joint.name}
-            </Text>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {gazeboRunning !== true && (
+                <Tooltip title={!robotControlled
+                  ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
+                  : torqueOn
+                    ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+                    : 'Torque off: stays limp even while Control Robot is ON.'}>
+                  <Checkbox
+                    className="joint-torque-box"
+                    checked={torqueOn}
+                    style={robotControlled ? undefined : { opacity: 0.45 }}
+                    onChange={(e) => setJointTorqueEnabled(joint.name, e.target.checked)}
+                    aria-label={`Torque on ${joint.displayName ?? joint.name}`}
+                  />
+                </Tooltip>
+              )}
+              <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+                {joint.displayName ?? joint.name}
+              </Text>
+            </span>
             {joint.inverted && (
               <span
                 style={{
@@ -279,22 +295,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 inverted
               </span>
             )}
-              {gazeboRunning !== true && (
-                <Tooltip title={!robotControlled
-                  ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
-                  : torqueOn
-                    ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
-                    : 'Torque off: stays limp even while Control Robot is ON.'}>
-                  <Switch
-                    size="small"
-                    checked={torqueOn}
-                    style={robotControlled ? undefined : { opacity: 0.45 }}
-                    onChange={(on) => setJointTorqueEnabled(joint.name, on)}
-                    aria-label={`Torque on ${joint.displayName ?? joint.name}`}
-                  />
-                </Tooltip>
-              )}
-            </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>

@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), roslibGlobalThis()],
     server: {
       https,
-      host: true,
+      host: "127.0.0.1",
       allowedHosts,
       port,
       hmr: https

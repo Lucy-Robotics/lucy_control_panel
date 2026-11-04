@@ -14,17 +14,15 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import type { Quat } from '../Utils/phoneOrientation';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
-import { useGhostRobot } from '../hooks/useGhostRobot';
-import { useSliderGhostPose } from '../hooks/useSliderGhostPose';
-import type { JointPositions } from '../hooks/usePhoneTeleop';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
+import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -497,7 +495,7 @@ export interface Robot3DViewerProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
-    teleopSolution?: JointPositions | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -508,7 +506,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudCenter,
     onJointValueChange,
     teleopTarget = null,
-    teleopSolution = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -516,9 +514,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
-    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
-    const sliderGhostPose = useSliderGhostPose(joints);
-    const ghostPose = teleopSolution ?? sliderGhostPose;
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -586,6 +581,49 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
+    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
+    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
+
+    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
+        if (dragging) {
+            // Only one drag can be live: an entry still flagged as dragging here
+            // lost its release event, and would otherwise never fade out.
+            ghostTargetsRef.current.forEach((entry, other) => {
+                if (other === name) return;
+                entry.dragging = false;
+                entry.cancelled = true;
+            });
+        }
+        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
+        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
+    }, []);
+
+    const handleTargetCancel = useCallback((name: string) => {
+        const entry = ghostTargetsRef.current.get(name);
+        if (!entry) return;
+        entry.dragging = false;
+        entry.cancelled = true;
+    }, []);
+
+    useEffect(() => {
+        if (!joints) return;
+        ghostTargetsRef.current.forEach((entry, name) => {
+            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
+            const state = joints.find(j => j.name === name);
+            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
+                entry.cancelled = true;
+            }
+        });
+    }, [joints]);
+
+    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
+
+    const handleGhostDone = useCallback((name: string) => {
+        if (ghostTargetsRef.current.get(name)?.dragging) return;
+        ghostTargetsRef.current.delete(name);
+        setGhostJointNames(prev => prev.filter(n => n !== name));
+    }, []);
+
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
 
@@ -597,7 +635,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     useEffect(() => {
         if (effectiveControlOn) return;
         setGizmoPartName(null);
-    }, [effectiveControlOn]);
+        ghostTargetsRef.current.clear();
+        setGhostJointNames([]);
+    }, [effectiveControlOn, cancelPendingClick]);
+
+    useEffect(() => cancelPendingClick, [cancelPendingClick]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -761,9 +803,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && <RobotGhost ghost={ghost} robot={robot} pose={ghostPose} />}
-
-                {robot && <EndEffectorMarkers robot={robot} ghost={teleopSolution ? ghost : null} colors={themeColors} />}
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} phoneOrientation={phoneOrientation} colors={themeColors} />}
 
                 {robot && ghostJointNames.map(name => {
                     const joint = robot.joints[name];
@@ -777,6 +817,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
+                    onValuePreview={jointPreview?.set}
+                    onTargetChange={handleTargetChange}
+                    onTargetCancel={handleTargetCancel}
+                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />

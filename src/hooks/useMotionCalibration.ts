@@ -7,16 +7,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CALIBRATION_S, heldStill, meanAcceleration } from '../Utils/phoneMotion';
 import type { Vec3 } from '../Utils/phoneMotion';
 
+export type CalibrationPhase = 'idle' | 'waitingForTable' | 'measuring';
+
 export interface MotionCalibration {
-    isCalibrating: boolean;
+    phase: CalibrationPhase;
     progress: number;
     wasMoved: boolean;
     start: () => void;
+    measure: () => void;
     cancel: () => void;
 }
 
 export function useMotionCalibration(onCalibrated: (bias: Vec3) => void): MotionCalibration {
-    const [isCalibrating, setIsCalibrating] = useState(false);
+    const [phase, setPhase] = useState<CalibrationPhase>('idle');
     const [progress, setProgress] = useState(0);
     const [wasMoved, setWasMoved] = useState(false);
     const onCalibratedRef = useRef(onCalibrated);
@@ -25,16 +28,18 @@ export function useMotionCalibration(onCalibrated: (bias: Vec3) => void): Motion
         onCalibratedRef.current = onCalibrated;
     });
 
-    const start = useCallback(() => {
+    const start = useCallback(() => setPhase('waitingForTable'), []);
+
+    const measure = useCallback(() => {
         setProgress(0);
         setWasMoved(false);
-        setIsCalibrating(true);
+        setPhase('measuring');
     }, []);
 
-    const cancel = useCallback(() => setIsCalibrating(false), []);
+    const cancel = useCallback(() => setPhase('idle'), []);
 
     useEffect(() => {
-        if (!isCalibrating) return;
+        if (phase !== 'measuring') return;
         let samples: Vec3[] = [];
         let startedMs: number | null = null;
 
@@ -51,13 +56,13 @@ export function useMotionCalibration(onCalibrated: (bias: Vec3) => void): Motion
             const elapsedS = (event.timeStamp - startedMs) / 1000;
             setProgress(Math.min(1, elapsedS / CALIBRATION_S));
             if (elapsedS < CALIBRATION_S) return;
-            setIsCalibrating(false);
+            setPhase('idle');
             onCalibratedRef.current(meanAcceleration(samples));
         };
 
         window.addEventListener('devicemotion', onMotion);
         return () => window.removeEventListener('devicemotion', onMotion);
-    }, [isCalibrating]);
+    }, [phase]);
 
-    return { isCalibrating, progress, wasMoved, start, cancel };
+    return { phase, progress, wasMoved, start, measure, cancel };
 }

@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
+import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -37,9 +37,8 @@ import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
-import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
-import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
-import type { JointPositions } from '../Utils/jointStateMessage.ts';
+import { usePhoneTeleop, type JointPositions } from '../hooks/usePhoneTeleop.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -47,7 +46,6 @@ import {
     DEFAULT_ACTUATOR_MAPPING,
     clampServoRad,
     jointRadToServoRad,
-    servoRadToJointRad,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
 import { describeClient } from '../Utils/clientIdentity';
@@ -135,8 +133,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
                     icon={<JoystickOutlined />}
                     onClick={onRetake}
                     style={{
-                        backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
-                        borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                        backgroundColor: UI_ACCENT_GREEN,
+                        borderColor: UI_ACCENT_GREEN,
                         color: UI_TEXT_ON_ACCENT,
                     }}
                 >
@@ -172,6 +170,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
     </MovableModal>
 );
 
+/** Value printed under the rail's Dock button. */
 const DOCK_SHORT_LABEL: Record<DockName, string> = {
     NONE: 'NONE',
     '3D_VIEW': '3D',
@@ -201,17 +200,14 @@ export const RobotControlPanel: React.FC = () => {
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointMoveStore] = useState(createJointMoveStore);
+    const [jointPreviewStore] = useState(createJointPreviewStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-    const [activeControllerId, setActiveControllerId] = useState(
-        () => ControlModeHandler.getInstance().currentControllerId
-    );
-    const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const [isSending, setIsSending] = useState(false);
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -235,6 +231,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
 
+    // Lets sticky elements (the category strip) sit above the bottom toolbar on phones
     useEffect(() => {
         const root = document.documentElement;
         if (isMobile && railHeight > 0) {
@@ -300,6 +297,7 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
+            setIsSending(false);
             return;
         }
 
@@ -366,14 +364,19 @@ export const RobotControlPanel: React.FC = () => {
 
 
     useEffect(() => {
+        if (!isConnected) return;
         const handler = ControlModeHandler.getInstance();
-        return handler.onControllerChanged((controllerId) => {
-            if (isSendingRef.current && controllerId !== '' && controllerId !== handler.clientId) {
-                setShowControlTakenModal(true);
+        const unsubscribe = handler.onControllerChanged((controllerId) => {
+            if (controllerId === handler.clientId) return;
+            if (isSendingRef.current) {
+                if (controllerId !== '') {
+                    setShowControlTakenModal(true);
+                }
+                setIsSending(false);
             }
-            setActiveControllerId(controllerId);
         });
-    }, []);
+        return unsubscribe;
+    }, [isConnected]);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -442,14 +445,8 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    useEffect(() => {
-        if (!isSending) return;
-        const confirmLeave = (event: BeforeUnloadEvent) => event.preventDefault();
-        window.addEventListener('beforeunload', confirmLeave);
-        return () => window.removeEventListener('beforeunload', confirmLeave);
-    }, [isSending]);
-
     const applyControlToggle = useCallback((shouldControl: boolean) => {
+        setIsSending(shouldControl);
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
         if (shouldControl) {
@@ -485,17 +482,11 @@ export const RobotControlPanel: React.FC = () => {
         if (!isSendingRef.current) return;
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                if (joint.name !== jointName) return joint;
-                const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
-                const a = servoRadToJointRad(joint.minValue, mapping);
-                const b = servoRadToJointRad(joint.maxValue, mapping);
-                const lo = Math.min(a, b);
-                const servo = clampServoRad(
-                    jointRadToServoRad(lo + y * (Math.max(a, b) - lo), mapping),
-                    joint.minValue,
-                    joint.maxValue,
-                );
-                return { ...joint, currentValue: servo, targetValue: servo };
+                const clampedX = Math.max(joint.minValue, y * joint.maxValue);
+                if (joint.name === jointName) {
+                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                }
+                return joint;
             })
         );
     }
@@ -656,7 +647,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
-    usePublishTargetPose(jointMoveStore, joints, isSending);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -744,6 +735,7 @@ export const RobotControlPanel: React.FC = () => {
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={phoneTeleop.target}
+                        phoneOrientation={phoneOrientation}
                     />
                 )
                 : null}
@@ -871,7 +863,7 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointMoveContext.Provider value={jointMoveStore}>
+        <JointPreviewContext.Provider value={jointPreviewStore}>
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
@@ -879,6 +871,7 @@ export const RobotControlPanel: React.FC = () => {
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={phoneTeleop.target}
+                phoneOrientation={phoneOrientation}
             />
 
             <StreamPlayerModal
@@ -911,6 +904,7 @@ export const RobotControlPanel: React.FC = () => {
                         minHeight: isMobile
                             ? `calc(100dvh - ${headerHeight}px - ${screenPadding * 2}px - ${railHeight}px)`
                             : 0,
+                        // Keeps the last content clear of the fixed bottom toolbar
                         paddingBottom: isMobile ? railHeight : 0,
                     }}
                 >
@@ -1092,8 +1086,8 @@ export const RobotControlPanel: React.FC = () => {
                         icon={<JoystickOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
-                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
-                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            backgroundColor: UI_ACCENT_GREEN,
+                            borderColor: UI_ACCENT_GREEN,
                             color: UI_TEXT_ON_ACCENT,
                         }}
                     >
@@ -1123,6 +1117,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointMoveContext.Provider>
+        </JointPreviewContext.Provider>
     );
 };

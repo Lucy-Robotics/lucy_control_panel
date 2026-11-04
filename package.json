@@ -9,7 +9,7 @@
     "quickbuild": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types test/run-security-tests.ts && node --experimental-strip-types --test test/phoneMotion.test.ts test/phoneOrientation.test.ts",
+    "test": "node --experimental-strip-types test/run-security-tests.ts && node --experimental-strip-types --test test/stackStatus.test.ts",
     "coverage": "c8 --reporter=lcov --reporter=text yarn test"
   },
   "dependencies": {

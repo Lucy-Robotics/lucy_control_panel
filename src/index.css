@@ -708,6 +708,20 @@ h6 {
   --frame: var(--color-highlight) !important;
 }
 
+.joint-torque-box .ant-checkbox-inner {
+  background: transparent !important;
+  border: 1px solid var(--color-highlight) !important;
+  border-radius: 0;
+}
+
+.joint-torque-box .ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--color-highlight) !important;
+}
+
+.joint-torque-box .ant-checkbox-inner::after {
+  display: none;
+}
+
 /* Category with a joint on a board its bridge cannot reach */
 .joint-category-card.joint-unreachable::after {
   background: var(--color-status-error);

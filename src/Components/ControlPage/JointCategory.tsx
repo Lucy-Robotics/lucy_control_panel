@@ -65,6 +65,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             <div
                 style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: 12,
@@ -72,7 +74,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2,
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                     <CustomTitle
                         title={category.toUpperCase()}
                         subtitle={`${joints.length} JOINTS`}

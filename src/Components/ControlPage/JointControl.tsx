@@ -7,6 +7,7 @@ import React, { useMemo, useCallback, useState, useEffect, useContext } from 're
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
 import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
 import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
+import { useActiveHardwareRos } from '../../contexts/ActiveHardwareRosContext';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
@@ -183,6 +184,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
   const torqueOn = !useDisabledJoints().has(joint.name);
   const gazeboRunning = useGazeboRunning();
+  const { mockHardware } = useActiveHardwareRos();
+  const onRealHardware = mockHardware === false && gazeboRunning !== true;
   // The supervisor only enables torque while some client holds Control Robot.
   const [robotControlled, setRobotControlled] = useState(() => ControlModeHandler.getInstance().isControlled);
   useEffect(() => ControlModeHandler.getInstance().onControllerChanged((id) => setRobotControlled(id !== '')), []);
@@ -239,7 +242,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         <Space direction="vertical" style={{ width: '100%' }} size="small">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {gazeboRunning !== true && (
+              {onRealHardware && (
                 <Tooltip title={!robotControlled
                   ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
                   : torqueOn

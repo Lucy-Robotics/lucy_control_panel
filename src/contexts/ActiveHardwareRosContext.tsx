@@ -46,6 +46,8 @@ interface ActiveHardwareRosContextValue {
     productionMode: boolean;
     /** False on mock hardware (no robot, no simulator): there is no servo to drive, so URDF only. */
     servoControlAvailable: boolean;
+    /** True without a robot or simulator, false when one runs, null until the URDF arrives. */
+    mockHardware: boolean | null;
     activeHardwareLoading: boolean;
     activeHardwareError: string | null;
     /** Increments on each successful `config/get` active fetch — editors may gate hydration on this. */
@@ -177,6 +179,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             controllerConfigsFromActive: controllerConfigs,
             productionMode,
             servoControlAvailable,
+            mockHardware,
             activeHardwareLoading,
             activeHardwareError,
             activeHardwareFetchEpoch: epoch,
@@ -193,6 +196,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             controllerConfigs,
             productionMode,
             servoControlAvailable,
+            mockHardware,
             activeHardwareLoading,
             activeHardwareError,
             epoch,

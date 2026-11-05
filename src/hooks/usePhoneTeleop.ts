@@ -4,23 +4,15 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import ROSLIB from 'roslib';
 import { RosBridgeService } from '../Services/ros/ros.service';
+import { openIkTopics } from '../Services/ros/ikTopics';
 import { REST_MOTION, integrateMotion, teleopTarget, withoutBias } from '../Utils/phoneMotion';
 import type { Vec3 } from '../Utils/phoneMotion';
 import { grantMotionPermission } from './useDeviceMotionAvailable';
+import type { JointPositions } from '../Utils/jointStateMessage';
 import { useMotionCalibration, type MotionCalibration } from './useMotionCalibration';
 
-const IK_TARGET_TOPIC = '/lucy/ik/target';
-const IK_SOLUTION_TOPIC = '/lucy/ik/solution';
 const PUBLISH_PERIOD_MS = 50;
-
-export type JointPositions = Record<string, number>;
-
-interface JointStateMessage {
-    name: string[];
-    position: number[];
-}
 
 export interface PhoneTeleop {
     isOn: boolean;
@@ -72,12 +64,7 @@ export function usePhoneTeleop(
         const ros = RosBridgeService.getInstance().rosConnection;
         if (!isOn || !origin || !ros) return;
 
-        const targetTopic = new ROSLIB.Topic({ ros, name: IK_TARGET_TOPIC, messageType: 'geometry_msgs/msg/Point' });
-        const solutionTopic = new ROSLIB.Topic({ ros, name: IK_SOLUTION_TOPIC, messageType: 'sensor_msgs/msg/JointState' });
-        solutionTopic.subscribe((msg: ROSLIB.Message) => {
-            const { name, position } = msg as unknown as JointStateMessage;
-            onSolutionRef.current(Object.fromEntries(name.map((joint, i) => [joint, position[i]])));
-        });
+        const ik = openIkTopics(ros, (positions) => onSolutionRef.current(positions));
 
         let motion = REST_MOTION;
         let lastEventMs: number | null = null;
@@ -93,15 +80,14 @@ export function usePhoneTeleop(
             if (event.timeStamp - lastPublishMs < PUBLISH_PERIOD_MS) return;
             lastPublishMs = event.timeStamp;
             const next = teleopTarget(origin, motion.displacement);
-            targetTopic.publish(new ROSLIB.Message({ x: next[0], y: next[1], z: next[2] }));
+            ik.publishTarget(next);
             setTarget(next);
         };
 
         window.addEventListener('devicemotion', onMotion);
         return () => {
             window.removeEventListener('devicemotion', onMotion);
-            solutionTopic.unsubscribe();
-            targetTopic.unadvertise();
+            ik.close();
             setTarget(null);
         };
     }, [isOn]);

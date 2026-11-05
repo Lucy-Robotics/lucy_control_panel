@@ -40,8 +40,10 @@ import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { useJogTeleop } from '../hooks/useJogTeleop.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import type { JointPositions } from '../Utils/jointStateMessage.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
 import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
@@ -51,6 +53,7 @@ import {
     DEFAULT_ACTUATOR_MAPPING,
     clampServoRad,
     jointRadToServoRad,
+    servoRadToJointRad,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
 import { describeClient } from '../Utils/clientIdentity';
@@ -92,7 +95,10 @@ import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
+import { JogPad } from '../Components/ControlPage/JogPad.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
@@ -213,7 +219,10 @@ export const RobotControlPanel: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-    const [isSending, setIsSending] = useState(false);
+    const [activeControllerId, setActiveControllerId] = useState(
+        () => ControlModeHandler.getInstance().currentControllerId
+    );
+    const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -309,7 +318,6 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
-            setIsSending(false);
             return;
         }
 
@@ -393,19 +401,14 @@ export const RobotControlPanel: React.FC = () => {
 
 
     useEffect(() => {
-        if (!isConnected) return;
         const handler = ControlModeHandler.getInstance();
-        const unsubscribe = handler.onControllerChanged((controllerId) => {
-            if (controllerId === handler.clientId) return;
-            if (isSendingRef.current) {
-                if (controllerId !== '') {
-                    setShowControlTakenModal(true);
-                }
-                setIsSending(false);
+        return handler.onControllerChanged((controllerId) => {
+            if (isSendingRef.current && controllerId !== '' && controllerId !== handler.clientId) {
+                setShowControlTakenModal(true);
             }
+            setActiveControllerId(controllerId);
         });
-        return unsubscribe;
-    }, [isConnected]);
+    }, []);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -474,8 +477,14 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
+    useEffect(() => {
+        if (!isSending) return;
+        const confirmLeave = (event: BeforeUnloadEvent) => event.preventDefault();
+        window.addEventListener('beforeunload', confirmLeave);
+        return () => window.removeEventListener('beforeunload', confirmLeave);
+    }, [isSending]);
+
     const applyControlToggle = useCallback((shouldControl: boolean) => {
-        setIsSending(shouldControl);
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
         if (shouldControl) {
@@ -511,11 +520,17 @@ export const RobotControlPanel: React.FC = () => {
         if (!isSendingRef.current) return;
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const clampedX = Math.max(joint.minValue, y * joint.maxValue);
-                if (joint.name === jointName) {
-                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
-                }
-                return joint;
+                if (joint.name !== jointName) return joint;
+                const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                const a = servoRadToJointRad(joint.minValue, mapping);
+                const b = servoRadToJointRad(joint.maxValue, mapping);
+                const lo = Math.min(a, b);
+                const servo = clampServoRad(
+                    jointRadToServoRad(lo + y * (Math.max(a, b) - lo), mapping),
+                    joint.minValue,
+                    joint.maxValue,
+                );
+                return { ...joint, currentValue: servo, targetValue: servo };
             })
         );
     }
@@ -690,7 +705,10 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const jogTeleop = useJogTeleop(isSending && endEffector !== null && !phoneTeleop.isOn, endEffector, handleIkSolution);
+    const teleopTarget = phoneTeleop.target ?? jogTeleop.target;
     usePublishTargetPose(jointMoveStore, joints, isSending);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -777,7 +795,8 @@ export const RobotControlPanel: React.FC = () => {
                         isControlOn={isSending}
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
-                        teleopTarget={phoneTeleop.target}
+                        teleopTarget={teleopTarget}
+                        phoneOrientation={phoneOrientation}
                     />
                 )
                 : null}
@@ -873,6 +892,13 @@ export const RobotControlPanel: React.FC = () => {
                     hasMotionSensors,
                     hasEndEffector: endEffector !== null,
                 }),
+                jogTeleopRailItem({
+                    isOn: jogTeleop.isOn,
+                    onToggle: jogTeleop.toggle,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    isPhoneTeleopOn: phoneTeleop.isOn,
+                }),
             ],
         },
         {
@@ -922,7 +948,8 @@ export const RobotControlPanel: React.FC = () => {
                 isControlOn={isSending}
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
-                teleopTarget={phoneTeleop.target}
+                teleopTarget={teleopTarget}
+                phoneOrientation={phoneOrientation}
             />
 
             <StreamPlayerModal
@@ -1115,6 +1142,16 @@ export const RobotControlPanel: React.FC = () => {
                     applyControlToggle(true);
                 }}
             />
+
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
+
+            {jogTeleop.isOn && (
+                <JogPad
+                    onPress={jogTeleop.press}
+                    onRelease={jogTeleop.release}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
 
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}

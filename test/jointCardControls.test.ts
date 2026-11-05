@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import type { JointControlState } from '../src/Constants/robotTypes.ts';
 import { JointControl } from '../src/Components/ControlPage/JointControl.tsx';
+import { ActiveHardwareRosProvider } from '../src/contexts/ActiveHardwareRosContext.tsx';
 import { ToggleSwitch } from '../src/Components/ToggleSwitch.tsx';
 import { MovableModal } from '../src/Components/MovableModal.tsx';
 import { storageService } from '../src/Services/storage.service.ts';
@@ -19,7 +20,8 @@ const jaw: JointControlState = {
 };
 
 async function renderJoint(joint: JointControlState) {
-    return render(React.createElement(JointControl, { joint, onValueChange: () => {}, showDegrees: true }));
+    return render(React.createElement(ActiveHardwareRosProvider, null,
+        React.createElement(JointControl, { joint, onValueChange: () => {}, showDegrees: true })));
 }
 
 test('an inverted joint card says so and draws its slider from the max end', async () => {

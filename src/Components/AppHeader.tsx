@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography, Grid } from 'antd';
-import { SettingOutlined, ReadOutlined } from '@ant-design/icons';
+import { SettingOutlined, ReadOutlined, ExportOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -176,13 +176,13 @@ export const AppHeader: React.FC = () => {
 
     const headerActions = (
         <>
-            <Tooltip title="Documentation">
+            <Tooltip title={<>Access our external documentation</>}>
                 <Button
                     className="nav-item-btn"
                     icon={isMobile ? <ReadOutlined /> : undefined}
                     onClick={() => window.open('https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
                 >
-                    {!isMobile && 'Documentation'}
+                    {!isMobile && <>Documentation <ExportOutlined /></>}
                 </Button>
             </Tooltip>
             <Tooltip title="Settings">

@@ -279,10 +279,9 @@ No palette makes four states identifiable by colour alone for every viewer: achr
 | Element | Non-colour cue | Status |
 | :--- | :--- | :--- |
 | ON/OFF toggles (`ToggleSwitch`, `StreamSwitch`) | Visible `ON` / `OFF` text and `aria-label` | ✓ |
-| Header ROS bridge status, desktop | Text `CONNECTED` / `CONNECTING` / `DISCONNECTED` | ✓ |
-| Header "connecting" | LED pulse animation | ✓ |
-| Header controller status | Text `CONTROLLED` / `UNCONTROLLED` | ✓ |
-| Header ROS bridge status, **mobile** | Only the client count is shown; the state is colour-only (the tooltip needs hover) | ✗ follow-up |
+| Header ROS bridge status | Badge shown only while connected, with a person icon and the client count | ✓ |
+| Disconnected / connecting state | Text in the page body (`LucyLoader`, `RosConnectionAlert`) | ✓ |
+| Header controller status | Text `CONTROLLED` / `UNCONTROLLED`, shown only while connected | ✓ |
 | Header "multiple clients" warning | Colour change plus the count | ~ partial |
 
 ---
@@ -294,7 +293,6 @@ No palette makes four states identifiable by colour alone for every viewer: achr
 - **The default brand theme** fails 4.5 : 1 for `--color-text-secondary` (3.21 : 1 worst case) and `--color-text-muted` (2.33 : 1), and its `text-on-error` reaches only 3.04 : 1. The suite reports these as advisories, not failures, so the brand palette isn't changed here.
 - **Light CVD presets** don't exist yet. A user who needs both a light theme and a CVD-safe palette has no preset.
 - **The header logo** (`public/logo.png`) is a fixed mint-green raster. WCAG exempts logotypes from contrast rules, but on Lucy Light it is about 1.4 : 1, and in Monochrome it is the only non-grey element. Rendering it as a CSS mask filled with `var(--color-highlight)` would make it follow the theme. This is a brand decision, so it isn't changed here.
-- **Mobile header status** should show a short text or icon, for example `✓` / `…` / `✕`, next to the count.
 
 ---
 

@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography, Grid } from 'antd';
-import { SettingOutlined, ReadOutlined, ExportOutlined } from '@ant-design/icons';
+import { SettingOutlined, ReadOutlined, ExportOutlined, UserOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -76,42 +76,13 @@ export const AppHeader: React.FC = () => {
         };
     }, [connect]);
 
-    const getConnectionStatusText = () => {
-        switch (connectionStatus) {
-            case 'connected':
-                return 'CONNECTED';
-            case 'connecting':
-                return 'CONNECTING...';
-            case 'disconnected':
-                return 'DISCONNECTED';
-            default:
-                return 'UNKNOWN';
-        }
-    };
-
-    const getConnectionStatusColor = () => {
-        if (countState > 1 && isConnected) {
-            return 'var(--color-status-warning)';
-        }
-        switch (connectionStatus) {
-            case 'connected':
-                return 'var(--color-highlight)';
-            case 'connecting':
-                return 'var(--color-status-warning)';
-            case 'disconnected':
-                return 'var(--color-status-error)';
-            default:
-                return 'var(--color-text-secondary)';
-        }
-    };
-
     const getControllerColor = () => {
         if (activeControllerId === ControlModeHandler.getInstance().clientId) return 'var(--color-highlight)';
         if (activeControllerId !== '') return 'var(--color-status-warning)';
         return 'var(--color-text-secondary)';
     };
 
-    const bridgeColor = getConnectionStatusColor();
+    const bridgeColor = countState > 1 ? 'var(--color-status-warning)' : 'var(--color-highlight)';
     const controllerColor = getControllerColor();
 
     const statusStyle: React.CSSProperties = {
@@ -126,14 +97,10 @@ export const AppHeader: React.FC = () => {
     const statusFrame = (color: string) =>
         ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)`, '--status-color': color }) as React.CSSProperties;
 
-    const statusIndicators = (
+    const statusIndicators = isConnected && (
         <>
             <Tooltip title="Number of connected clients to the ROS Bridge.">
                 <div style={statusFrame(bridgeColor)} className="header-status-box">
-                    <span
-                        className={`status-led${connectionStatus === 'connecting' ? ' status-led-pulse' : ''}`}
-                        style={{ color: bridgeColor }}
-                    />
                     <Text
                         style={{
                             color: bridgeColor,
@@ -143,7 +110,7 @@ export const AppHeader: React.FC = () => {
                             lineHeight: 1,
                         }}
                     >
-                        {isMobile ? `${countState}` : `ROS BRIDGE:${countState > 0 ? ` ${countState}` : ''} ${getConnectionStatusText()}`}
+                        <UserOutlined style={{ marginRight: 4 }} />{countState}
                     </Text>
                 </div>
             </Tooltip>

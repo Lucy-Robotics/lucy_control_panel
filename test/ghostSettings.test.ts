@@ -160,13 +160,15 @@ test('the target pose shared over ROS is shown, cleared on an empty message, and
 test('moving a joint slider shares the move for the ghost, and letting go commits it', async () => {
     const { JointControl } = await import('../src/Components/ControlPage/JointControl.tsx');
     const { JointMoveContext } = await import('../src/hooks/useJointMove.ts');
+    const { ActiveHardwareRosProvider } = await import('../src/contexts/ActiveHardwareRosContext.tsx');
     const store = createJointMoveStore();
     const moves: unknown[] = [];
     store.subscribe(() => moves.push(store.get()));
     const committed: [string, number][] = [];
     const joint = { name: 'Elbow', currentValue: 1, targetValue: 1, minValue: 0, maxValue: 2, type: 'revolute' as const, category: 'Arm' };
     const view = await render(React.createElement(JointMoveContext.Provider, { value: store },
-        React.createElement(JointControl, { joint, onValueChange: (name: string, value: number) => committed.push([name, value]) })));
+        React.createElement(ActiveHardwareRosProvider, null,
+            React.createElement(JointControl, { joint, onValueChange: (name: string, value: number) => committed.push([name, value]) }))));
     try {
         const handle = view.container.querySelector('.ant-slider-handle') as HTMLElement;
         await act(async () => {

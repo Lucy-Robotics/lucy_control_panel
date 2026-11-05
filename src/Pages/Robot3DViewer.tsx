@@ -19,6 +19,10 @@ import type { Quat } from '../Utils/phoneOrientation';
 import { isEditableTarget } from '../Utils/isEditableTarget';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useGhostVisible } from '../hooks/useGhostVisible';
+import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -511,7 +515,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
+    const isEndEffectorVisible = useEndEffectorVisible();
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -753,7 +760,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} phoneOrientation={phoneOrientation} colors={themeColors} />}
 
-                {robot && (
+                {robot && isEndEffectorVisible && (
                     <EndEffectorMarkers
                         robot={robot}
                         ghost={targetPose ? ghost : null}
@@ -816,7 +823,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 </div>
             </CollapsibleOverlay>
 
-            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
+            {endEffector && isEndEffectorVisible && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

@@ -30,6 +30,7 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
+import { setEndEffectorVisible, useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
 import {
     GETTING_STARTED_COMPLETED_KEY,
     REDO_GETTING_STARTED_EVENT,
@@ -88,6 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [productionMode, setProductionMode] = useState(
         isProductionModeEnabled
     );
+    const isEndEffectorVisible = useEndEffectorVisible();
     const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
     const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
 
@@ -266,6 +268,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 disabled={!servoControlAvailable}
                             />
                         </span>
+
+                        <ToggleSwitch
+                            isOn={isEndEffectorVisible}
+                            onToggle={setEndEffectorVisible}
+                            title="FK end effector"
+                            textOn="SHOW"
+                            textOff="HIDE"
+                            width={180}
+                            isOffRed={false}
+                            centerTitle={false}
+                        />
                     </Space>
                 </Form.Item>
 

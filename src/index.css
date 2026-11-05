@@ -1333,14 +1333,6 @@ h6 {
   box-shadow: var(--status-led-glow, none);
 }
 
-.status-led-pulse {
-  animation: statusLedPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes statusLedPulse {
-  50% { opacity: 0.35; }
-}
-
 .command-rail {
   --chamfer: var(--chamfer-lg);
   --frame: var(--color-line);

@@ -269,7 +269,6 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 export interface ViewCubeProps {
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    /** Extra lift from the bottom edge, in px (e.g. to clear the page navbar). */
     bottomOffset?: number;
 }
 

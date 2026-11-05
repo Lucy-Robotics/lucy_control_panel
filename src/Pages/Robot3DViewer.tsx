@@ -201,7 +201,7 @@ const InfoBadge: React.FC<{
             gap: 10,
             zIndex: 10,
             pointerEvents: 'none',
-            // chamfer-box draws its frame from this variable
+            // chamfer-box draws its border from this variable
             '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >

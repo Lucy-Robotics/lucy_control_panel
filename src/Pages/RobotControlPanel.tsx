@@ -163,7 +163,6 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
     </MovableModal>
 );
 
-/** Value printed under the rail's Dock button. */
 const DOCK_SHORT_LABEL: Record<DockName, string> = {
     NONE: 'NONE',
     '3D_VIEW': '3D',
@@ -222,7 +221,6 @@ export const RobotControlPanel: React.FC = () => {
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
 
-    // Lets sticky elements (the category strip) sit above the bottom toolbar on phones
     useEffect(() => {
         const root = document.documentElement;
         if (isMobile && railHeight > 0) {
@@ -910,7 +908,6 @@ export const RobotControlPanel: React.FC = () => {
                         minHeight: isMobile
                             ? `calc(100dvh - ${headerHeight}px - ${screenPadding * 2}px - ${railHeight}px)`
                             : 0,
-                        // Keeps the last content clear of the fixed bottom toolbar
                         paddingBottom: isMobile ? railHeight : 0,
                     }}
                 >

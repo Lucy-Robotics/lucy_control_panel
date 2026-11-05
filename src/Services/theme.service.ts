@@ -35,7 +35,6 @@ export const THEME_STORAGE_KEYS = {
 
 const STYLE_TAG_ID = 'lucy-custom-theme-style';
 
-/** Legacy tokens older themes define, used to seed the new surface tier they map to. */
 const LEGACY_SURFACE_ALIASES: Record<string, string> = {
     '--color-surface-2': '--color-main-elevated',
 };
@@ -185,7 +184,6 @@ class ThemeService {
 
     public setThemeColors(colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }): void {
         const textSec = colors.textSecondary || '#6C7D8E';
-        // Surface tiers, lines and grid tints are derived in applyActiveTheme()
         const css = `:root {
   --color-main: ${colors.main};
   --color-secondary: ${colors.secondary};
@@ -282,7 +280,6 @@ class ThemeService {
         root.style.setProperty('--color-text-primary', colors.text);
         root.style.setProperty('--ui-accent-green', colors.highlight);
 
-        // Fill in every derived token the theme did not define itself
         for (const [varName, derived] of Object.entries(deriveSurfaceTokens(colors))) {
             if (definedVars.has(varName)) continue;
             const legacy = LEGACY_SURFACE_ALIASES[varName];

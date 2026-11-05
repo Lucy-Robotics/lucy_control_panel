@@ -27,7 +27,6 @@ interface PageProps {
   contentStyle?: React.CSSProperties;
   removeScrollbars?: boolean;
   className?: string;
-  /** Page canvas: themed dot grid (default) or a plain fill for full-bleed views. */
   background?: 'grid' | 'plain';
 }
 

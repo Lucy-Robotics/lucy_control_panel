@@ -46,7 +46,6 @@ const PaginatedJointCategories = ({
     const tabRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
     const tabListRef = useRef<HTMLDivElement>(null);
     const stripRef = useRef<HTMLDivElement>(null);
-    // Space kept free on the right so the strip never runs under the floating page nav
     const [navInset, setNavInset] = useState(0);
 
     const validCategories = useMemo<string[]>(
@@ -70,8 +69,6 @@ const PaginatedJointCategories = ({
     }, [validCategories, categoriesPerPage]);
     const pageCount = pageLabels.length;
 
-    // Keep the active tab visible when paging or when the panel is resized.
-    // Scrolls the tab list only (scrollIntoView would also scroll the page).
     useEffect(() => {
         const list = tabListRef.current;
         if (!list) return;
@@ -126,7 +123,6 @@ const PaginatedJointCategories = ({
         tabRefs.current.get(next)?.focus();
     };
 
-    // On mobile the page scrolls, so the strip sticks just above the fixed bottom toolbar
     const stripStyle: React.CSSProperties = isMobile
         ? { position: 'sticky', bottom: 'calc(var(--mobile-nav-height, 0px) + 8px)', zIndex: 3 }
         : { marginRight: navInset };
@@ -195,7 +191,7 @@ const PaginatedJointCategories = ({
                                         }}
                                         onClick={() => goToPage(page)}
                                     >
-                                        {label}
+                                        <span className="category-tab-label">{label}</span>
                                     </button>
                                 </Tooltip>
                             );

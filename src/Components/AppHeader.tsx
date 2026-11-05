@@ -125,7 +125,6 @@ export const AppHeader: React.FC = () => {
         whiteSpace: 'nowrap',
     };
 
-    // Tint the status box frame with the state colour
     const statusFrame = (color: string) =>
         ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)` }) as React.CSSProperties;
 

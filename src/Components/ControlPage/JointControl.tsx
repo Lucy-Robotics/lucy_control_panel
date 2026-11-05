@@ -83,7 +83,6 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
           height: 4,
           backgroundColor: color,
           borderRadius: 2,
-          boxShadow: `0 0 4px ${color}`,
           pointerEvents: 'none',
         }}
       />

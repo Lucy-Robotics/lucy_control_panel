@@ -21,7 +21,6 @@ export const Navigation: React.FC = () => {
     const location = useLocation();
     const screens = useBreakpoint();
 
-    // No navbar on phones: the bottom edge belongs to the page's own toolbar
     if (!screens.md) return null;
 
     const desktopStyle: React.CSSProperties = {

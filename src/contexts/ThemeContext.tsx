@@ -83,7 +83,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const highlight = colors.highlight || HIGHLIGHT_COLOR;
         const text = colors.text || TEXT_PRIMARY;
 
-        // antd derives colors from its tokens, so only hand it plain hex values
         const derived = deriveSurfaceTokens({ main, secondary, highlight, text });
         const hexOr = (name: string, fallback: string) => (isHexColor(derived[name]) ? derived[name] : fallback);
         const surface1 = hexOr('--color-surface-1', main);

@@ -26,7 +26,6 @@ const ShuffleSvg = () => (
     </svg>
 );
 
-/** "Random" icon (antd ships no shuffle glyph). */
 export const ShuffleOutlined = (props: Partial<GetProps<typeof Icon>>) => (
     <Icon component={ShuffleSvg} {...props} />
 );

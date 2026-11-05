@@ -8,9 +8,8 @@ export const SPACING_SCREEN_BORDER = 30; // 30px - Screen border
 export const SPACING_STANDARD = 20;      // 20px - Standard spacing
 export const SPACING_LARGE = 40;         // 40px - Large spacing
 export const SPACING_SMALL = 12;         // 12px - Small spacing
-export const SPACING_MOBILE = 8;         // 8px - Screen border on phones
+export const SPACING_MOBILE = 8;
 
-/** Page screen border for the current antd breakpoints: 8px phone, 12px tablet, 30px desktop. */
 export const getScreenPadding = (screens: { md?: boolean; lg?: boolean }): number => {
     if (!screens.md) return SPACING_MOBILE;
     if (!screens.lg) return SPACING_SMALL;
@@ -88,14 +87,12 @@ export function isHexColor(value: string): boolean {
     return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
-/** Lightens (positive) or darkens (negative) any CSS color; exact hex math when possible. */
 export function shade(color: string, percent: number): string {
     if (isHexColor(color)) return adjustBrightness(color, percent);
     const mixWith = percent >= 0 ? 'white' : 'black';
     return `color-mix(in srgb, ${color}, ${mixWith} ${Math.abs(percent)}%)`;
 }
 
-/** Applies alpha to any CSS color; exact rgba() for hex input. */
 export function alpha(color: string, value: number): string {
     if (isHexColor(color)) return rgba(color, value);
     return `color-mix(in srgb, ${color} ${Math.round(value * 100)}%, transparent)`;
@@ -108,11 +105,6 @@ export interface ThemeBaseColors {
     text: string;
 }
 
-/**
- * Derives the full surface/line/grid token set from the four base colors.
- * Single source of truth for elevation tiers, used by the baseline map,
- * the theme service (for tokens a theme does not define) and Quick Colors.
- */
 export function deriveSurfaceTokens({ main, secondary, highlight, text }: ThemeBaseColors): Record<string, string> {
     const surface1 = shade(main, 3);
     const surface2 = shade(main, 6);
@@ -325,7 +317,6 @@ export const CSS_VARIABLES_MAP: Record<string, string> = {
     '--ui-switch-disabled-bg': '#334455',
     '--ui-switch-disabled-border': SECONDARY_COLOR,
 
-    // Surface tiers, lines, grid & glow (derived; overrides the raw entries above)
     ...deriveSurfaceTokens({ main: MAIN_COLOR, secondary: SECONDARY_COLOR, highlight: HIGHLIGHT_COLOR, text: TEXT_PRIMARY }),
     '--shadow-1': '0 2px 8px rgba(0, 0, 0, 0.35)',
     '--shadow-2': '0 12px 32px rgba(0, 0, 0, 0.55)',

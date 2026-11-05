@@ -9,35 +9,26 @@ import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 
-/** Outer width of the vertical rail: 60px buttons + 6px padding + 1px frame, each side. */
 export const COMMAND_RAIL_WIDTH = 74;
 
 export interface RailItem {
     key: string;
     icon: ReactNode;
-    /** Tooltip title and accessible name. */
     label: string;
-    /** Short caption printed under the icon (e.g. "RESET"). */
     caption: string;
-    /** Optional current value printed under the caption (e.g. the docked panel). */
     detail?: string;
     onClick?: () => void;
-    /** Toggle state: rendered as aria-pressed with a highlight. Omit for plain actions. */
     active?: boolean;
     disabled?: boolean;
-    /** Shown in the tooltip instead of the label while disabled. */
     disabledReason?: string;
     danger?: boolean;
-    /** Opens a menu instead of firing onClick (e.g. the dock selector). */
     menu?: MenuProps;
 }
 
 export interface RailGroup {
     key: string;
-    /** Short mono caption shown above the group (e.g. "POSE"). */
     code: string;
     items: RailItem[];
-    /** Pushes the group to the far end of the rail (bottom when vertical). */
     pinEnd?: boolean;
 }
 
@@ -53,15 +44,8 @@ interface CommandRailProps {
     style?: React.CSSProperties;
 }
 
-/**
- * Icon toolbar for the control page, grouped by function.
- *
- * Every button sits in a span so its tooltip still shows while the button is
- * disabled (disabled buttons never receive pointer events).
- */
 export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
     ({ groups, arm, orientation, className = '', style }, ref) => {
-        // The horizontal rail sits at the bottom of the screen, so it opens upwards
         const placement = orientation === 'vertical' ? 'right' : 'top';
 
         const renderItem = (item: RailItem) => {

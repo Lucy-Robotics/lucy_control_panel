@@ -20,7 +20,6 @@
     border-top-color: var(--color-highlight);
     border-radius: 50%;
     animation: lucy-loader-spin 1s linear infinite;
-    box-shadow: 0 0 16px var(--color-highlight-glow);
 }
 
 .lucy-loader-text {

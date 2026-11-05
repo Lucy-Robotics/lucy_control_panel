@@ -193,6 +193,8 @@ export function MovableModal({
     if (!isVisible) { return null; }
 
     const handleDragStart = (e: React.MouseEvent) => {
+        // The body text is selectable: keep a drag from selecting it.
+        e.preventDefault();
         draggingRef.current = {
             startX: e.clientX,
             startY: e.clientY,
@@ -222,6 +224,7 @@ export function MovableModal({
 
     const handleResizeStart = (e: React.MouseEvent) => {
         e.stopPropagation();
+        e.preventDefault();
         resizingRef.current = {
             startX: e.clientX,
             startY: e.clientY,
@@ -274,7 +277,6 @@ export function MovableModal({
                 zIndex: centered ? undefined : isLocked ? 1 : 1000,
                 overflow: 'hidden',
                 overscrollBehavior: 'contain',
-                userSelect: 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 boxSizing: 'border-box',
@@ -292,6 +294,7 @@ export function MovableModal({
                     justifyContent: 'space-between',
                     padding: '0 24px',
                     cursor: isPinned ? 'default' : 'move',
+                    userSelect: 'none',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

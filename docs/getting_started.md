@@ -97,7 +97,7 @@ Lucy Control Panel comes with a built-in theme engine designed to let both casua
 
 ### Built-in Presets & Quick Colors
 
-- **Presets Tab**: Switch between curated themes like Obsidian Green, Deep Matrix, Neon Cyber, and Void Amber with a single click.
+- **Presets Tab**: Switch between curated themes: the default Lucy theme, one theme per colour-vision type (Protanopia, Deuteranopia, Tritanopia, Monochrome) and Lucy Light with a single click.
 - **Quick Colors Tab**: For non-technical users, simple color pickers allow you to instantly tweak the background, borders, highlight accent, and text with a real-time live preview.
 
 <-- Configuration -->

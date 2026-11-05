@@ -5,7 +5,6 @@
 
 import React from 'react';
 import {
-    STATUS_ERROR,
     fonts,
 } from '../Constants/theme.ts';
 
@@ -69,8 +68,8 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                     gap: 4,
                     boxShadow: 'none',
                     animation: 'none',
-                    backgroundColor: !isOn && isOffRed ? STATUS_ERROR : 'transparent',
-                    color: !isOn ? (isOffRed ? 'var(--color-text-primary)' : 'var(--color-highlight)') : 'var(--color-text-secondary)',
+                    backgroundColor: !isOn && isOffRed ? 'var(--color-status-error)' : 'transparent',
+                    color: !isOn ? (isOffRed ? 'var(--color-text-on-error, var(--color-text-primary))' : 'var(--color-highlight)') : 'var(--color-text-secondary)',
                     fontFamily: fonts.mono,
                     fontWeight: 'bold',
                     fontSize: 11,

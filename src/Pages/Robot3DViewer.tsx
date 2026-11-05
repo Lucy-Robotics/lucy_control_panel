@@ -41,10 +41,8 @@ import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
-    UI_ACCENT_GREEN_HEX,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
-    TEXT_PRIMARY,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -704,7 +702,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN_HEX} />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color={themeColors.accent} />
 
                 {showGrid && (
                     <Grid
@@ -713,7 +711,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         cellThickness={0}
                         sectionSize={2}
                         sectionThickness={1}
-                        sectionColor={TEXT_PRIMARY}
+                        sectionColor={themeColors.text}
                         fadeDistance={20}
                         fadeStrength={1}
                     />

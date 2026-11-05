@@ -54,7 +54,7 @@ function renderInline(text: string): React.ReactNode[] {
                     href={link[2]}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ color: 'var(--color-highlight)', textDecoration: 'underline' }}
+                    style={{ color: 'var(--color-accent-2, var(--color-highlight))', textDecoration: 'underline' }}
                 >
                     {link[1]}
                 </a>

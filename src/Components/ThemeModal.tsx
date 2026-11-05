@@ -14,7 +14,6 @@ import { MovableModal } from './MovableModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { ToggleSwitch } from './ToggleSwitch';
 import { CustomTitle } from './CustomTitle';
-import { TEXT_PRIMARY, TEXT_SECONDARY } from '../Constants/theme';
 import { PresetsTab } from './ThemeModal/PresetsTab';
 import { QuickColorsTab } from './ThemeModal/QuickColorsTab';
 import { AdvancedCssTab } from './ThemeModal/AdvancedCssTab';
@@ -55,7 +54,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
             header={<BgColorsOutlined style={{ color: 'var(--color-highlight)' }} />}
             footer={
                 <Space>
-                    <Button onClick={onClose} style={{ color: TEXT_PRIMARY }}>
+                    <Button onClick={onClose} style={{ color: 'var(--color-text-primary)' }}>
                         CLOSE
                     </Button>
                     <Button
@@ -86,7 +85,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                 >
                     <div>
                         <CustomTitle title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
-                        <Text style={{ color: TEXT_SECONDARY, display: 'block', fontSize: 12, marginTop: 4 }}>
+                        <Text style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 12, marginTop: 4 }}>
                             Customize colors with intuitive pickers, choose curated presets, or load full CSS themes.
                         </Text>
                     </div>

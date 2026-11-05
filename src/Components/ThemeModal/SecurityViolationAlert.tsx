@@ -6,7 +6,6 @@
 import React from 'react';
 import { Alert, Tag } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
-import { TEXT_PRIMARY } from '../../Constants/theme';
 import type { CssViolation } from '../../Services/cssSecurity.service';
 
 export interface SecurityAlertData {
@@ -59,7 +58,7 @@ export const SecurityViolationAlert: React.FC<SecurityViolationAlertProps> = ({ 
                                     >
                                         {violation.severity.toUpperCase()}
                                     </Tag>
-                                    <span style={{ color: TEXT_PRIMARY }}>{violation.description}</span>
+                                    <span style={{ color: 'var(--color-text-primary)' }}>{violation.description}</span>
                                 </div>
                             ))}
                         </div>

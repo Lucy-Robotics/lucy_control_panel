@@ -27,6 +27,7 @@ import {
     fonts,
     deriveSurfaceTokens,
     isHexColor,
+    isLightColor,
 } from '../Constants/theme';
 
 interface ThemeContextType {
@@ -88,10 +89,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const surface1 = hexOr('--color-surface-1', main);
         const surface2 = hexOr('--color-surface-2', main);
         const line = isHexColor(secondary) ? derived['--color-line'] : secondary;
+        // Controls need a 3:1 frame on light canvases (WCAG 1.4.11); dark themes keep the soft line.
+        const controlLine = isLightColor(main) ? secondary : line;
         const highlightSoft = isHexColor(highlight) ? derived['--color-highlight-soft'] : 'transparent';
+        const themedTextSecondary = typeof document === 'undefined'
+            ? ''
+            : getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim();
+        const textSecondary = isHexColor(themedTextSecondary) ? themedTextSecondary : TEXT_SECONDARY;
+        const themedAccent2 = typeof document === 'undefined'
+            ? ''
+            : getComputedStyle(document.documentElement).getPropertyValue('--color-accent-2').trim();
+        const link = isHexColor(themedAccent2) ? themedAccent2 : highlight;
+        const themedOnHighlight = typeof document === 'undefined'
+            ? ''
+            : getComputedStyle(document.documentElement).getPropertyValue('--color-text-on-highlight').trim();
+        // Light themes avoid pure white: Ant Design's white text on fills and switch handles take the themed tone.
+        const lightSolid = isLightColor(main) && isHexColor(themedOnHighlight) ? themedOnHighlight : undefined;
 
         return {
-            algorithm: antdThemeEngine.darkAlgorithm,
+            algorithm: isLightColor(main) ? antdThemeEngine.defaultAlgorithm : antdThemeEngine.darkAlgorithm,
             token: {
                 colorPrimary: highlight,
                 colorBgBase: main,
@@ -102,9 +118,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 colorBorderSecondary: line,
                 colorSplit: line,
                 colorText: text,
-                colorTextSecondary: TEXT_SECONDARY,
-                colorLink: highlight,
-                colorLinkHover: highlight,
+                colorTextSecondary: textSecondary,
+                ...(lightSolid && { colorTextLightSolid: lightSolid, colorWhite: lightSolid }),
+                colorLink: link,
+                colorLinkHover: link,
                 fontFamily: fonts.mono,
                 borderRadius: 0,
             },
@@ -121,25 +138,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 },
                 Button: {
                     colorBgContainer: 'transparent',
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Input: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 InputNumber: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Select: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
@@ -169,6 +186,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 },
                 Switch: {
                     colorPrimary: highlight,
+                    ...(lightSolid && { handleBg: lightSolid }),
                 },
                 Tag: {
                     borderRadiusSM: 0,

@@ -10,8 +10,6 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import {
-    STATUS_ERROR,
-    STATUS_WARNING,
     fonts,
 } from '../Constants/theme';
 import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
@@ -93,15 +91,15 @@ export const AppHeader: React.FC = () => {
 
     const getConnectionStatusColor = () => {
         if (countState > 1 && isConnected) {
-            return STATUS_WARNING;
+            return 'var(--color-status-warning)';
         }
         switch (connectionStatus) {
             case 'connected':
                 return 'var(--color-highlight)';
             case 'connecting':
-                return STATUS_WARNING;
+                return 'var(--color-status-warning)';
             case 'disconnected':
-                return STATUS_ERROR;
+                return 'var(--color-status-error)';
             default:
                 return 'var(--color-text-secondary)';
         }
@@ -109,7 +107,7 @@ export const AppHeader: React.FC = () => {
 
     const getControllerColor = () => {
         if (activeControllerId === ControlModeHandler.getInstance().clientId) return 'var(--color-highlight)';
-        if (activeControllerId !== '') return STATUS_WARNING;
+        if (activeControllerId !== '') return 'var(--color-status-warning)';
         return 'var(--color-text-secondary)';
     };
 
@@ -126,7 +124,7 @@ export const AppHeader: React.FC = () => {
     };
 
     const statusFrame = (color: string) =>
-        ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)` }) as React.CSSProperties;
+        ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)`, '--status-color': color }) as React.CSSProperties;
 
     const statusIndicators = (
         <>

@@ -8,9 +8,6 @@ import { Button, Card, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    STATUS_ERROR,
     fonts,
 } from '../Constants/theme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
@@ -51,7 +48,7 @@ export const NotFound: React.FC = () => {
                     }}
                 >
                     <CustomTitle title="LUCY" subtitle="NAVIGATION" level={5} />
-                    <span style={{ color: STATUS_ERROR, fontFamily: fonts.mono, fontWeight: 'bold', fontSize: 12 }}>
+                    <span style={{ color: 'var(--color-status-error)', fontFamily: fonts.mono, fontWeight: 'bold', fontSize: 12 }}>
                         ERR: 404
                     </span>
                 </div>
@@ -79,7 +76,7 @@ export const NotFound: React.FC = () => {
                         />
                     </div>
 
-                    <Text style={{ color: TEXT_SECONDARY, fontSize: 14, fontFamily: fonts.content, display: 'block' }}>
+                    <Text style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontFamily: fonts.content, display: 'block' }}>
                         Lucy control system could not locate the requested interface route.
                     </Text>
 
@@ -104,7 +101,7 @@ export const NotFound: React.FC = () => {
                             style={{
                                 background: 'transparent',
                                 borderColor: 'var(--color-line)',
-                                color: TEXT_PRIMARY,
+                                color: 'var(--color-text-primary)',
                                 borderRadius: 0,
                             }}
                         >
@@ -116,7 +113,7 @@ export const NotFound: React.FC = () => {
                             style={{
                                 background: 'transparent',
                                 borderColor: 'var(--color-line)',
-                                color: TEXT_PRIMARY,
+                                color: 'var(--color-text-primary)',
                                 borderRadius: 0,
                             }}
                         >

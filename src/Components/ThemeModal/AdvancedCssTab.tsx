@@ -15,7 +15,7 @@ import {
     SecurityScanOutlined,
     LockOutlined,
 } from '@ant-design/icons';
-import { TEXT_PRIMARY, TEXT_SECONDARY, fonts } from '../../Constants/theme';
+import { fonts } from '../../Constants/theme';
 import {
     SecurityInspectionError,
     type CssSecurityInspectionResult,
@@ -192,10 +192,10 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                     <p className="ant-upload-drag-icon">
                         <UploadOutlined style={{ fontSize: 32, color: 'var(--color-highlight)' }} />
                     </p>
-                    <p style={{ color: TEXT_PRIMARY, fontFamily: fonts.title, fontSize: 14, fontWeight: 'bold' }}>
+                    <p style={{ color: 'var(--color-text-primary)', fontFamily: fonts.title, fontSize: 14, fontWeight: 'bold' }}>
                         Drop custom theme .css file here
                     </p>
-                    <p style={{ color: TEXT_SECONDARY, fontSize: 11, marginBottom: 8 }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, marginBottom: 8 }}>
                         Upload any stylesheet overriding :root variables or custom classes (automatically security inspected)
                     </p>
                     <Button
@@ -216,7 +216,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
             {/* Remote URL Loader */}
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={{ color: TEXT_PRIMARY, fontSize: 12, fontWeight: 'bold' }}>
+                    <Text style={{ color: 'var(--color-text-primary)', fontSize: 12, fontWeight: 'bold' }}>
                         Direct Raw CSS URL (GitHub raw, CDN, web link):
                     </Text>
                     <span style={{ color: 'var(--color-highlight)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -230,7 +230,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                         onPressEnter={handleFetchUrl}
-                        style={{ backgroundColor: 'var(--color-main)', color: TEXT_PRIMARY }}
+                        style={{ backgroundColor: 'var(--color-main)', color: 'var(--color-text-primary)' }}
                     />
                     <Button
                         type="primary"
@@ -247,7 +247,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         FETCH & AUDIT
                     </Button>
                 </Space.Compact>
-                <Text style={{ color: TEXT_SECONDARY, fontSize: 11, display: 'block', marginTop: 4 }}>
+                <Text style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', marginTop: 4 }}>
                     Only secure HTTP/HTTPS endpoints are accepted. Internal private addresses (RFC1918, localhost) and oversized payloads (&gt;512KB) are strictly blocked.
                 </Text>
             </div>
@@ -256,7 +256,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
 
             {/* Raw CSS Editor */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                <Text style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
                     Advanced CSS Editor: directly edit rules below.
                 </Text>
                 <TextArea
@@ -269,7 +269,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         fontSize: 12,
                         backgroundColor: 'var(--color-main)',
                         borderColor: 'var(--color-line)',
-                        color: TEXT_PRIMARY,
+                        color: 'var(--color-text-primary)',
                         lineHeight: 1.5,
                     }}
                 />
@@ -294,7 +294,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                             style={{
                                 backgroundColor: 'transparent',
                                 borderColor: 'var(--color-line)',
-                                color: TEXT_PRIMARY,
+                                color: 'var(--color-text-primary)',
                                 fontSize: 12,
                             }}
                         >
@@ -328,14 +328,14 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                 }}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ color: TEXT_PRIMARY, fontFamily: fonts.title, fontWeight: 'bold', fontSize: 12 }}>
+                    <span style={{ color: 'var(--color-text-primary)', fontFamily: fonts.title, fontWeight: 'bold', fontSize: 12 }}>
                         EXPORT THEME TEMPLATE
                     </span>
                     <span style={{ color: 'var(--color-highlight)', fontSize: 11, fontFamily: fonts.mono }}>
                         BLUEPRINT KIT
                     </span>
                 </div>
-                <Paragraph style={{ color: TEXT_SECONDARY, fontSize: 11, margin: '4px 0 12px' }}>
+                <Paragraph style={{ color: 'var(--color-text-secondary)', fontSize: 11, margin: '4px 0 12px' }}>
                     Download the starter template stylesheet with documentation and tokens, or copy CSS properties directly to your clipboard.
                 </Paragraph>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -358,7 +358,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                             navigator.clipboard.writeText(defaultPresetCss || '');
                             message.success('Theme CSS variables copied to clipboard');
                         }}
-                        style={{ color: TEXT_PRIMARY }}
+                        style={{ color: 'var(--color-text-primary)' }}
                     >
                         Copy Variables to Clipboard
                     </Button>

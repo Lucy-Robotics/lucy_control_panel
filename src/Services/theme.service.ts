@@ -77,7 +77,9 @@ class ThemeService {
     }
 
     public getActiveThemeId(): string {
-        return localStorage.getItem(THEME_STORAGE_KEYS.ACTIVE_THEME) || 'default';
+        const id = localStorage.getItem(THEME_STORAGE_KEYS.ACTIVE_THEME);
+        if (id && (id === 'custom' || BUILTIN_THEMES.some(t => t.id === id))) return id;
+        return 'default';
     }
 
     public isCustomThemeEnabled(): boolean {

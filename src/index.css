@@ -69,6 +69,8 @@
 
   --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-toolbar: 0 -8px 24px rgba(0, 0, 0, 0.45);
 
   /* Typography */
   --font-graphical: 'Orbitron', sans-serif;
@@ -547,8 +549,12 @@ h6 {
 }
 
 .ant-tabs-tab:hover {
-  color: var(--color-highlight) !important;
-  background-color: var(--color-highlight-soft);
+  color: var(--color-accent-2, var(--color-highlight)) !important;
+  background-color: var(--color-accent-2-soft, var(--color-highlight-soft));
+}
+
+.ant-tabs-tab.ant-tabs-tab-active {
+  background-color: var(--color-active-fill, transparent);
 }
 
 .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -574,9 +580,9 @@ h6 {
 }
 
 .ant-btn:not(:disabled):hover {
-  --frame: var(--color-highlight);
-  --fill: var(--color-surface-3);
-  color: var(--color-highlight) !important;
+  --frame: var(--color-accent-2, var(--color-highlight));
+  --fill: var(--color-accent-2-soft, var(--color-surface-3));
+  color: var(--color-accent-2, var(--color-highlight)) !important;
   transform: translateY(-1px);
 }
 
@@ -609,7 +615,7 @@ h6 {
 
 .ant-btn-dangerous.ant-btn-primary {
   --fill: var(--color-status-error);
-  color: var(--color-text-primary) !important;
+  color: var(--color-text-on-error, var(--color-text-primary)) !important;
 }
 
 .ant-btn-text,
@@ -646,7 +652,7 @@ h6 {
   color: var(--color-text-primary) !important;
   font-family: var(--font-title) !important;
   letter-spacing: 1px;
-  background: var(--color-surface-2) !important;
+  background: var(--color-header-fill, var(--color-surface-2)) !important;
 }
 
 .ant-card-head-title {
@@ -919,7 +925,7 @@ h6 {
 
 /* ─── Modals with Chamfered Corners ───────────────────────────────────────── */
 .ant-modal {
-  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(var(--shadow-modal));
 }
 
 .ant-modal-mask {
@@ -966,7 +972,7 @@ h6 {
 }
 
 .lucy-movable-modal-header {
-  background-color: var(--color-surface-2) !important;
+  background-color: var(--color-header-fill, var(--color-surface-2)) !important;
 }
 
 /* Tags */
@@ -1010,7 +1016,7 @@ h6 {
   --chamfer: var(--chamfer-sm);
   --alert-color: var(--color-line-strong);
   --frame: color-mix(in srgb, var(--alert-color) 70%, transparent);
-  --fill: color-mix(in srgb, var(--alert-color) 8%, var(--color-surface-1));
+  --fill: color-mix(in srgb, var(--alert-color) var(--color-status-tint, 8%), var(--color-surface-1));
   color: var(--color-text-primary) !important;
 }
 
@@ -1271,9 +1277,9 @@ h6 {
 }
 
 .nav-item-btn:hover:not(:disabled) {
-  --frame: var(--color-highlight) !important;
-  --fill: var(--color-highlight-soft) !important;
-  color: var(--color-highlight) !important;
+  --frame: var(--color-accent-2, var(--color-highlight)) !important;
+  --fill: var(--color-accent-2-soft, var(--color-highlight-soft)) !important;
+  color: var(--color-accent-2, var(--color-highlight)) !important;
   transform: translateY(-1px);
 }
 
@@ -1293,7 +1299,7 @@ h6 {
 .header-status-box {
   --chamfer: var(--chamfer-sm);
   --frame: var(--color-line);
-  --fill: var(--color-surface-2);
+  --fill: color-mix(in srgb, var(--status-color, transparent) var(--color-status-tint, 0%), var(--color-surface-2));
   height: 32px;
   line-height: 1;
 }
@@ -1351,7 +1357,7 @@ h6 {
   bottom: 0;
   z-index: 1000;
   padding-bottom: calc(4px + env(safe-area-inset-bottom));
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-toolbar);
 }
 
 .command-rail[data-orientation="horizontal"] .rail-group {
@@ -1458,8 +1464,8 @@ h6 {
 
 .rail-btn:not(:disabled):hover {
   --frame: var(--color-line-strong);
-  --fill: var(--color-surface-3);
-  color: var(--color-highlight);
+  --fill: var(--color-accent-2-soft, var(--color-surface-3));
+  color: var(--color-accent-2, var(--color-highlight));
 }
 
 .rail-btn[aria-pressed="true"] {
@@ -1495,7 +1501,7 @@ h6 {
 .rail-arm {
   min-height: 62px;
   --frame: color-mix(in srgb, var(--color-status-error) 60%, transparent);
-  --fill: color-mix(in srgb, var(--color-status-error) 8%, transparent);
+  --fill: color-mix(in srgb, var(--color-status-error) var(--color-status-tint, 8%), transparent);
   color: var(--color-status-error);
 }
 
@@ -1561,7 +1567,7 @@ h6 {
 }
 
 .tui-toggle:hover {
-  --frame: var(--color-highlight);
+  --frame: var(--color-accent-2, var(--color-highlight));
 }
 
 .tui-toggle-button {
@@ -1579,7 +1585,7 @@ h6 {
 }
 
 .tui-toggle-button:hover {
-  color: var(--color-highlight);
+  color: var(--color-accent-2, var(--color-highlight));
 }
 
 .tui-toggle-button.off {

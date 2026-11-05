@@ -6,7 +6,7 @@
 import React from 'react';
 import { Card, Typography, Tooltip, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { TEXT_PRIMARY, TEXT_SECONDARY, fonts } from '../../Constants/theme';
+import { fonts } from '../../Constants/theme';
 import type { ThemePreset } from '../../Constants/builtinThemes';
 
 const { Text, Paragraph } = Typography;
@@ -45,7 +45,7 @@ export const PresetsTab: React.FC<PresetsTabProps> = ({
                             style={{ cursor: 'pointer' }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <Text strong style={{ color: TEXT_PRIMARY, fontFamily: fonts.title }}>
+                                <Text strong style={{ color: 'var(--color-text-primary)', fontFamily: fonts.title }}>
                                     {preset.name}
                                 </Text>
                                 {isActive && (
@@ -62,11 +62,11 @@ export const PresetsTab: React.FC<PresetsTabProps> = ({
                                     </span>
                                 )}
                             </div>
-                            <Paragraph style={{ color: TEXT_SECONDARY, fontSize: 11, minHeight: 32, margin: '4px 0 8px' }}>
+                            <Paragraph style={{ color: 'var(--color-text-secondary)', fontSize: 11, minHeight: 32, margin: '4px 0 8px' }}>
                                 {preset.description}
                             </Paragraph>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                                <span style={{ fontSize: 10, color: TEXT_SECONDARY, marginRight: 4 }}>PALETTE:</span>
+                                <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginRight: 4 }}>PALETTE:</span>
                                 <Tooltip title={`Main: ${preset.colors.main}`}>
                                     <div style={{ width: 18, height: 18, backgroundColor: preset.colors.main, border: '1px solid var(--color-line)' }} />
                                 </Tooltip>
@@ -88,7 +88,7 @@ export const PresetsTab: React.FC<PresetsTabProps> = ({
                 <Button
                     icon={<ReloadOutlined />}
                     onClick={onResetDefault}
-                    style={{ color: TEXT_PRIMARY }}
+                    style={{ color: 'var(--color-text-primary)' }}
                 >
                     Reset to Default Theme
                 </Button>

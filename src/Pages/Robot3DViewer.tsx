@@ -15,6 +15,7 @@ import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { RobotGhost } from '../Components/RobotGhost';
 import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
@@ -105,10 +106,6 @@ const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     target: [...DEFAULT_CAMERA.target],
 };
 let framedRobot: URDFRobot | null = null;
-
-const isEditableTarget = (target: EventTarget | null): boolean =>
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',

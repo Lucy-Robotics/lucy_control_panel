@@ -42,6 +42,7 @@ import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { useJogTeleop } from '../hooks/useJogTeleop.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
@@ -99,6 +100,8 @@ import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
+import { JogPad } from '../Components/ControlPage/JogPad.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
 import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
@@ -727,6 +730,8 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const jogTeleop = useJogTeleop(isSending && endEffector !== null && !phoneTeleop.isOn, endEffector, handleIkSolution);
+    const teleopTarget = phoneTeleop.target ?? jogTeleop.target;
     usePublishTargetPose(jointMoveStore, joints, isSending);
     const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
@@ -815,7 +820,7 @@ export const RobotControlPanel: React.FC = () => {
                         isControlOn={isSending}
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
-                        teleopTarget={phoneTeleop.target}
+                        teleopTarget={teleopTarget}
                         phoneOrientation={phoneOrientation}
                     />
                 ),
@@ -914,6 +919,13 @@ export const RobotControlPanel: React.FC = () => {
                     hasMotionSensors,
                     hasEndEffector: endEffector !== null,
                 }),
+                jogTeleopRailItem({
+                    isOn: jogTeleop.isOn,
+                    onToggle: jogTeleop.toggle,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    isPhoneTeleopOn: phoneTeleop.isOn,
+                }),
             ],
         },
         {
@@ -986,7 +998,7 @@ export const RobotControlPanel: React.FC = () => {
                 isControlOn={isSending}
                 joints={joints}
                 onJointValueChange={handleGizmoJointCommit}
-                teleopTarget={phoneTeleop.target}
+                teleopTarget={teleopTarget}
                 phoneOrientation={phoneOrientation}
             />
 
@@ -1186,6 +1198,14 @@ export const RobotControlPanel: React.FC = () => {
             />
 
             <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
+
+            {jogTeleop.isOn && (
+                <JogPad
+                    onPress={jogTeleop.press}
+                    onRelease={jogTeleop.release}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
 
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}

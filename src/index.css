@@ -1432,6 +1432,38 @@ h6 {
   gap: 4px;
 }
 
+.jog-pad {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  grid-template-areas:
+    ". forward . up"
+    "left . right ."
+    ". back . down";
+  grid-template-columns: repeat(4, 56px);
+  grid-auto-rows: 56px;
+  gap: 4px;
+}
+
+.rail-btn.jog-btn {
+  --fill: var(--color-surface-2);
+  --frame: var(--color-line);
+
+  width: 56px;
+  min-height: 56px;
+  font-size: 22px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.rail-btn.jog-btn:active {
+  --frame: var(--color-highlight);
+
+  color: var(--color-highlight);
+}
+
 .command-rail.command-rail-bottom {
   position: fixed;
   left: 0;

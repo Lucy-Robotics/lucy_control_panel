@@ -252,7 +252,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                 </Text>
             </div>
 
-            <Divider style={{ borderColor: 'var(--color-secondary)', margin: '4px 0' }} />
+            <Divider style={{ borderColor: 'var(--color-line)', margin: '4px 0' }} />
 
             {/* Raw CSS Editor */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -268,7 +268,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         fontFamily: fonts.mono,
                         fontSize: 12,
                         backgroundColor: 'var(--color-main)',
-                        borderColor: 'var(--color-secondary)',
+                        borderColor: 'var(--color-line)',
                         color: TEXT_PRIMARY,
                         lineHeight: 1.5,
                     }}
@@ -293,7 +293,7 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                             onClick={handleAudit}
                             style={{
                                 backgroundColor: 'transparent',
-                                borderColor: 'var(--color-secondary)',
+                                borderColor: 'var(--color-line)',
                                 color: TEXT_PRIMARY,
                                 fontSize: 12,
                             }}
@@ -317,14 +317,14 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                 </div>
             </div>
 
-            <Divider style={{ borderColor: 'var(--color-secondary)', margin: '4px 0' }} />
+            <Divider style={{ borderColor: 'var(--color-line)', margin: '4px 0' }} />
 
             {/* Template Download Kit */}
             <div
                 style={{
                     padding: 14,
                     background: 'rgba(20, 20, 20, 0.4)',
-                    border: '1px solid var(--color-secondary)',
+                    border: '1px solid var(--color-line)',
                 }}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>

@@ -9,7 +9,7 @@ import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@rea
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { Slider, Typography } from 'antd';
+import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
@@ -68,6 +68,7 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const SETTINGS_BOX_WIDTH = 165;
+const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -113,7 +114,6 @@ const CENTERED_FILL: React.CSSProperties = {
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
     left: 10,
-    padding: '8px 12px',
     fontFamily: 'monospace',
     fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
@@ -136,7 +136,6 @@ const SwitchRow: React.FC<{
     </div>
 );
 
-/** Overlay panel that starts collapsed to its title and expands on click. */
 const CollapsibleOverlay: React.FC<{
     title: string;
     style: React.CSSProperties;
@@ -150,13 +149,17 @@ const CollapsibleOverlay: React.FC<{
         <div
             className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}`}
             style={{ ...OVERLAY_BOX, ...style }}
+            onClick={expanded ? undefined : toggle}
         >
             <div
                 role="button"
                 tabIndex={0}
                 aria-expanded={expanded}
                 className="collapsible-header"
-                onClick={toggle}
+                onClick={e => {
+                    e.stopPropagation();
+                    toggle();
+                }}
                 onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -199,7 +202,7 @@ const InfoBadge: React.FC<{
             zIndex: 10,
             pointerEvents: 'none',
             // chamfer-box draws its border from this variable
-            '--box-border': FOCUS_COLOR,
+            '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
         <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
@@ -449,12 +452,14 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
+    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
+    docked = false,
     isControlOn: isControlOnProp,
     joints,
     onJointValueChange,
@@ -464,6 +469,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
+    const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
         const handler = ControlModeHandler.getInstance();
@@ -682,7 +688,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     return (
         <div
-            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-secondary)' }}
+            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-line)' }}
             onPointerEnter={() => { isPointerInsideRef.current = true; }}
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
@@ -770,7 +776,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <ProjectionSync controlsRef={controlsRef} />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
-                <ViewCube colors={themeColors} onSelectView={handleSelectView} />
+                {!isMobile && (
+                    <ViewCube
+                        colors={themeColors}
+                        onSelectView={handleSelectView}
+                        bottomOffset={docked ? DOCKED_VIEW_CUBE_OFFSET_PX : 0}
+                    />
+                )}
             </Canvas>
 
             {/* Controls hint — top-left */}
@@ -809,7 +821,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 style={{
                                     width: '100%',
                                     background: 'var(--color-main)',
-                                    border: '1px solid var(--color-secondary)',
+                                    border: '1px solid var(--color-line)',
                                     color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
                                     fontFamily: 'monospace',
                                     fontSize: 10,
@@ -858,7 +870,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         width: '100%',
                         padding: '3px 6px',
                         background: 'transparent',
-                        border: '1px solid var(--color-secondary)',
+                        border: '1px solid var(--color-line)',
                         color: UI_TEXT_SECONDARY_MUTED,
                         cursor: 'pointer',
                         fontSize: 10,

@@ -37,7 +37,8 @@ const SensorDisplay: React.FC = () => {
                 height: '100%',
                 minWidth: 0,
                 minHeight: 0,
-                overflow: 'auto',
+                overflowX: 'hidden',
+                overflowY: 'auto',
                 boxSizing: 'border-box',
             }}
         >

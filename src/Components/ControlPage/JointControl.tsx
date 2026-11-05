@@ -17,7 +17,6 @@ import {
   UI_ACCENT_GREEN,
   UI_BORDER_SOFT,
   UI_COLOR_TRANSPARENT,
-  UI_INPUT_SURFACE,
   UI_TEXT_PRIMARY_ON_DARK,
   UI_TEXT_SECONDARY_MUTED,
 } from '../../Constants/uiTheme.ts';
@@ -84,7 +83,6 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
           height: 4,
           backgroundColor: color,
           borderRadius: 2,
-          boxShadow: `0 0 4px ${color}`,
           pointerEvents: 'none',
         }}
       />
@@ -366,11 +364,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               onChange={(value) => handleInputChange(convertInputValue(value || 0))}
               disabled={disabled}
               size="small"
-              style={{
-                width: 100,
-                backgroundColor: UI_INPUT_SURFACE,
-                borderColor: UI_BORDER_SOFT
-              }}
+              style={{ width: 100 }}
               addonAfter={showDegrees ? '°' : 'rad'}
             />
           </ReadOnlyHint>

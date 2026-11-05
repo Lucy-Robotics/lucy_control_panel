@@ -116,7 +116,7 @@ Enables or disables custom theming. When disabled, resets the application to can
 Inspects, sanitizes (default `true`), and stores custom CSS. Automatically switches active theme ID to `'custom'`, applies changes, and notifies subscribers.
 
 #### `setThemeColors(colors: { main, secondary, highlight, text, textSecondary? }): void`
-Synthesizes a minimal `:root` variable stylesheet matching the 75-10-15 ratio and delegates to `setCustomCss()`.
+Synthesizes a minimal `:root` variable stylesheet with the base colors only and delegates to `setCustomCss()`. Surface tiers, lines and grid tints are derived by `applyActiveTheme()`.
 
 #### `resetToDefault(): void`
 Clears custom CSS and theme URLs from storage, resets active theme to `'default'`, and restores baseline variables.
@@ -140,8 +140,41 @@ The central DOM mutation point.
 1. Injects canonical default variables into `document.documentElement` via `injectThemeVariables()`.
 2. Locates or creates `<style id="lucy-custom-theme-style">` in `document.head`.
 3. Sanitizes and injects preset or custom CSS rules into the `<style>` tag.
-4. Directly applies active colors to CSS custom properties (`--color-main`, `--color-secondary`, `--color-highlight`, etc.) on `document.documentElement.style`.
-5. Syncs `document.body.style.backgroundColor` to prevent white flicker during page loads.
+4. Directly applies the four base colors (`--color-main`, `--color-secondary`, `--color-highlight`, `--color-text-primary`) on `document.documentElement.style`.
+5. Fills in every **derived token** the theme did not define itself, using `deriveSurfaceTokens()` (see below). A theme that defines the legacy `--color-main-elevated` but not `--color-surface-2` has it reused for that tier.
+6. Syncs `document.body.style.backgroundColor` (`--color-bg`, falling back to main) to prevent white flicker during page loads.
+
+---
+
+## Design Tokens
+
+Only the four base colors are required; everything else is derived from them by
+`deriveSurfaceTokens()` in `src/Constants/theme.ts` and can be overridden by a theme.
+
+| Token | Default derivation | Use |
+|---|---|---|
+| `--color-bg` | main | Page canvas (under the grid) |
+| `--color-surface-1` | main +3% | Cards, panels, modals |
+| `--color-surface-2` | main +6% | Headers, buttons, popovers |
+| `--color-surface-3` | main +10% | Hover / active fills, tooltips |
+| `--color-main-deep` | main −4% | Recessed wells (inputs, terminals) |
+| `--color-line` | secondary @ 45% | Soft frames & dividers |
+| `--color-line-strong` | secondary | Control frames |
+| `--color-highlight-soft` | highlight @ 10% | Hover tints, table row hover |
+| `--color-highlight-glow*` | highlight @ 25 / 55 / 12% | Glows |
+| `--color-grid-dot` / `--color-grid-line` | text @ 10% / 4.5% | Page background grid; `transparent` disables it |
+
+Non-hex colors are derived with `color-mix()`; hex colors use exact math so antd (which
+needs plain colors) can be fed the same values from `ThemeContext`.
+
+### Chamfer system (`src/index.css`)
+
+Every chamfered element (cards, modals, buttons, inputs, selects, tags, tooltips, tables,
+toggles, `.chamfer-box`) is driven by four variables: `--chamfer` (cut size), `--frame`
+(border colour), `--fill` (background) and `--hud` (corner brackets on containers).
+`--frame`, `--fill` and `--hud` are registered with `@property` so state changes animate.
+Utilities: `.chamfer-box[-xs|-sm|-md|-lg|-modal]`, `.hud-corners`, `.hud-corners-hover`,
+`.section-label`, `.status-led[-pulse]`.
 
 ---
 

@@ -10,7 +10,6 @@ import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler
 import { getDefaultRosUrl, ROS_URL_KEY } from '../Services/ros/ros.service';
 import {
     UI_ACCENT_GREEN,
-    UI_ACCENT_BOX_SHADOW_SOFT,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CHROME_SURFACE,
@@ -69,7 +68,7 @@ export const ConnectionControls: React.FC = () => {
                         backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : UI_ACCENT_GREEN,
                         color: isConnected ? UI_TEXT_PRIMARY_ON_DARK : UI_TEXT_ON_ACCENT,
                         borderColor: isConnected ? UI_BORDER_SOFT : UI_ACCENT_GREEN,
-                        boxShadow: isConnected ? 'none' : UI_ACCENT_BOX_SHADOW_SOFT,
+                        boxShadow: 'none',
                     }}
                 >
                     {isConnected ? 'DISCONNECT' : 'CONNECT'}

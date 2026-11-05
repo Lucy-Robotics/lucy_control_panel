@@ -9,6 +9,7 @@ import {
     HIGHLIGHT_COLOR,
     TEXT_PRIMARY,
     injectThemeVariables,
+    deriveSurfaceTokens,
 } from '../Constants/theme';
 import {
     BUILTIN_THEMES,
@@ -33,6 +34,10 @@ export const THEME_STORAGE_KEYS = {
 } as const;
 
 const STYLE_TAG_ID = 'lucy-custom-theme-style';
+
+const LEGACY_SURFACE_ALIASES: Record<string, string> = {
+    '--color-surface-2': '--color-main-elevated',
+};
 
 class ThemeService {
     private static instance: ThemeService;
@@ -181,9 +186,6 @@ class ThemeService {
         const textSec = colors.textSecondary || '#6C7D8E';
         const css = `:root {
   --color-main: ${colors.main};
-  --color-main-surface: ${colors.main};
-  --color-main-elevated: ${colors.main};
-  --color-main-deep: ${colors.main};
   --color-secondary: ${colors.secondary};
   --color-secondary-border: ${colors.secondary};
   --color-highlight: ${colors.highlight};
@@ -258,28 +260,33 @@ class ThemeService {
         const sanitizedCss = cssSecurityService.sanitizeCss(cssToApply);
         styleElement.textContent = sanitizedCss;
 
+        const definedVars = new Map<string, string>();
         if (sanitizedCss) {
             const varRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;!}\n\r]+)/g;
             let match;
             while ((match = varRegex.exec(sanitizedCss)) !== null) {
                 const varName = match[1].trim();
                 const varValue = match[2].trim();
+                definedVars.set(varName, varValue);
                 root.style.setProperty(varName, varValue);
             }
         }
 
         const colors = this.getActiveColors();
         root.style.setProperty('--color-main', colors.main);
-        root.style.setProperty('--color-main-surface', colors.main);
-        root.style.setProperty('--color-main-elevated', colors.main);
-        root.style.setProperty('--color-main-deep', colors.main);
         root.style.setProperty('--color-secondary', colors.secondary);
         root.style.setProperty('--color-secondary-border', colors.secondary);
         root.style.setProperty('--color-highlight', colors.highlight);
         root.style.setProperty('--color-text-primary', colors.text);
         root.style.setProperty('--ui-accent-green', colors.highlight);
 
-        document.body.style.backgroundColor = colors.main;
+        for (const [varName, derived] of Object.entries(deriveSurfaceTokens(colors))) {
+            if (definedVars.has(varName)) continue;
+            const legacy = LEGACY_SURFACE_ALIASES[varName];
+            root.style.setProperty(varName, (legacy && definedVars.get(legacy)) || derived);
+        }
+
+        document.body.style.backgroundColor = definedVars.get('--color-bg') || colors.main;
     }
 
     public getThemeTemplateCss(): string {

@@ -98,7 +98,7 @@ function MarkdownContent({ content }: { content: string }) {
             blocks.push(
                 <Divider
                     key={`divider-${index}`}
-                    style={{ borderColor: 'var(--color-secondary)', margin: '20px 0' }}
+                    style={{ borderColor: 'var(--color-line)', margin: '20px 0' }}
                 />,
             );
         } else if (trimmed.startsWith('- ')) {
@@ -218,7 +218,7 @@ export const GettingStartedModal: React.FC = () => {
                         alignItems: 'center',
                         gap: 16,
                         padding: '12px 16px',
-                        borderTop: '1px solid var(--color-secondary)',
+                        borderTop: '1px solid var(--color-line)',
                         backgroundColor: 'var(--color-main)',
                     }}
                 >
@@ -226,7 +226,7 @@ export const GettingStartedModal: React.FC = () => {
                         onClick={complete}
                         style={{
                             backgroundColor: 'transparent',
-                            borderColor: 'var(--color-secondary)',
+                            borderColor: 'var(--color-line)',
                             color: 'var(--color-text-primary)',
                         }}
                     >
@@ -238,7 +238,7 @@ export const GettingStartedModal: React.FC = () => {
                             onClick={() => setSectionIndex(index => index - 1)}
                             style={{
                                 color: 'var(--color-text-primary)',
-                                borderColor: 'var(--color-secondary)',
+                                borderColor: 'var(--color-line)',
                             }}
                         >
                             BACK

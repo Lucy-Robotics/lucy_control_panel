@@ -55,7 +55,6 @@ export const BUILTIN_THEMES: ThemePreset[] = [
         css: `
 :root {
   --color-main: #0B0F19;
-  --color-main-surface: #0B0F19;
   --color-main-elevated: #131B2E;
   --color-main-deep: #06080E;
   --color-secondary: #1E293B;
@@ -67,6 +66,8 @@ export const BUILTIN_THEMES: ThemePreset[] = [
   --color-highlight-glow-strong: rgba(0, 216, 255, 0.55);
   --color-text-primary: #F1F5F9;
   --color-text-secondary: #94A3B8;
+  --color-grid-dot: rgba(0, 216, 255, 0.2);
+  --color-grid-line: rgba(148, 163, 184, 0.1);
   --ui-accent-green: #00D8FF;
 }
         `.trim(),
@@ -86,7 +87,6 @@ export const BUILTIN_THEMES: ThemePreset[] = [
         css: `
 :root {
   --color-main: #121212;
-  --color-main-surface: #121212;
   --color-main-elevated: #1B1A17;
   --color-main-deep: #0A0A09;
   --color-secondary: #3E3224;
@@ -117,7 +117,6 @@ export const BUILTIN_THEMES: ThemePreset[] = [
         css: `
 :root {
   --color-main: #13091B;
-  --color-main-surface: #13091B;
   --color-main-elevated: #1D0E29;
   --color-main-deep: #09030E;
   --color-secondary: #391945;
@@ -148,7 +147,6 @@ export const BUILTIN_THEMES: ThemePreset[] = [
         css: `
 :root {
   --color-main: #050D08;
-  --color-main-surface: #050D08;
   --color-main-elevated: #0C1A11;
   --color-main-deep: #020603;
   --color-secondary: #16301D;
@@ -160,6 +158,8 @@ export const BUILTIN_THEMES: ThemePreset[] = [
   --color-highlight-glow-strong: rgba(0, 255, 65, 0.65);
   --color-text-primary: #D4FAD9;
   --color-text-secondary: #74A07B;
+  --color-grid-dot: rgba(0, 255, 65, 0.24);
+  --color-grid-line: rgba(0, 255, 65, 0.1);
   --ui-accent-green: #00FF41;
 }
         `.trim(),

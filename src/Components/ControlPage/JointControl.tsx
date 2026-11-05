@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useContext } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Button, Tooltip } from 'antd';
+import { setJointTorqueEnabled, useDisabledJoints } from '../../hooks/useDisabledJoints';
+import { useGazeboRunning } from '../../hooks/useGazeboRunning.hook';
+import { useActiveHardwareRos } from '../../contexts/ActiveHardwareRosContext';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../../Constants/robotTypes.ts';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ReadOnlyHint.tsx';
-import { storageService } from '../../Services/storage.service.ts';
-import { useJointPreview } from '../../hooks/useJointPreview.ts';
+import { JointMoveContext, useMovingValue } from '../../hooks/useJointMove.ts';
+import { ControlModeHandler } from '../../Services/ros/handlers/ControlMode.handler';
 
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
@@ -17,7 +20,6 @@ import {
   UI_ACCENT_GREEN,
   UI_BORDER_SOFT,
   UI_COLOR_TRANSPARENT,
-  UI_INPUT_SURFACE,
   UI_TEXT_PRIMARY_ON_DARK,
   UI_TEXT_SECONDARY_MUTED,
 } from '../../Constants/uiTheme.ts';
@@ -44,7 +46,6 @@ interface TrackMarkerProps {
 }
 
 const MARKER_HIT_SIZE = 12;
-const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
@@ -101,89 +102,22 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
-  const previewValue = useJointPreview(joint.name);
-  const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
-  const currentValueRef = useRef(joint.currentValue);
-  const loadedPositionKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    currentValueRef.current = joint.currentValue;
-  }, [joint.currentValue]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    loadedPositionKeyRef.current = null;
-    setPositionStorageLoaded(false);
-
-    const loadStoredPosition = async () => {
-      try {
-        const storedValue = await storageService.loadData(
-          storageKey,
-          'session'
-        );
-        const parsedValue = storedValue === null ? NaN : Number(storedValue);
-
-        if (!cancelled && Number.isFinite(parsedValue)) {
-          const clampedValue = Math.max(
-            joint.minValue,
-            Math.min(joint.maxValue, parsedValue)
-          );
-          if (clampedValue !== currentValueRef.current) {
-            onValueChange(joint.name, clampedValue);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to load position for joint ${joint.name}:`, error);
-      } finally {
-        if (!cancelled) {
-          loadedPositionKeyRef.current = storageKey;
-          setPositionStorageLoaded(true);
-        }
-      }
-    };
-
-    void loadStoredPosition();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
-
-  useEffect(() => {
-    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
-    if (
-      !positionStorageLoaded ||
-      loadedPositionKeyRef.current !== storageKey ||
-      !Number.isFinite(joint.currentValue)
-    ) {
-      return;
-    }
-
-    void storageService
-      .saveData(
-        String(joint.currentValue),
-        storageKey,
-        'session'
-      )
-      .catch((error) => {
-        console.warn(`Failed to save position for joint ${joint.name}:`, error);
-      });
-  }, [joint.name, joint.currentValue, positionStorageLoaded]);
+  const movingValue = useMovingValue(joint.name);
+  const jointMove = useContext(JointMoveContext);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);
   }, [joint.currentValue]);
 
-  const handleSliderChange = useCallback((value: number | null) => {
-    if (value !== null) {
-      setLocalValue(value);
-    }
-  }, []);
+  const handleSliderChange = useCallback((value: number) => {
+    setLocalValue(value);
+    jointMove?.move(joint.name, value);
+  }, [joint.name, jointMove]);
 
   const handleSliderAfterChange = useCallback((value: number) => {
     onValueChange(joint.name, value);
-  }, [joint.name, onValueChange]);
+    jointMove?.release();
+  }, [joint.name, onValueChange, jointMove]);
 
   const handleInputChange = useCallback((value: number | null) => {
     if (value !== null) {
@@ -235,10 +169,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const [minDisplay, maxDisplay] = getDisplayRange();
-    const currentDisplay = getDisplayValue(previewValue ?? localValue);
+    const currentDisplay = getDisplayValue(movingValue ?? localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, previewValue, showDegrees, actuatorValue]);
+  }, [joint.minValue, joint.maxValue, localValue, movingValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
     if (actuatorValue) {
@@ -248,6 +182,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   }, [showDegrees, actuatorValue]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
+  const torqueOn = !useDisabledJoints().has(joint.name);
+  const gazeboRunning = useGazeboRunning();
+  const { mockHardware } = useActiveHardwareRos();
+  const onRealHardware = mockHardware === false && gazeboRunning !== true;
+  // The supervisor only enables torque while some client holds Control Robot.
+  const [robotControlled, setRobotControlled] = useState(() => ControlModeHandler.getInstance().isControlled);
+  useEffect(() => ControlModeHandler.getInstance().onControllerChanged((id) => setRobotControlled(id !== '')), []);
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
@@ -259,8 +200,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.actualValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
@@ -272,8 +213,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
+    return Math.max(0, Math.min(100, joint.inverted ? 100 - pct : pct));
+  }, [joint.restValue, joint.inverted, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
     if (actuatorValue) {
@@ -289,124 +230,151 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
   return (
-    <Card
-      size="small"
-      className="joint-control-card"
-      style={{
-        marginBottom: 8,
-      }}
-      styles={{ body: { padding: 12 } }}
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size="small">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.displayName ?? joint.name}
-          </Text>
-          <span
-            style={{
-              color: UI_TEXT_SECONDARY_MUTED,
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-          >
-            {joint.type}
-          </span>
-        </div>
+    <Tooltip title={joint.unreachable && `Not reachable: ${joint.unreachable}. Commands to this joint are lost.`}>
+      <Card
+        size="small"
+        className="joint-control-card"
+        style={{
+          marginBottom: 8,
+        }}
+        styles={{ body: { padding: 12 } }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {onRealHardware && (
+                <Tooltip title={!robotControlled
+                  ? `Control Robot is OFF: every joint is limp. This joint will be ${torqueOn ? 'driven' : 'kept limp'} once it is ON.`
+                  : torqueOn
+                    ? 'Torque on: driven while Control Robot is ON. Turn off to keep this joint limp.'
+                    : 'Torque off: stays limp even while Control Robot is ON.'}>
+                  <button
+                    type="button"
+                    className="chamfer-box joint-torque-box"
+                    aria-pressed={torqueOn}
+                    style={robotControlled ? undefined : { opacity: 0.45 }}
+                    onClick={() => setJointTorqueEnabled(joint.name, !torqueOn)}
+                    aria-label={`Torque on ${joint.displayName ?? joint.name}`}
+                  />
+                </Tooltip>
+              )}
+              <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+                {joint.displayName ?? joint.name}
+              </Text>
+            </span>
+            <span
+              style={{
+                color: UI_TEXT_SECONDARY_MUTED,
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {joint.inverted ? 'inverted · ' : ''}{joint.type}
+            </span>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
-            <ReadOnlyHint reason={readOnlyReason} block>
-              <Slider
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
+              <ReadOnlyHint reason={readOnlyReason} block>
+                <Slider
+                  min={minDisplay}
+                  max={maxDisplay}
+                  step={showDegrees ? 0.1 : 0.001}
+                  value={currentDisplay}
+                  // Inverted servo in servo angles: max on the left so it moves like the others.
+                  reverse={joint.inverted}
+                  onChange={(value) => handleSliderChange(convertInputValue(value))}
+                  onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+                  disabled={disabled}
+                  className={movingValue === undefined ? undefined : 'joint-slider-moving'}
+                  style={{ margin: 0 }}
+                  tooltip={{
+                    formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
+                    placement: 'top'
+                  }}
+                />
+              </ReadOnlyHint>
+              {restBarPercent !== undefined && (
+                <TrackMarker
+                  percent={restBarPercent}
+                  top={-6}
+                  color={UI_ACCENT_GREEN}
+                  label="Default"
+                  valueText={formatMarkerValue(joint.restValue!)}
+                  description="Rest position of this joint: where the reset button sends it back to."
+                  placement="top"
+                />
+              )}
+              {actualBarPercent !== undefined && (
+                <TrackMarker
+                  percent={actualBarPercent}
+                  top={19}
+                  color={UI_ACCENT_BLUE}
+                  label="Actual"
+                  valueText={formatMarkerValue(joint.actualValue!)}
+                  description="Real position reported by the simulator: it may lag behind the value you command."
+                  placement="bottom"
+                />
+              )}
+            </div>
+
+            <ReadOnlyHint reason={readOnlyReason}>
+              <InputNumber
                 min={minDisplay}
                 max={maxDisplay}
                 step={showDegrees ? 0.1 : 0.001}
                 value={currentDisplay}
-                onChange={(value) => handleSliderChange(convertInputValue(value))}
-                onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+                onChange={(value) => handleInputChange(convertInputValue(value || 0))}
                 disabled={disabled}
-                style={{ margin: 0 }}
-                tooltip={{
-                  formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
-                  placement: 'top'
-                }}
+                size="small"
+                style={{ width: 100 }}
+                addonAfter={showDegrees ? '°' : 'rad'}
               />
             </ReadOnlyHint>
-            {restBarPercent !== undefined && (
-              <TrackMarker
-                percent={restBarPercent}
-                top={-6}
-                color={UI_ACCENT_GREEN}
-                label="Default"
-                valueText={formatMarkerValue(joint.restValue!)}
-                description="Rest position of this joint: where the reset button sends it back to."
-                placement="top"
-              />
-            )}
-            {actualBarPercent !== undefined && (
-              <TrackMarker
-                percent={actualBarPercent}
-                top={19}
-                color={UI_ACCENT_BLUE}
-                label="Actual"
-                valueText={formatMarkerValue(joint.actualValue!)}
-                description="Real position reported by the simulator: it may lag behind the value you command."
-                placement="bottom"
-              />
+
+            {onReset && (
+              <ReadOnlyHint reason={readOnlyReason}>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReset();
+                  }}
+                  style={{
+                    backgroundColor: UI_COLOR_TRANSPARENT,
+                    borderColor: UI_BORDER_SOFT,
+                    color: UI_TEXT_PRIMARY_ON_DARK
+                  }}
+                  title={disabled
+                    ? undefined
+                    : `Reset ${joint.displayName ?? joint.name} to its rest value`}
+                />
+              </ReadOnlyHint>
             )}
           </div>
 
-          <ReadOnlyHint reason={readOnlyReason}>
-            <InputNumber
-              min={minDisplay}
-              max={maxDisplay}
-              step={showDegrees ? 0.1 : 0.001}
-              value={currentDisplay}
-              onChange={(value) => handleInputChange(convertInputValue(value || 0))}
-              disabled={disabled}
-              size="small"
-              style={{
-                width: 100,
-                backgroundColor: UI_INPUT_SURFACE,
-                borderColor: UI_BORDER_SOFT
-              }}
-              addonAfter={showDegrees ? '°' : 'rad'}
-            />
-          </ReadOnlyHint>
-
-          {onReset && (
-            <ReadOnlyHint reason={readOnlyReason}>
-              <Button
-                size="small"
-                icon={<ReloadOutlined />}
-                disabled={disabled}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleReset();
-                }}
-                style={{
-                  backgroundColor: UI_COLOR_TRANSPARENT,
-                  borderColor: UI_BORDER_SOFT,
-                  color: UI_TEXT_PRIMARY_ON_DARK
-                }}
-                title={disabled
-                  ? undefined
-                  : `Reset ${joint.displayName ?? joint.name} to its rest value`}
-              />
-            </ReadOnlyHint>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Min: {minDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-        </div>
-      </Space>
-    </Card>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: joint.inverted ? 'row-reverse' : 'row',
+              justifyContent: 'space-between',
+              fontSize: '10px',
+              color: UI_TEXT_SECONDARY_MUTED,
+            }}
+          >
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              Min: {minDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+          </div>
+        </Space>
+      </Card>
+    </Tooltip>
   );
 });

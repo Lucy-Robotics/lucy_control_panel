@@ -1,6 +1,20 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
+
+const ROSLIB_THIS = "var ROSLIB = this.ROSLIB ||";
+
+function roslibGlobalThis(): Plugin {
+  return {
+    name: "roslib-global-this",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.endsWith("/roslib/src/RosLib.js")) return;
+      if (!code.includes(ROSLIB_THIS)) this.error(`roslib no longer starts with "${ROSLIB_THIS}"`);
+      return { code: code.replace(ROSLIB_THIS, "var ROSLIB = globalThis.ROSLIB ||"), map: null };
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -34,16 +48,17 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = env.VITE_ALLOWED_HOST
     ? env.VITE_ALLOWED_HOST.split(",").map((h) => h.trim()).filter(Boolean)
     : undefined;
+  const port = parseInt(env.VITE_PORT || "4004");
 
   return {
-    plugins: [react()],
+    plugins: [react(), roslibGlobalThis()],
     server: {
       https,
-      host: true,
+      host: "127.0.0.1",
       allowedHosts,
-      port: parseInt(env.VITE_PORT || "4004"),
+      port,
       hmr: https
-        ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "4004") }
+        ? { protocol: "wss", clientPort: port }
         : undefined,
       proxy: {
         "^/rosbridge": {
@@ -55,5 +70,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    preview: { port, strictPort: true },
   };
 });

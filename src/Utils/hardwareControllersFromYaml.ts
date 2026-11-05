@@ -46,17 +46,11 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
         const ctrlName = controllerName(bObj);
         if (!ctrlName) continue;
 
-        const rows = actuators
-            .filter((a) => {
-                if (!a || typeof a !== 'object' || Array.isArray(a)) return false;
-                return String((a as Record<string, unknown>).board ?? '') === boardId;
-            })
-            .slice()
-            .sort(
-                (a, b) =>
-                    Number((a as Record<string, unknown>).virtual_pin) -
-                    Number((b as Record<string, unknown>).virtual_pin),
-            );
+        // YAML list order on this board (matches derived virtual_pin 0..N-1).
+        const rows = actuators.filter((a) => {
+            if (!a || typeof a !== 'object' || Array.isArray(a)) return false;
+            return String((a as Record<string, unknown>).board ?? '') === boardId;
+        });
 
         const joints: string[] = [];
         const jointLimits: Record<string, JointLimitRad> = {};
@@ -92,6 +86,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             topic: `/${ctrlName}/joint_trajectory`,
             joints,
             defaultCategory: boardIdToCategory(boardId),
+            boardId,
             ...(Object.keys(jointLimits).length > 0 && { jointLimits }),
             ...(Object.keys(jointDisplayNames).length > 0 && { jointDisplayNames }),
         });

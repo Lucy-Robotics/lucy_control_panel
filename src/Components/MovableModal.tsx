@@ -193,6 +193,8 @@ export function MovableModal({
     if (!isVisible) { return null; }
 
     const handleDragStart = (e: React.MouseEvent) => {
+        // The body text is selectable: keep a drag from selecting it.
+        e.preventDefault();
         draggingRef.current = {
             startX: e.clientX,
             startY: e.clientY,
@@ -222,6 +224,7 @@ export function MovableModal({
 
     const handleResizeStart = (e: React.MouseEvent) => {
         e.stopPropagation();
+        e.preventDefault();
         resizingRef.current = {
             startX: e.clientX,
             startY: e.clientY,
@@ -274,7 +277,6 @@ export function MovableModal({
                 zIndex: centered ? undefined : isLocked ? 1 : 1000,
                 overflow: 'hidden',
                 overscrollBehavior: 'contain',
-                userSelect: 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 boxSizing: 'border-box',
@@ -283,6 +285,7 @@ export function MovableModal({
             {/* Header Bar */}
             <div
                 onMouseDown={isPinned ? undefined : handleDragStart}
+                className="lucy-movable-modal-header"
                 style={{
                     height: HEADER_HEIGHT,
                     flex: `0 0 ${HEADER_HEIGHT}px`,
@@ -290,9 +293,8 @@ export function MovableModal({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 24px',
-                    backgroundColor: 'var(--color-main)',
-                    borderBottom: '1px solid var(--color-secondary)',
                     cursor: isPinned ? 'default' : 'move',
+                    userSelect: 'none',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -364,7 +366,7 @@ export function MovableModal({
                         alignItems: 'center',
                         gap: 8,
                         padding: '12px 24px',
-                        borderTop: '1px solid var(--color-secondary)',
+                        borderTop: '1px solid var(--color-line)',
                         backgroundColor: 'var(--color-main)',
                         boxSizing: 'border-box',
                         flex: '0 0 auto',

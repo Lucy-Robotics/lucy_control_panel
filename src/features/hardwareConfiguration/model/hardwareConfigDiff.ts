@@ -14,7 +14,7 @@
  * Server-side ros2_control template fields ⇒ included in the Gazebo-restart diff:
  *   - board (per actuator)
  *   - urdf_joint (per actuator)
- *   - virtual_pin, servo_type (YAML), offset, direction, scale,
+ *   - servo_type (YAML), offset, direction, scale,
  *     limit_min, limit_max, default (per actuator, YAML keys; radians)
  *
  * NOT included in the Gazebo-restart decision:
@@ -36,7 +36,6 @@ import { asMapping } from './documentHelpers.ts';
 const ROS2_CONTROL_ACTUATOR_FIELDS = [
     'board',
     'urdf_joint',
-    'virtual_pin',
     'servo_type',
     'offset',
     'direction',

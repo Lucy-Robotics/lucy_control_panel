@@ -3,21 +3,29 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { Slider, Typography } from 'antd';
+import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { RobotGhost } from '../Components/RobotGhost';
+import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { useGhostVisible } from '../hooks/useGhostVisible';
+import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -68,6 +76,8 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const SETTINGS_BOX_WIDTH = 165;
+/** Lifts the view cube clear of the page navbar, which overlaps the docked view. */
+const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -92,15 +102,11 @@ const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(...DEFAULT_CAMERA.position)
     .sub(new THREE.Vector3(...DEFAULT_CAMERA.target))
     .normalize();
 
-const savedCamera: { position: Vec3; target: Vec3 } = {
+const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     position: [...DEFAULT_CAMERA.position],
     target: [...DEFAULT_CAMERA.target],
 };
 let framedRobot: URDFRobot | null = null;
-
-const isEditableTarget = (target: EventTarget | null): boolean =>
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -113,7 +119,6 @@ const CENTERED_FILL: React.CSSProperties = {
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
     left: 10,
-    padding: '8px 12px',
     fontFamily: 'monospace',
     fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
@@ -136,7 +141,10 @@ const SwitchRow: React.FC<{
     </div>
 );
 
-/** Overlay panel that starts collapsed to its title and expands on click. */
+/**
+ * Overlay panel that starts collapsed to its title and expands on click.
+ * Collapsed, the whole box is the toggle; expanded, its full-width header is.
+ */
 const CollapsibleOverlay: React.FC<{
     title: string;
     style: React.CSSProperties;
@@ -150,13 +158,17 @@ const CollapsibleOverlay: React.FC<{
         <div
             className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}`}
             style={{ ...OVERLAY_BOX, ...style }}
+            onClick={expanded ? undefined : toggle}
         >
             <div
                 role="button"
                 tabIndex={0}
                 aria-expanded={expanded}
                 className="collapsible-header"
-                onClick={toggle}
+                onClick={e => {
+                    e.stopPropagation();
+                    toggle();
+                }}
                 onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -198,8 +210,8 @@ const InfoBadge: React.FC<{
             gap: 10,
             zIndex: 10,
             pointerEvents: 'none',
-            // chamfer-box draws its border from this variable
-            '--box-border': FOCUS_COLOR,
+            // chamfer-box draws its frame from this variable
+            '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
         <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
@@ -267,7 +279,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     selectedPartName,
     controlsRef,
 }) => {
-    const camera = useThree(s => s.camera);
+    const get = useThree(s => s.get);
     const orbitControls = useThree(s => s.controls);
     const viewportHeight = useThree(s => s.size.height);
     const startZoomRef = useRef<number>(1);
@@ -319,6 +331,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         lastWorldCenterRef.current.copy(worldCenter);
 
         const controls = controlsRef.current;
+        const camera = get().camera;
         if (controls) {
             startTargetRef.current.copy(controls.target);
             startCamPosRef.current.copy(camera.position);
@@ -345,9 +358,9 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         }
         // Resizing must not re-trigger the framing transition
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [robot, selectedPartName, camera, controlsRef]);
+    }, [robot, selectedPartName, get, controlsRef]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ camera }, delta) => {
         const controls = controlsRef.current;
         if (!controls || !selectedPartName || !robot) return;
 
@@ -418,7 +431,9 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
         const dir = offset.lengthSq() > 1e-12 ? offset.normalize() : new THREE.Vector3(0, 0, 1);
 
         if (camera instanceof THREE.OrthographicCamera) {
-            camera.zoom = zoomForDistance(distance, viewportHeight);
+            camera.zoom = !prev && savedCamera.zoom !== undefined
+                ? savedCamera.zoom
+                : zoomForDistance(distance, viewportHeight);
             camera.position.copy(target).addScaledVector(dir, distance);
         } else {
             const perspectiveDistance = prev instanceof THREE.OrthographicCamera
@@ -449,21 +464,33 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
+    /** Rendered in the page dock (under the navbar) rather than a floating window. */
+    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
+    docked = false,
     isControlOn: isControlOnProp,
     joints,
     onJointValueChange,
+    teleopTarget = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
+    const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
+    const isEndEffectorVisible = useEndEffectorVisible();
+    const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
         const handler = ControlModeHandler.getInstance();
@@ -497,14 +524,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return getLinkBoundingBox(link);
     }, [robot, selectedPartName]);
 
-    const loadedOnMountRef = useRef(robot !== null && !loading);
-    const userMovedCameraRef = useRef(false);
     useEffect(() => {
-        if (!robot || loading || framedRobot === robot) return;
+        if (!robot || framedRobot === robot) return;
         framedRobot = robot;
-        if (userMovedCameraRef.current) return;
-        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
-    }, [robot, loading, handleSelectView]);
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), true);
+    }, [robot, handleSelectView]);
 
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
 
@@ -519,49 +543,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
 
@@ -573,8 +554,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     useEffect(() => {
         if (effectiveControlOn) return;
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
     }, [effectiveControlOn]);
 
     const initialCamera = useRef({
@@ -630,6 +609,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (!controls) { return; }
         savedCamera.position = controls.object.position.toArray() as Vec3;
         savedCamera.target = controls.target.toArray() as Vec3;
+        savedCamera.zoom = controls.object instanceof THREE.OrthographicCamera ? controls.object.zoom : undefined;
     };
 
     const handlePartSelect = (linkName: string) => {
@@ -682,7 +662,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     return (
         <div
-            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-secondary)' }}
+            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-line)' }}
             onPointerEnter={() => { isPointerInsideRef.current = true; }}
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
@@ -728,22 +708,23 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
+                {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+
+                {robot && isEndEffectorVisible && (
+                    <EndEffectorMarkers
+                        robot={robot}
+                        ghost={targetPose ? ghost : null}
+                        target={teleopTarget}
+                        phoneOrientation={phoneOrientation}
+                        colors={themeColors}
+                    />
+                )}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
-                    onTargetChange={handleTargetChange}
-                    onTargetCancel={handleTargetCancel}
-                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />
@@ -759,7 +740,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
-                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate
@@ -770,7 +750,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <ProjectionSync controlsRef={controlsRef} />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
-                <ViewCube colors={themeColors} onSelectView={handleSelectView} />
+                {!isMobile && (
+                    <ViewCube
+                        colors={themeColors}
+                        onSelectView={handleSelectView}
+                        bottomOffset={docked ? DOCKED_VIEW_CUBE_OFFSET_PX : 0}
+                    />
+                )}
             </Canvas>
 
             {/* Controls hint — top-left */}
@@ -779,6 +765,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
+
+            {endEffector && isEndEffectorVisible && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (
@@ -809,7 +797,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 style={{
                                     width: '100%',
                                     background: 'var(--color-main)',
-                                    border: '1px solid var(--color-secondary)',
+                                    border: '1px solid var(--color-line)',
                                     color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
                                     fontFamily: 'monospace',
                                     fontSize: 10,
@@ -858,7 +846,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         width: '100%',
                         padding: '3px 6px',
                         background: 'transparent',
-                        border: '1px solid var(--color-secondary)',
+                        border: '1px solid var(--color-line)',
                         color: UI_TEXT_SECONDARY_MUTED,
                         cursor: 'pointer',
                         fontSize: 10,

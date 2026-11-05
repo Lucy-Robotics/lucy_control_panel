@@ -11,7 +11,6 @@ import { JointControl } from './JointControl.tsx';
 import { CustomTitle } from '../CustomTitle.tsx';
 import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
 import {
-    SECONDARY_COLOR,
     TEXT_PRIMARY,
 } from '../../Constants/theme.ts';
 
@@ -46,7 +45,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
     return (
         <Card
-            className="joint-category-card"
+            className={`joint-category-card${joints.some((j) => j.unreachable) ? ' joint-unreachable' : ''}`}
             style={{
                 height: '100%',
                 display: 'flex',
@@ -67,6 +66,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             <div
                 style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: 12,
@@ -74,7 +75,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2,
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                     <CustomTitle
                         title={category.toUpperCase()}
                         subtitle={`${joints.length} JOINTS`}
@@ -94,7 +95,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         }}
                         style={{
                             backgroundColor: 'transparent',
-                            borderColor: SECONDARY_COLOR,
+                            borderColor: 'var(--color-line)',
                             color: TEXT_PRIMARY,
                         }}
                         title={disabled ? undefined : `Reset all ${category} joints to their rest value`}

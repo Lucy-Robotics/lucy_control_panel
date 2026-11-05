@@ -188,7 +188,7 @@ export const GettingStartedModal: React.FC = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    backgroundColor: 'var(--color-main)',
+                    backgroundColor: 'var(--color-surface-1)',
                 }}
             >
                 <article
@@ -219,7 +219,7 @@ export const GettingStartedModal: React.FC = () => {
                         gap: 16,
                         padding: '12px 16px',
                         borderTop: '1px solid var(--color-line)',
-                        backgroundColor: 'var(--color-main)',
+                        backgroundColor: 'var(--color-surface-1)',
                     }}
                 >
                     <Button
@@ -248,8 +248,8 @@ export const GettingStartedModal: React.FC = () => {
                                 type="primary"
                                 onClick={complete}
                                 style={{
-                                    backgroundColor: 'var(--color-highlight)',
-                                    borderColor: 'var(--color-highlight)',
+                                    backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                    borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                     color: 'var(--color-text-on-highlight)',
                                     fontWeight: 'bold',
                                 }}
@@ -261,8 +261,8 @@ export const GettingStartedModal: React.FC = () => {
                                 type="primary"
                                 onClick={() => setSectionIndex(index => index + 1)}
                                 style={{
-                                    backgroundColor: 'var(--color-highlight)',
-                                    borderColor: 'var(--color-highlight)',
+                                    backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                    borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                     color: 'var(--color-text-on-highlight)',
                                     fontWeight: 'bold',
                                 }}

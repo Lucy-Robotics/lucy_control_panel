@@ -252,8 +252,8 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                     icon={<CheckOutlined />}
                     onClick={handleApply}
                     style={{
-                        backgroundColor: 'var(--color-highlight)',
-                        borderColor: 'var(--color-highlight)',
+                        backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                        borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                         color: 'var(--color-text-on-highlight)',
                         fontWeight: 'bold',
                         height: 36,

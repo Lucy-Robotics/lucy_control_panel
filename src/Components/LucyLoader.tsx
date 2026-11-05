@@ -95,8 +95,8 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                         loading={connectionStatus === 'connecting'}
                         style={{
                             marginTop: 24,
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                             borderRadius: 0,

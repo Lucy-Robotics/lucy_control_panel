@@ -246,7 +246,7 @@ const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
                     position: 'absolute',
                     top: 0,
                     bottom: 0,
-                    background: 'var(--color-highlight)',
+                    background: 'var(--color-highlight-fill, var(--color-highlight))',
                     ...(indeterminate
                         ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
                         : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),

@@ -25,6 +25,7 @@ import {
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     fonts,
+    alpha,
     deriveSurfaceTokens,
     isHexColor,
     isLightColor,
@@ -85,26 +86,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const text = colors.text || TEXT_PRIMARY;
 
         const derived = deriveSurfaceTokens({ main, secondary, highlight, text });
-        const hexOr = (name: string, fallback: string) => (isHexColor(derived[name]) ? derived[name] : fallback);
+        // Presets may pin tokens the derivation would otherwise produce; read what is actually applied.
+        const rootStyle = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement);
+        const cssVar = (name: string, fallback: string) => {
+            const value = rootStyle?.getPropertyValue(name).trim() ?? '';
+            return isHexColor(value) ? value : fallback;
+        };
+        const hexOr = (name: string, fallback: string) => cssVar(name, isHexColor(derived[name]) ? derived[name] : fallback);
         const surface1 = hexOr('--color-surface-1', main);
         const surface2 = hexOr('--color-surface-2', main);
         const line = isHexColor(secondary) ? derived['--color-line'] : secondary;
         // Controls need a 3:1 frame on light canvases (WCAG 1.4.11); dark themes keep the soft line.
         const controlLine = isLightColor(main) ? secondary : line;
         const highlightSoft = isHexColor(highlight) ? derived['--color-highlight-soft'] : 'transparent';
-        const themedTextSecondary = typeof document === 'undefined'
-            ? ''
-            : getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim();
-        const textSecondary = isHexColor(themedTextSecondary) ? themedTextSecondary : TEXT_SECONDARY;
-        const themedAccent2 = typeof document === 'undefined'
-            ? ''
-            : getComputedStyle(document.documentElement).getPropertyValue('--color-accent-2').trim();
-        const link = isHexColor(themedAccent2) ? themedAccent2 : highlight;
-        const themedOnHighlight = typeof document === 'undefined'
-            ? ''
-            : getComputedStyle(document.documentElement).getPropertyValue('--color-text-on-highlight').trim();
-        // Light themes avoid pure white: Ant Design's white text on fills and switch handles take the themed tone.
-        const lightSolid = isLightColor(main) && isHexColor(themedOnHighlight) ? themedOnHighlight : undefined;
+        const textSecondary = cssVar('--color-text-secondary', TEXT_SECONDARY);
+        const link = cssVar('--color-accent-2', highlight);
 
         return {
             algorithm: isLightColor(main) ? antdThemeEngine.defaultAlgorithm : antdThemeEngine.darkAlgorithm,
@@ -119,7 +115,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 colorSplit: line,
                 colorText: text,
                 colorTextSecondary: textSecondary,
-                ...(lightSolid && { colorTextLightSolid: lightSolid, colorWhite: lightSolid }),
+                // AntD's translucent-black helper text is too faint on tinted light surfaces.
+                ...(isLightColor(main) && {
+                    colorTextTertiary: cssVar('--color-text-muted', textSecondary),
+                    colorTextDescription: cssVar('--color-text-muted', textSecondary),
+                    colorTextPlaceholder: cssVar('--color-text-muted', textSecondary),
+                }),
                 colorLink: link,
                 colorLinkHover: link,
                 fontFamily: fonts.mono,
@@ -185,8 +186,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     dotActiveBorderColor: highlight,
                 },
                 Switch: {
-                    colorPrimary: highlight,
-                    ...(lightSolid && { handleBg: lightSolid }),
+                    colorPrimary: cssVar('--color-highlight-fill', highlight),
+                    colorPrimaryHover: cssVar('--color-highlight-fill-hover', highlight),
+                    // AntD's translucent-black off track turns muddy over tinted light surfaces; use the frame hue.
+                    ...(isLightColor(main) && {
+                        colorTextQuaternary: alpha(secondary, 0.55),
+                        colorTextTertiary: secondary,
+                    }),
                 },
                 Tag: {
                     borderRadiusSM: 0,

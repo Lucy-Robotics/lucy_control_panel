@@ -86,8 +86,8 @@ export const NotFound: React.FC = () => {
                             icon={<HomeOutlined />}
                             onClick={() => navigate('/')}
                             style={{
-                                background: 'var(--color-highlight)',
-                                borderColor: 'var(--color-highlight)',
+                                background: 'var(--color-highlight-fill, var(--color-highlight))',
+                                borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                 color: 'var(--color-text-on-highlight)',
                                 fontWeight: 'bold',
                                 borderRadius: 0,

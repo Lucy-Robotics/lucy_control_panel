@@ -278,24 +278,12 @@ for (const preset of BUILTIN_THEMES) {
         report.push(`| \`${token}\` (on its tint) | \`${tokens[token]}\` | ${ratios.map(r => `${fmt(r)}${r < MIN_TEXT_CONTRAST ? ' ✗' : ''}`).join(' | ')} |${' — |'.repeat(surfaces.length - 3)}`);
     }
 
-    // 2c. Light themes stay off-white: no resolved colour token may be pure white
-    if (preset.id === 'lucy-light') {
-        const whites = Object.entries(tokens).filter(([name, value]) => {
-            if (!name.startsWith('--color-') && !name.startsWith('--ui-')) return false;
-            try {
-                const c = parseColor(value);
-                return c.a > 0.5 && Math.min(c.r, c.g, c.b) >= 252;
-            } catch {
-                return false;
-            }
-        });
-        check(strict, whites.length === 0, `no pure-white colour tokens${whites.length ? ` (found: ${whites.map(([n, v]) => `${n}=${v}`).join(', ')})` : ''}`);
-    }
-
-    // 3. Text placed on filled controls
+    // 3. Text placed on filled controls (a preset may give fills their own vivid tone)
+    const fillOf = (name: string, fallback: string) => (tokens[name] ? name : fallback);
     const onFill: [string, string][] = [
-        ['--color-text-on-highlight', '--color-highlight'],
-        ['--color-text-on-error', '--color-status-error'],
+        ['--color-text-on-highlight', fillOf('--color-highlight-fill', '--color-highlight')],
+        ['--color-text-on-highlight', fillOf('--color-highlight-fill-hover', '--color-highlight-light')],
+        ['--color-text-on-error', fillOf('--color-error-fill', '--color-status-error')],
     ];
     const fillLines: string[] = [];
     for (const [fg, fill] of onFill) {

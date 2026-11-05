@@ -122,8 +122,8 @@ export const UI_CARD_SURFACE_STYLE = {
  * Dynamic primary button style that adapts to the active theme.
  */
 export const UI_PRIMARY_GREEN_BUTTON_STYLE = {
-    backgroundColor: 'var(--color-highlight)',
-    borderColor: 'var(--color-highlight)',
+    backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+    borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
     color: 'var(--color-text-on-highlight)',
     fontWeight: 'bold',
 } as const;

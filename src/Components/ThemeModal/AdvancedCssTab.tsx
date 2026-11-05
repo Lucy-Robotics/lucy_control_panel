@@ -202,8 +202,8 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         type="primary"
                         icon={<UploadOutlined />}
                         style={{
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                         }}
@@ -238,8 +238,8 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         icon={<SafetyCertificateOutlined />}
                         onClick={handleFetchUrl}
                         style={{
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                         }}
@@ -305,8 +305,8 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                             icon={<CheckOutlined />}
                             onClick={handleApply}
                             style={{
-                                backgroundColor: 'var(--color-highlight)',
-                                borderColor: 'var(--color-highlight)',
+                                backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                 color: 'var(--color-text-on-highlight)',
                                 fontWeight: 'bold',
                             }}
@@ -344,8 +344,8 @@ export const AdvancedCssTab: React.FC<AdvancedCssTabProps> = ({
                         icon={<DownloadOutlined />}
                         onClick={onExportTemplate}
                         style={{
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                         }}

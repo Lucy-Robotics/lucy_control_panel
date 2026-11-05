@@ -151,37 +151,53 @@ export const BUILTIN_THEMES: ThemePreset[] = [
     {
         id: 'lucy-light',
         name: 'Lucy Light',
-        description: 'Light theme on the Lucy parchment (#F7F1E5): rich black text, gray-blue framing and headers, Lucy green for active states and steel blue for links and hover. All text meets WCAG AA (4.5:1); control frames meet 3:1.',
+        description: 'Light theme: Lucy parchment (#F7F1E5) canvas with white cards, rich black text, navy framing and secondary text, neon Lucy green fills (#00FF41, black text) for active states and steel blue for links and hover. All text meets WCAG AA (4.5:1); control frames meet 3:1.',
         author: 'Lucy Robotics Team',
         version: '1.0.0',
         colors: {
             main: TEXT_PRIMARY,
-            secondary: '#6F89A3',
+            secondary: '#6D8DB0',
             highlight: '#006C2E',
             text: MAIN_COLOR,
         },
         css: `
 :root {
-  --color-text-secondary: #4E5D6C;
-  --color-text-muted: #53616F;
-  --color-text-on-highlight: #F7F1E5;
-  --ui-text-on-accent: #F7F1E5;
-  --color-text-on-error: #F7F1E5;
+  --color-surface-1: #FFFFFF;
+  --color-main-surface: #FFFFFF;
+  --color-surface-2: #FFFFFF;
+  --color-main-elevated: #FFFFFF;
+  --color-main-deep: #FFFFFF;
+  --color-surface-3: #F2EBDD;
+  --color-text-secondary: #2B3E50;
+  --color-text-muted: #4B617A;
+  --color-text-on-highlight: #141414;
+  --ui-text-on-accent: #141414;
+  --color-text-on-error: #141414;
   --color-status-active: #006C2E;
   --color-status-error: #B42424;
   --color-status-warning: #895200;
   --color-status-info: #00629E;
+  --color-highlight-fill: #00FF41;
+  --color-highlight-fill-hover: #00E03A;
+  --color-error-fill: #FF4343;
+  --color-warning-fill: #FFAA00;
+  --color-highlight-glow: rgba(0, 255, 65, 0.35);
+  --color-highlight-glow-strong: rgba(0, 255, 65, 0.6);
+  --color-highlight-glow-subtle: rgba(0, 255, 65, 0.18);
+  --status-led-glow: 0 0 6px currentColor;
   --color-accent-2: #2F5D84;
   --color-accent-2-soft: rgba(47, 93, 132, 0.10);
-  --color-highlight-soft: rgba(0, 108, 46, 0.10);
-  --color-active-fill: rgba(0, 108, 46, 0.10);
-  --color-header-fill: #DEDED7;
+  --color-highlight-soft: rgba(0, 255, 65, 0.14);
+  --color-active-fill: rgba(0, 255, 65, 0.18);
+  --color-header-divider: #6D8DB0;
   --color-status-tint: 10%;
-  --ui-switch-disabled-bg: #D9D2C3;
+  --color-grid-dot: rgba(109, 141, 176, 0.35);
+  --color-grid-line: rgba(109, 141, 176, 0.16);
+  --ui-switch-disabled-bg: #C9D5E2;
   --shadow-1: 0 2px 8px rgba(43, 62, 80, 0.10);
-  --shadow-2: 0 12px 32px rgba(43, 62, 80, 0.18);
-  --shadow-modal: 0 16px 40px rgba(43, 62, 80, 0.20);
-  --shadow-toolbar: 0 -8px 24px rgba(43, 62, 80, 0.14);
+  --shadow-2: 0 12px 32px rgba(43, 62, 80, 0.16);
+  --shadow-modal: 0 16px 40px rgba(43, 62, 80, 0.18);
+  --shadow-toolbar: 0 -8px 24px rgba(43, 62, 80, 0.12);
 }
         `.trim(),
     },

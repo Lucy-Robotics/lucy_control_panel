@@ -9,7 +9,6 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import { getDefaultRosUrl, ROS_URL_KEY } from '../Services/ros/ros.service';
 import {
-    UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CHROME_SURFACE,
@@ -65,9 +64,9 @@ export const ConnectionControls: React.FC = () => {
                     onClick={() => void handleConnect()}
                     disabled={isConnecting}
                     style={{
-                        backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : UI_ACCENT_GREEN,
+                        backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : 'var(--color-highlight-fill, var(--color-highlight))',
                         color: isConnected ? UI_TEXT_PRIMARY_ON_DARK : UI_TEXT_ON_ACCENT,
-                        borderColor: isConnected ? UI_BORDER_SOFT : UI_ACCENT_GREEN,
+                        borderColor: isConnected ? UI_BORDER_SOFT : 'var(--color-highlight-fill, var(--color-highlight))',
                         boxShadow: 'none',
                     }}
                 >

@@ -154,8 +154,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                             block
                             style={{
                                 height: 48,
-                                backgroundColor: 'var(--color-highlight)',
-                                borderColor: 'var(--color-highlight)',
+                                backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                 color: 'var(--color-text-on-highlight)',
                                 fontFamily: fonts.mono,
                                 fontSize: 16,

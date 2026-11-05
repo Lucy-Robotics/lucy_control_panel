@@ -10,6 +10,7 @@ import {
     TEXT_PRIMARY,
     injectThemeVariables,
     deriveSurfaceTokens,
+    isLightColor,
 } from '../Constants/theme';
 import {
     BUILTIN_THEMES,
@@ -43,6 +44,8 @@ class ThemeService {
     private static instance: ThemeService;
     private listeners: Set<() => void> = new Set();
     private lastSecurityInspection: CssSecurityInspectionResult | null = null;
+    /** Variables the previous theme wrote onto :root, cleared on the next apply so none leak across themes. */
+    private appliedVars: Set<string> = new Set();
 
     private constructor() {
         if (typeof window !== 'undefined') {
@@ -232,8 +235,13 @@ class ThemeService {
 
         const root = document.documentElement;
 
+        for (const varName of this.appliedVars) root.style.removeProperty(varName);
+        this.appliedVars.clear();
+
         // Baseline: Always apply canonical default CSS variables first
         injectThemeVariables(root);
+        // Lets stylesheets target light themes, e.g. to remap third-party colours tuned for white.
+        root.dataset.tone = 'dark';
 
         if (!this.isCustomThemeEnabled()) {
             styleElement.textContent = '';
@@ -271,10 +279,12 @@ class ThemeService {
                 const varValue = match[2].trim();
                 definedVars.set(varName, varValue);
                 root.style.setProperty(varName, varValue);
+                this.appliedVars.add(varName);
             }
         }
 
         const colors = this.getActiveColors();
+        root.dataset.tone = isLightColor(colors.main) ? 'light' : 'dark';
         root.style.setProperty('--color-main', colors.main);
         root.style.setProperty('--color-secondary', colors.secondary);
         root.style.setProperty('--color-secondary-border', colors.secondary);

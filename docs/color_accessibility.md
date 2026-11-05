@@ -221,43 +221,44 @@ The light theme reused the dark theme's way of deriving tokens. Frames were `--c
 ### 4.2 Fix
 The first strict pass reached full WCAG compliance with dark-slate frames everywhere and very dark accents, and it looked heavy. The final theme keeps WCAG AA for everything that carries information, and builds the look from the Lucy brand palette with the dark theme's colours inverted:
 
-- **Canvas = the dark theme's text colour**, parchment `#F7F1E5`; **text = the dark theme's canvas**, rich black `#141414`. Surface tiers step 2 / 4 / 7 % darker, so they stay warm.
-- **Two frame tiers.** `--color-line-strong` frames controls (buttons, inputs, selects, toggles, tags, modals) in gray-blue `#6F89A3`, at least **3 : 1 on the canvas and panels** (SC 1.4.11). `--color-line` frames containers (cards, panels, tables, rail) with a 50 % tint of it, about 1.6 : 1, because they are decorative. In `ThemeContext`, Ant Design control borders use the strong frame on light themes.
+- **Parchment canvas, white cards.** The page (`--color-main`) is the Lucy parchment `#F7F1E5`, the dark theme's text colour. Cards, modals, tables, panels, buttons, tags and popovers (`--color-surface-1` / `-2`) are pure white `#FFFFFF`, and so are inputs and toggle tracks (`--color-main-deep`). Only hover and tooltips (`surface-3`) are a warm step, `#F2EBDD`. Modal and card headers share the card white and are set off by a 1 px navy line (`--color-header-divider`). The preset pins all these tiers instead of deriving them, and `ThemeContext` reads the applied values so Ant Design matches. Text is rich black `#141414`.
+- **Two frame tiers.** `--color-line-strong` frames controls (buttons, inputs, selects, toggles, tags, modals) in brand navy `#6D8DB0`, at least **3 : 1 on the canvas and panels** (SC 1.4.11). `--color-line` frames containers (cards, panels, tables, rail) with a 50 % tint of it, about 1.6 : 1, because they are decorative. In `ThemeContext`, Ant Design control borders use the strong frame on light themes.
 - **More colour than the dark theme**, through optional tokens. Each falls back to the dark-theme behaviour, so other presets don't change:
 
 | Token | Lucy Light | Used for |
 | :--- | :---: | :--- |
-| `--color-header-fill` | `#DEDED7` (10 % gray-blue) | Card heads, movable-modal headers |
 | `--color-accent-2` / `-soft` | `#2F5D84` / 10 % | Second accent: links, hover on buttons, tabs, nav, rail, toggles. Green stays "active / selected". |
 | `--color-active-fill` | green 10 % | Background of the active tab |
+| `--color-highlight-fill` / `-fill-hover`, `--color-error-fill`, `--color-warning-fill` | `#00FF41` / `#00E03A`, `#FF4343`, `#FFAA00` | Vivid fills: primary buttons, active nav, the ROBOT ON button, ON/OFF toggles, tab ink bar, sliders, switches, title bars and header LEDs. Text on them is black `#141414` (13.5 : 1 on green, 10.3 : 1 on hover green, 5.4 : 1 on red). Text-coloured green stays the dark `#006C2E`, because neon green as text on white is only 1.4 : 1 |
 | `--color-status-tint` | `10%` | Tinted fill of header status boxes (via `--status-color`), alerts and the robot arm button |
 
-- **No pure white anywhere.** Text on green and red fills is the parchment `#F7F1E5` (5.9 : 1 on both). `--color-main-deep` (inputs, toggle tracks) equals the canvas instead of deriving lighter, and Ant Design's light-solid text and switch handles use the same tone. The test suite fails if any Lucy Light colour token resolves to pure white.
-- **Accents re-fitted** so text stays at 4.5 : 1 on every surface *and* on its own tinted fill: green `#006C2E`, error `#B42424`, warning `#895200`, info `#00629E`, text-secondary/muted `#4E5D6C` / `#53616F`. Hover green is the highlight darkened by 8 %.
+- **Navy instead of grey or brown.** Frames, secondary text and muted text come from the Lucy gray-blue `#2B3E50`, saturated so they read as colour rather than grey: frames `#6D8DB0`, text `#2B3E50` / `#4B617A`. Canvas grid dots, shadows, off-state switch tracks (Ant Design `Switch`) and the disabled-switch fill use the same navy family.
+- **Ant Design colours tuned for pure white.** On light themes, `themeService` sets `data-tone="light"` on `<html>`. Preset `Tag` colours (green, orange, red, blue) are then remapped to the status tones; they were 1.7–3.6 : 1 on parchment. Ant Design's description, tertiary and placeholder text use `--color-text-muted`; their translucent black was 1.8–3.3 : 1. A live audit of every visible text node against its rendered background, including chamfered pseudo-element fills, found no text under 4.5 : 1 on the control, sensors and configuration pages. The audit was first checked against deliberately injected failures.
+- **Accents re-fitted** so text stays at 4.5 : 1 on every surface *and* on its own tinted fill: green `#006C2E`, error `#B42424`, warning `#895200`, info `#00629E`, text-secondary/muted `#2B3E50` / `#4B617A`. Hover green is the highlight darkened by 8 %.
 
 #### After
-| Token | Value | on `bg` | on `surface-1` | on `surface-2` | on `surface-3` | on `header-fill` |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `--color-text-primary` | `#141414` | 16.38 | 15.66 | 14.96 | 13.88 | 13.63 |
-| `--color-text-secondary` | `#4E5D6C` | 6.01 | 5.75 | 5.49 | 5.10 | 5.00 |
-| `--color-text-muted` | `#53616F` | 5.64 | 5.40 | 5.16 | 4.79 | 4.70 |
-| `--color-highlight` | `#006C2E` | 5.86 | 5.61 | 5.36 | 4.97 | 4.88 |
-| `--color-highlight-light` | `#00581a` | 7.74 | 7.40 | 7.07 | 6.57 | 6.44 |
-| `--color-status-active` | `#006C2E` | 5.86 | 5.61 | 5.36 | 4.97 | 4.88 |
-| `--color-status-error` | `#B42424` | 5.80 | 5.55 | 5.30 | 4.92 | 4.83 |
-| `--color-status-warning` | `#895200` | 5.71 | 5.46 | 5.21 | 4.84 | 4.75 |
-| `--color-status-info` | `#00629E` | 5.76 | 5.51 | 5.26 | 4.88 | 4.79 |
-| `--color-accent-2` | `#2F5D84` | 6.18 | 5.91 | 5.65 | 5.24 | 5.14 |
-| `--color-line-strong` (control frame) | `#6F89A3` | 3.23 | 3.09 | 2.95 | 2.74 | 2.69 |
-| `--color-line` (container frame, decorative) | `rgba(111, 137, 163, 0.5)` | 1.70 | 1.66 | 1.64 | 1.59 | 1.57 |
-| `--color-status-active` (on its tint) | `#006C2E` | 5.07 | 4.84 | 4.65 | — | — |
-| `--color-status-error` (on its tint) | `#B42424` | 4.96 | 4.74 | 4.55 | — | — |
-| `--color-status-warning` (on its tint) | `#895200` | 4.96 | 4.78 | 4.55 | — | — |
-| `--color-status-info` (on its tint) | `#00629E` | 4.98 | 4.76 | 4.57 | — | — |
-| `--color-accent-2` (on its tint) | `#2F5D84` | 5.35 | 5.16 | 4.91 | — | — |
-| `--color-highlight` (on its tint) | `#006C2E` | 5.07 | 4.84 | 4.65 | — | — |
+| Token | Value | on `bg` | on `surface-1` | on `surface-2` | on `surface-3` |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| `--color-text-primary` | `#141414` | 16.38 | 18.42 | 18.42 | 15.53 |
+| `--color-text-secondary` | `#2B3E50` | 9.79 | 11.01 | 11.01 | 9.28 |
+| `--color-text-muted` | `#4B617A` | 5.67 | 6.38 | 6.38 | 5.38 |
+| `--color-highlight` | `#006C2E` | 5.86 | 6.59 | 6.59 | 5.56 |
+| `--color-highlight-light` | `#00581a` | 7.74 | 8.71 | 8.71 | 7.34 |
+| `--color-status-active` | `#006C2E` | 5.86 | 6.59 | 6.59 | 5.56 |
+| `--color-status-error` | `#B42424` | 5.80 | 6.52 | 6.52 | 5.50 |
+| `--color-status-warning` | `#895200` | 5.71 | 6.42 | 6.42 | 5.41 |
+| `--color-status-info` | `#00629E` | 5.76 | 6.48 | 6.48 | 5.46 |
+| `--color-accent-2` | `#2F5D84` | 6.18 | 6.95 | 6.95 | 5.86 |
+| `--color-line-strong` (control frame) | `#6D8DB0` | 3.07 | 3.45 | 3.45 | 2.91 |
+| `--color-line` (container frame, decorative) | `rgba(109, 141, 176, 0.5)` | 1.67 | 1.74 | 1.74 | 1.63 |
+| `--color-status-active` (on its tint) | `#006C2E` | 5.07 | 5.66 | 5.66 | — |
+| `--color-status-error` (on its tint) | `#B42424` | 4.96 | 5.54 | 5.54 | — |
+| `--color-status-warning` (on its tint) | `#895200` | 4.96 | 5.56 | 5.56 | — |
+| `--color-status-info` (on its tint) | `#00629E` | 4.98 | 5.56 | 5.56 | — |
+| `--color-accent-2` (on its tint) | `#2F5D84` | 5.35 | 6.01 | 6.01 | — |
+| `--color-highlight` (on its tint) | `#006C2E` | 5.43 | 5.99 | 5.99 | — |
 
-`--color-text-on-highlight` on `--color-highlight`: **6.59:1** · `--color-text-on-error` on `--color-status-error`: **6.52:1**
+`--color-text-on-highlight` on `--color-highlight-fill`: **13.49:1** · `--color-text-on-highlight` on `--color-highlight-fill-hover`: **10.28:1** · `--color-text-on-error` on `--color-error-fill`: **5.38:1**
 
 | Status pair | ΔE00 (none) | ΔE00 (protanopia) | ΔE00 (deuteranopia) | ΔE00 (tritanopia) |
 | :--- | :---: | :---: | :---: | :---: |

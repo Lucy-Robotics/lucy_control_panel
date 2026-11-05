@@ -61,8 +61,8 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                         type="primary"
                         onClick={onClose}
                         style={{
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                         }}

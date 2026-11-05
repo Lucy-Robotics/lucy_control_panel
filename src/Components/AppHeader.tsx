@@ -10,8 +10,6 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import {
-    STATUS_ERROR,
-    STATUS_WARNING,
     fonts,
 } from '../Constants/theme';
 import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
@@ -93,15 +91,15 @@ export const AppHeader: React.FC = () => {
 
     const getConnectionStatusColor = () => {
         if (countState > 1 && isConnected) {
-            return STATUS_WARNING;
+            return 'var(--color-status-warning)';
         }
         switch (connectionStatus) {
             case 'connected':
                 return 'var(--color-highlight)';
             case 'connecting':
-                return STATUS_WARNING;
+                return 'var(--color-status-warning)';
             case 'disconnected':
-                return STATUS_ERROR;
+                return 'var(--color-status-error)';
             default:
                 return 'var(--color-text-secondary)';
         }
@@ -109,9 +107,17 @@ export const AppHeader: React.FC = () => {
 
     const getControllerColor = () => {
         if (activeControllerId === ControlModeHandler.getInstance().clientId) return 'var(--color-highlight)';
-        if (activeControllerId !== '') return STATUS_WARNING;
+        if (activeControllerId !== '') return 'var(--color-status-warning)';
         return 'var(--color-text-secondary)';
     };
+
+    // LEDs are pure indicators, so they can use the vivid fill tones; their labels keep the readable text tones.
+    const LED_FILLS: Record<string, string> = {
+        'var(--color-highlight)': 'var(--color-highlight-fill, var(--color-highlight))',
+        'var(--color-status-warning)': 'var(--color-warning-fill, var(--color-status-warning))',
+        'var(--color-status-error)': 'var(--color-error-fill, var(--color-status-error))',
+    };
+    const ledColor = (color: string) => LED_FILLS[color] ?? color;
 
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
@@ -126,7 +132,7 @@ export const AppHeader: React.FC = () => {
     };
 
     const statusFrame = (color: string) =>
-        ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)` }) as React.CSSProperties;
+        ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)`, '--status-color': color }) as React.CSSProperties;
 
     const statusIndicators = (
         <>
@@ -134,7 +140,7 @@ export const AppHeader: React.FC = () => {
                 <div style={statusFrame(bridgeColor)} className="header-status-box">
                     <span
                         className={`status-led${connectionStatus === 'connecting' ? ' status-led-pulse' : ''}`}
-                        style={{ color: bridgeColor }}
+                        style={{ color: ledColor(bridgeColor) }}
                     />
                     <Text
                         style={{
@@ -151,7 +157,7 @@ export const AppHeader: React.FC = () => {
             </Tooltip>
             <Tooltip title={activeControllerId !== '' ? 'A client is currently controlling the robot.' : 'No client is currently controlling the robot.'}>
                 <div style={statusFrame(controllerColor)} className="header-status-box">
-                    <span className="status-led" style={{ color: controllerColor }} />
+                    <span className="status-led" style={{ color: ledColor(controllerColor) }} />
                     <Text
                         style={{
                             color: controllerColor,

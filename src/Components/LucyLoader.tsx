@@ -8,8 +8,6 @@ import { Button, Typography } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook.ts';
 import {
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
     fonts,
 } from '../Constants/theme.ts';
 import './LucyLoader.css';
@@ -51,7 +49,7 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
             <div className="lucy-loader-text">
                 <Text
                     style={{
-                        color: TEXT_PRIMARY,
+                        color: 'var(--color-text-primary)',
                         fontFamily: fonts.graphical,
                         fontSize: 32,
                         fontWeight: 700,
@@ -77,7 +75,7 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                 {detail ? (
                     <Text
                         style={{
-                            color: TEXT_SECONDARY,
+                            color: 'var(--color-text-secondary)',
                             fontFamily: fonts.mono,
                             fontSize: 12,
                             marginTop: 8,
@@ -97,8 +95,8 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                         loading={connectionStatus === 'connecting'}
                         style={{
                             marginTop: 24,
-                            backgroundColor: 'var(--color-highlight)',
-                            borderColor: 'var(--color-highlight)',
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: 'var(--color-text-on-highlight)',
                             fontWeight: 'bold',
                             borderRadius: 0,

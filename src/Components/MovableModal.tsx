@@ -364,7 +364,7 @@ export function MovableModal({
                         gap: 8,
                         padding: '12px 24px',
                         borderTop: '1px solid var(--color-line)',
-                        backgroundColor: 'var(--color-main)',
+                        backgroundColor: 'var(--color-surface-1)',
                         boxSizing: 'border-box',
                         flex: '0 0 auto',
                         flexWrap: footerWrap ? 'wrap' : 'nowrap',

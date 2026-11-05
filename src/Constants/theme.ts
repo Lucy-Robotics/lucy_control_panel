@@ -87,6 +87,19 @@ export function isHexColor(value: string): boolean {
     return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
+export function relativeLuminance(hex: string): number {
+    const { r, g, b } = hexToRgb(hex);
+    const lin = (c: number) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+export function isLightColor(color: string): boolean {
+    return isHexColor(color) && relativeLuminance(color) > 0.5;
+}
+
 export function shade(color: string, percent: number): string {
     if (isHexColor(color)) return adjustBrightness(color, percent);
     const mixWith = percent >= 0 ? 'white' : 'black';
@@ -106,23 +119,31 @@ export interface ThemeBaseColors {
 }
 
 export function deriveSurfaceTokens({ main, secondary, highlight, text }: ThemeBaseColors): Record<string, string> {
-    const surface1 = shade(main, 3);
-    const surface2 = shade(main, 6);
+    const light = isLightColor(main);
+    const dir = light ? -1 : 1;
+    // Light canvases show small steps clearly, and shallower tiers leave room for brighter accents at 4.5:1.
+    const [step1, step2, step3] = light ? [2, 4, 7] : [3, 6, 10];
+    const surface1 = shade(main, dir * step1);
+    const surface2 = shade(main, dir * step2);
     return {
         '--color-bg': main,
         '--color-surface-1': surface1,
         '--color-surface-2': surface2,
-        '--color-surface-3': shade(main, 10),
+        '--color-surface-3': shade(main, dir * step3),
         '--color-main-surface': surface1,
         '--color-main-elevated': surface2,
-        '--color-main-deep': shade(main, -4),
+        // Deepest layer: darker than a dark canvas; a light canvas is already the lightest tone (no pure white).
+        '--color-main-deep': light ? main : shade(main, -4),
 
-        '--color-line': alpha(secondary, 0.45),
+        // Container frames stay soft; controls use --color-line-strong (WCAG 1.4.11). A light canvas
+        // washes out a thin tint, so it gets a denser one.
+        '--color-line': alpha(secondary, light ? 0.5 : 0.45),
         '--color-line-strong': secondary,
         '--color-secondary-subtle': alpha(secondary, 0.4),
-        '--color-secondary-hover': shade(secondary, 15),
+        '--color-secondary-hover': shade(secondary, dir * 15),
 
-        '--color-highlight-light': shade(highlight, 15),
+        // Hover tone moves away from the canvas: lighter on dark themes, darker on light ones.
+        '--color-highlight-light': shade(highlight, light ? -8 : 15),
         '--color-highlight-dark': shade(highlight, -15),
         '--color-highlight-soft': alpha(highlight, 0.1),
         '--color-highlight-glow': alpha(highlight, 0.25),
@@ -320,6 +341,8 @@ export const CSS_VARIABLES_MAP: Record<string, string> = {
     ...deriveSurfaceTokens({ main: MAIN_COLOR, secondary: SECONDARY_COLOR, highlight: HIGHLIGHT_COLOR, text: TEXT_PRIMARY }),
     '--shadow-1': '0 2px 8px rgba(0, 0, 0, 0.35)',
     '--shadow-2': '0 12px 32px rgba(0, 0, 0, 0.55)',
+    '--shadow-modal': '0 16px 40px rgba(0, 0, 0, 0.6)',
+    '--shadow-toolbar': '0 -8px 24px rgba(0, 0, 0, 0.45)',
 };
 
 /**

@@ -8,7 +8,7 @@ import {
     SECONDARY_COLOR,
     HIGHLIGHT_COLOR,
     TEXT_PRIMARY,
-} from './theme';
+} from './theme.ts';
 
 export interface ThemePreset {
     id: string;
@@ -41,126 +41,163 @@ export const BUILTIN_THEMES: ThemePreset[] = [
         css: '',
     },
     {
-        id: 'midnight-cyan',
-        name: 'Midnight Neon',
-        description: 'Deep space obsidian with electric cyan accents and sleek slate borders.',
-        author: 'Community',
+        id: 'cvd-protanopia',
+        name: 'Protanopia',
+        description: 'For red-blind vision (protanopia): blue marks OK and active, orange marks errors and yellow marks warnings, so no state relies on red. Built on the Okabe-Ito palette.',
+        author: 'Lucy Robotics Team',
         version: '1.0.0',
         colors: {
-            main: '#0B0F19',
-            secondary: '#1E293B',
-            highlight: '#00D8FF',
-            text: '#F1F5F9',
+            main: '#11151B',
+            secondary: '#2A3A4D',
+            highlight: '#3DA5FF',
+            text: '#F3F4F6',
         },
         css: `
 :root {
-  --color-main: #0B0F19;
-  --color-main-elevated: #131B2E;
-  --color-main-deep: #06080E;
-  --color-secondary: #1E293B;
-  --color-secondary-border: #1E293B;
-  --color-secondary-subtle: rgba(30, 41, 59, 0.45);
-  --color-highlight: #00D8FF;
-  --color-highlight-light: #4DE4FF;
-  --color-highlight-glow: rgba(0, 216, 255, 0.25);
-  --color-highlight-glow-strong: rgba(0, 216, 255, 0.55);
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-grid-dot: rgba(0, 216, 255, 0.2);
-  --color-grid-line: rgba(148, 163, 184, 0.1);
-  --ui-accent-green: #00D8FF;
+  --color-text-secondary: #A3AEBB;
+  --color-text-muted: #8E99A5;
+  --color-text-on-highlight: #0B0E12;
+  --ui-text-on-accent: #0B0E12;
+  --color-text-on-error: #0B0E12;
+  --color-status-active: #3DA5FF;
+  --color-status-error: #DD7E33;
+  --color-status-warning: #F0E442;
+  --color-status-info: #E6E6E6;
+  --ui-switch-disabled-bg: #2A3A4D;
 }
         `.trim(),
     },
     {
-        id: 'solar-tactical',
-        name: 'Solar Tactical',
-        description: 'High-contrast military aerospace theme with amber telemetry and charred carbon surfaces.',
-        author: 'Community',
+        id: 'cvd-deuteranopia',
+        name: 'Deuteranopia',
+        description: 'For green-blind vision (deuteranopia): sky blue marks OK and active, coral red marks errors and yellow marks warnings, so no state relies on green versus red. Built on the Okabe-Ito palette.',
+        author: 'Lucy Robotics Team',
         version: '1.0.0',
         colors: {
-            main: '#121212',
-            secondary: '#3E3224',
-            highlight: '#FFB300',
-            text: '#FFF8E7',
+            main: '#14161A',
+            secondary: '#33404F',
+            highlight: '#56B4E9',
+            text: '#F2F2F2',
         },
         css: `
 :root {
-  --color-main: #121212;
-  --color-main-elevated: #1B1A17;
-  --color-main-deep: #0A0A09;
-  --color-secondary: #3E3224;
-  --color-secondary-border: #3E3224;
-  --color-secondary-subtle: rgba(62, 50, 36, 0.45);
-  --color-highlight: #FFB300;
-  --color-highlight-light: #FFC94D;
-  --color-highlight-glow: rgba(255, 179, 0, 0.25);
-  --color-highlight-glow-strong: rgba(255, 179, 0, 0.55);
-  --color-text-primary: #FFF8E7;
-  --color-text-secondary: #A89B88;
-  --ui-accent-green: #FFB300;
+  --color-text-secondary: #A7AFBA;
+  --color-text-muted: #929AA3;
+  --color-text-on-highlight: #0B0E12;
+  --ui-text-on-accent: #0B0E12;
+  --color-text-on-error: #0B0E12;
+  --color-status-active: #56B4E9;
+  --color-status-error: #E07D70;
+  --color-status-warning: #F0E442;
+  --color-status-info: #E6E6E6;
+  --ui-switch-disabled-bg: #33404F;
 }
         `.trim(),
     },
     {
-        id: 'synthwave-crimson',
-        name: 'Synthwave Void',
-        description: 'Vibrant neon hot-pink highlighting on deep violet-black shadows with rose borders.',
-        author: 'Community',
+        id: 'cvd-tritanopia',
+        name: 'Tritanopia',
+        description: 'For blue-yellow colour blindness (tritanopia): teal marks OK and active, rose red marks errors and pale pink marks warnings, kept apart by lightness.',
+        author: 'Lucy Robotics Team',
         version: '1.0.0',
         colors: {
-            main: '#13091B',
-            secondary: '#391945',
-            highlight: '#FF2A6D',
-            text: '#FCEEF5',
+            main: '#161214',
+            secondary: '#3E2C33',
+            highlight: '#2EC4B6',
+            text: '#F7F0F2',
         },
         css: `
 :root {
-  --color-main: #13091B;
-  --color-main-elevated: #1D0E29;
-  --color-main-deep: #09030E;
-  --color-secondary: #391945;
-  --color-secondary-border: #391945;
-  --color-secondary-subtle: rgba(57, 25, 69, 0.45);
-  --color-highlight: #FF2A6D;
-  --color-highlight-light: #FF5E91;
-  --color-highlight-glow: rgba(255, 42, 109, 0.25);
-  --color-highlight-glow-strong: rgba(255, 42, 109, 0.55);
-  --color-text-primary: #FCEEF5;
-  --color-text-secondary: #A8869E;
-  --ui-accent-green: #FF2A6D;
+  --color-text-secondary: #B4A8AD;
+  --color-text-muted: #9E9498;
+  --color-text-on-highlight: #0B0E12;
+  --ui-text-on-accent: #0B0E12;
+  --color-text-on-error: #0B0E12;
+  --color-status-active: #2EC4B6;
+  --color-status-error: #FF5B79;
+  --color-status-warning: #FFB3C1;
+  --color-status-info: #D9D9D9;
+  --ui-switch-disabled-bg: #3E2C33;
 }
         `.trim(),
     },
     {
-        id: 'matrix-terminal',
-        name: 'Matrix Core',
-        description: 'Pure CRT terminal aesthetic: pitch black background, matrix phosphor green and deep green framing.',
-        author: 'Community',
+        id: 'cvd-achromatopsia',
+        name: 'Monochrome',
+        description: 'For achromatopsia: pure grayscale on black. White marks OK, light grey info, mid grey warnings and dark grey errors, about 15 L* apart; labels and icons carry the rest.',
+        author: 'Lucy Robotics Team',
         version: '1.0.0',
         colors: {
-            main: '#050D08',
-            secondary: '#16301D',
-            highlight: '#00FF41',
-            text: '#D4FAD9',
+            main: '#000000',
+            secondary: '#3A3A3A',
+            highlight: '#FFFFFF',
+            text: '#D6D6D6',
         },
         css: `
 :root {
-  --color-main: #050D08;
-  --color-main-elevated: #0C1A11;
-  --color-main-deep: #020603;
-  --color-secondary: #16301D;
-  --color-secondary-border: #16301D;
-  --color-secondary-subtle: rgba(22, 48, 29, 0.45);
-  --color-highlight: #00FF41;
-  --color-highlight-light: #4DFF7B;
-  --color-highlight-glow: rgba(0, 255, 65, 0.3);
-  --color-highlight-glow-strong: rgba(0, 255, 65, 0.65);
-  --color-text-primary: #D4FAD9;
-  --color-text-secondary: #74A07B;
-  --color-grid-dot: rgba(0, 255, 65, 0.24);
-  --color-grid-line: rgba(0, 255, 65, 0.1);
-  --ui-accent-green: #00FF41;
+  --color-text-secondary: #A8A8A8;
+  --color-text-muted: #959595;
+  --color-text-on-highlight: #000000;
+  --ui-text-on-accent: #000000;
+  --color-text-on-error: #000000;
+  --color-status-active: #FFFFFF;
+  --color-status-error: #838383;
+  --color-status-warning: #AAAAAA;
+  --color-status-info: #D3D3D3;
+  --ui-switch-disabled-bg: #3A3A3A;
+}
+        `.trim(),
+    },
+    {
+        id: 'lucy-light',
+        name: 'Lucy Light',
+        description: 'Light theme: Lucy parchment (#F7F1E5) canvas with white cards, rich black text, navy framing and secondary text, neon Lucy green fills (#00FF41, black text) for active states and steel blue for links and hover. All text meets WCAG AA (4.5:1); control frames meet 3:1.',
+        author: 'Lucy Robotics Team',
+        version: '1.0.0',
+        colors: {
+            main: TEXT_PRIMARY,
+            secondary: '#6D8DB0',
+            highlight: '#006C2E',
+            text: MAIN_COLOR,
+        },
+        css: `
+:root {
+  --color-surface-1: #FFFFFF;
+  --color-main-surface: #FFFFFF;
+  --color-surface-2: #FFFFFF;
+  --color-main-elevated: #FFFFFF;
+  --color-main-deep: #FFFFFF;
+  --color-surface-3: #F2EBDD;
+  --color-text-secondary: #2B3E50;
+  --color-text-muted: #4B617A;
+  --color-text-on-highlight: #141414;
+  --ui-text-on-accent: #141414;
+  --color-text-on-error: #141414;
+  --color-status-active: #006C2E;
+  --color-status-error: #B42424;
+  --color-status-warning: #895200;
+  --color-status-info: #00629E;
+  --color-highlight-fill: #00FF41;
+  --color-highlight-fill-hover: #00E03A;
+  --color-error-fill: #FF4343;
+  --color-warning-fill: #FFAA00;
+  --color-highlight-glow: rgba(0, 255, 65, 0.35);
+  --color-highlight-glow-strong: rgba(0, 255, 65, 0.6);
+  --color-highlight-glow-subtle: rgba(0, 255, 65, 0.18);
+  --status-led-glow: 0 0 6px currentColor;
+  --color-accent-2: #2F5D84;
+  --color-accent-2-soft: rgba(47, 93, 132, 0.10);
+  --color-highlight-soft: rgba(0, 255, 65, 0.14);
+  --color-active-fill: rgba(0, 255, 65, 0.18);
+  --color-header-divider: #6D8DB0;
+  --color-status-tint: 10%;
+  --color-grid-dot: rgba(109, 141, 176, 0.35);
+  --color-grid-line: rgba(109, 141, 176, 0.16);
+  --ui-switch-disabled-bg: #C9D5E2;
+  --shadow-1: 0 2px 8px rgba(43, 62, 80, 0.10);
+  --shadow-2: 0 12px 32px rgba(43, 62, 80, 0.16);
+  --shadow-modal: 0 16px 40px rgba(43, 62, 80, 0.18);
+  --shadow-toolbar: 0 -8px 24px rgba(43, 62, 80, 0.12);
 }
         `.trim(),
     },

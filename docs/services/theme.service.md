@@ -95,7 +95,7 @@ unsubscribe();
 
 | Method | Return Type | Description |
 |---|---|---|
-| `getActiveThemeId()` | `string` | Returns active theme identifier (e.g. `'default'`, `'midnight-cyan'`, `'custom'`). |
+| `getActiveThemeId()` | `string` | Returns active theme identifier (e.g. `'default'`, `'cvd-deuteranopia'`, `'custom'`). |
 | `isCustomThemeEnabled()` | `boolean` | Returns `true` if custom styling is toggled on (`true` by default). |
 | `getCustomCss()` | `string` | Returns the raw custom CSS string stored in `localStorage`. |
 | `getThemeUrl()` | `string` | Returns the last successfully fetched theme URL. |

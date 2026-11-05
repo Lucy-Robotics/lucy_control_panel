@@ -23,6 +23,13 @@ Technical reference for the Lucy Control Panel frontend application.
 | [ThemeService](./services/theme.service.md) | Runtime CSS theme engine, preset switcher, and DOM injection |
 | [CssSecurityService](./services/cssSecurity.service.md) | Static CSS security scanner, SSRF validator, and sanitization pipeline |
 
+### Theming & accessibility
+
+| Document | Description |
+|---|---|
+| [Theming guide](./THEMING.md) | 75-10-15 colour system, CSS variables, custom themes |
+| [Colour accessibility report](./color_accessibility.md) | WCAG contrast and colour-vision (CVD) verification of every preset, with method and references |
+
 ### [Components](./components/README.md)
 Shared UI components reference table.
 

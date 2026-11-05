@@ -11,13 +11,14 @@ export interface ThemeColors3D {
     accent: string;
     active: string;
     warning: string;
+    text: string;
     surface: string;
     border: string;
 }
 
 function readThemeColors(): ThemeColors3D {
     if (typeof document === 'undefined') {
-        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, warning: STATUS_WARNING, surface: MAIN_ELEVATED, border: SECONDARY_COLOR };
+        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, warning: STATUS_WARNING, text: TEXT_PRIMARY, surface: MAIN_ELEVATED, border: SECONDARY_COLOR };
     }
     const style = getComputedStyle(document.documentElement);
     const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
@@ -25,6 +26,7 @@ function readThemeColors(): ThemeColors3D {
         accent: read('--color-highlight', HIGHLIGHT_COLOR),
         active: read('--color-text-primary', TEXT_PRIMARY),
         warning: read('--color-status-warning', STATUS_WARNING),
+        text: read('--color-text-primary', TEXT_PRIMARY),
         surface: read('--color-main-elevated', MAIN_ELEVATED),
         border: read('--color-secondary', SECONDARY_COLOR),
     };

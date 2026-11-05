@@ -123,7 +123,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                <Text style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
                     Pick common brand colors below. Lucy uses a 75% - 10% - 15% color system to maintain high contrast.
                 </Text>
                 <Space>
@@ -131,7 +131,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                         size="small"
                         icon={<ReloadOutlined />}
                         onClick={handleReset}
-                        style={{ color: TEXT_PRIMARY }}
+                        style={{ color: 'var(--color-text-primary)' }}
                     >
                         Reset to Default Colors
                     </Button>
@@ -158,10 +158,10 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                         }}
                     >
                         <div>
-                            <div style={{ color: TEXT_PRIMARY, fontWeight: 'bold', fontSize: 12, fontFamily: fonts.title }}>
+                            <div style={{ color: 'var(--color-text-primary)', fontWeight: 'bold', fontSize: 12, fontFamily: fonts.title }}>
                                 {field.title}
                             </div>
-                            <div style={{ color: TEXT_SECONDARY, fontSize: 11 }}>
+                            <div style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>
                                 {field.subtitle}
                             </div>
                         </div>
@@ -252,8 +252,8 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
                     icon={<CheckOutlined />}
                     onClick={handleApply}
                     style={{
-                        backgroundColor: 'var(--color-highlight)',
-                        borderColor: 'var(--color-highlight)',
+                        backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                        borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                         color: 'var(--color-text-on-highlight)',
                         fontWeight: 'bold',
                         height: 36,

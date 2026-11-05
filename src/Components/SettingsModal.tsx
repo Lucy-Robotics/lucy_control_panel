@@ -171,8 +171,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             connectionStatus === 'connecting'
                         }
                         style={{
-                            backgroundColor: UI_ACCENT_GREEN,
-                            borderColor: UI_ACCENT_GREEN,
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: UI_TEXT_ON_ACCENT,
                         }}
                     >

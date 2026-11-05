@@ -20,9 +20,6 @@
 
 import {
     HIGHLIGHT_COLOR,
-    STATUS_ERROR,
-    STATUS_WARNING,
-    STATUS_INFO,
     SPACING_SCREEN_BORDER,
     rgba,
 } from './theme.ts';
@@ -44,9 +41,8 @@ export function uiAccentRgba(alpha: number): string {
 
 export const UI_ERROR_RGB = '255, 67, 67';
 
-/** @deprecated Use `rgba()` from `src/Constants/theme.ts` */
 export function uiErrorRgba(alpha: number): string {
-    return rgba(STATUS_ERROR, alpha);
+    return `color-mix(in srgb, var(--color-status-error) ${Math.round(alpha * 100)}%, transparent)`;
 }
 
 // 75% Dominant Main Surface (resolved dynamically via CSS custom properties)
@@ -67,10 +63,10 @@ export const UI_TEXT_SECONDARY_MUTED = 'var(--color-text-secondary)';
 export const UI_TEXT_SUBTLE = 'var(--color-text-muted, #52677F)';
 
 // Status & Semantic
-export const UI_ERROR = STATUS_ERROR;
-export const UI_WARNING = STATUS_WARNING;
-export const UI_ACCENT_BLUE = STATUS_INFO;
-export const UI_DECORATIVE_CORAL = STATUS_ERROR;
+export const UI_ERROR = 'var(--color-status-error)';
+export const UI_WARNING = 'var(--color-status-warning)';
+export const UI_ACCENT_BLUE = 'var(--color-status-info)';
+export const UI_DECORATIVE_CORAL = UI_ERROR;
 
 // Component surfaces (resolved dynamically via CSS custom properties)
 export const UI_LIST_ROW_BG = 'var(--color-surface-1)';
@@ -90,10 +86,10 @@ export const UI_SHADOW_ELEVATED = 'var(--shadow-2)';
 export const UI_COLOR_TRANSPARENT = 'transparent';
 
 export const UI_CANVAS_LIME = HIGHLIGHT_COLOR;
-export const UI_CANVAS_RED = STATUS_ERROR;
-export const UI_VIDEO_OVERLAY_CYAN = STATUS_INFO;
+export const UI_CANVAS_RED = UI_ERROR;
+export const UI_VIDEO_OVERLAY_CYAN = UI_ACCENT_BLUE;
 
-export const UI_AUTH_ALERT_SURFACE = 'rgba(255, 67, 67, 0.12)';
+export const UI_AUTH_ALERT_SURFACE = uiErrorRgba(0.12);
 
 // Ant Design Tag presets
 export const UI_TAG_ACTIVE_PRESET = 'green' as const;
@@ -126,8 +122,8 @@ export const UI_CARD_SURFACE_STYLE = {
  * Dynamic primary button style that adapts to the active theme.
  */
 export const UI_PRIMARY_GREEN_BUTTON_STYLE = {
-    backgroundColor: 'var(--color-highlight)',
-    borderColor: 'var(--color-highlight)',
+    backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+    borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
     color: 'var(--color-text-on-highlight)',
     fontWeight: 'bold',
 } as const;

@@ -8,10 +8,7 @@ import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import CryptoJS from 'crypto-js';
 import {
-    TEXT_SECONDARY,
-    STATUS_ERROR,
     fonts,
-    rgba,
 } from '../Constants/theme.ts';
 import { CustomTitle } from './CustomTitle.tsx';
 
@@ -93,7 +90,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         />
                     </div>
                     <Text style={{
-                        color: TEXT_SECONDARY,
+                        color: 'var(--color-text-secondary)',
                         fontFamily: fonts.mono,
                         fontSize: 12,
                         textTransform: 'uppercase',
@@ -109,8 +106,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         type="error"
                         style={{
                             marginBottom: 24,
-                            backgroundColor: rgba(STATUS_ERROR, 0.15),
-                            borderColor: STATUS_ERROR,
+                            backgroundColor: 'color-mix(in srgb, var(--color-status-error) 15%, transparent)',
+                            borderColor: 'var(--color-status-error)',
                             borderRadius: 0,
                         }}
                     />
@@ -157,8 +154,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                             block
                             style={{
                                 height: 48,
-                                backgroundColor: 'var(--color-highlight)',
-                                borderColor: 'var(--color-highlight)',
+                                backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                                 color: 'var(--color-text-on-highlight)',
                                 fontFamily: fonts.mono,
                                 fontSize: 16,
@@ -179,7 +176,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     padding: '12px',
                     '--fill': 'var(--color-main-deep)',
                 } as React.CSSProperties}>
-                    <Text style={{ color: TEXT_SECONDARY, fontFamily: fonts.mono, fontSize: 11, letterSpacing: '0.5px' }}>
+                    <Text style={{ color: 'var(--color-text-secondary)', fontFamily: fonts.mono, fontSize: 11, letterSpacing: '0.5px' }}>
                         Secure access to Lucy robot control system
                     </Text>
                 </div>

@@ -126,8 +126,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
                     icon={<ThunderboltOutlined />}
                     onClick={onRetake}
                     style={{
-                        backgroundColor: UI_ACCENT_GREEN,
-                        borderColor: UI_ACCENT_GREEN,
+                        backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                        borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                         color: UI_TEXT_ON_ACCENT,
                     }}
                 >
@@ -1082,8 +1082,8 @@ export const RobotControlPanel: React.FC = () => {
                         icon={<ThunderboltOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
-                            backgroundColor: UI_ACCENT_GREEN,
-                            borderColor: UI_ACCENT_GREEN,
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: UI_TEXT_ON_ACCENT,
                         }}
                     >

@@ -25,8 +25,10 @@ import {
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     fonts,
+    alpha,
     deriveSurfaceTokens,
     isHexColor,
+    isLightColor,
 } from '../Constants/theme';
 
 interface ThemeContextType {
@@ -84,14 +86,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const text = colors.text || TEXT_PRIMARY;
 
         const derived = deriveSurfaceTokens({ main, secondary, highlight, text });
-        const hexOr = (name: string, fallback: string) => (isHexColor(derived[name]) ? derived[name] : fallback);
+        // Presets may pin tokens the derivation would otherwise produce; read what is actually applied.
+        const rootStyle = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement);
+        const cssVar = (name: string, fallback: string) => {
+            const value = rootStyle?.getPropertyValue(name).trim() ?? '';
+            return isHexColor(value) ? value : fallback;
+        };
+        const hexOr = (name: string, fallback: string) => cssVar(name, isHexColor(derived[name]) ? derived[name] : fallback);
         const surface1 = hexOr('--color-surface-1', main);
         const surface2 = hexOr('--color-surface-2', main);
         const line = isHexColor(secondary) ? derived['--color-line'] : secondary;
+        // Controls need a 3:1 frame on light canvases (WCAG 1.4.11); dark themes keep the soft line.
+        const controlLine = isLightColor(main) ? secondary : line;
         const highlightSoft = isHexColor(highlight) ? derived['--color-highlight-soft'] : 'transparent';
+        const textSecondary = cssVar('--color-text-secondary', TEXT_SECONDARY);
+        const link = cssVar('--color-accent-2', highlight);
 
         return {
-            algorithm: antdThemeEngine.darkAlgorithm,
+            algorithm: isLightColor(main) ? antdThemeEngine.defaultAlgorithm : antdThemeEngine.darkAlgorithm,
             token: {
                 colorPrimary: highlight,
                 colorBgBase: main,
@@ -102,9 +114,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 colorBorderSecondary: line,
                 colorSplit: line,
                 colorText: text,
-                colorTextSecondary: TEXT_SECONDARY,
-                colorLink: highlight,
-                colorLinkHover: highlight,
+                colorTextSecondary: textSecondary,
+                // AntD's translucent-black helper text is too faint on tinted light surfaces.
+                ...(isLightColor(main) && {
+                    colorTextTertiary: cssVar('--color-text-muted', textSecondary),
+                    colorTextDescription: cssVar('--color-text-muted', textSecondary),
+                    colorTextPlaceholder: cssVar('--color-text-muted', textSecondary),
+                }),
+                colorLink: link,
+                colorLinkHover: link,
                 fontFamily: fonts.mono,
                 borderRadius: 0,
             },
@@ -121,25 +139,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 },
                 Button: {
                     colorBgContainer: 'transparent',
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Input: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 InputNumber: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
                 Select: {
                     colorBgContainer: surface2,
-                    colorBorder: line,
+                    colorBorder: controlLine,
                     colorText: text,
                     borderRadius: 0,
                 },
@@ -168,7 +186,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     dotActiveBorderColor: highlight,
                 },
                 Switch: {
-                    colorPrimary: highlight,
+                    colorPrimary: cssVar('--color-highlight-fill', highlight),
+                    colorPrimaryHover: cssVar('--color-highlight-fill-hover', highlight),
+                    // AntD's translucent-black off track turns muddy over tinted light surfaces; use the frame hue.
+                    ...(isLightColor(main) && {
+                        colorTextQuaternary: alpha(secondary, 0.55),
+                        colorTextTertiary: secondary,
+                    }),
                 },
                 Tag: {
                     borderRadiusSM: 0,

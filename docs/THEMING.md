@@ -157,9 +157,16 @@ All components throughout the application read from these CSS variables:
 
 The app comes out of the box with curated presets:
 1. **Lucy Cybernetic (Default)**: Official 75-10-15 theme (`#141414` / `#2B3E50` / `#00FF41` / `#F7F1E5`).
-2. **Midnight Neon**: Electric cyan and obsidian palette (`#0B0F19` / `#1E293B` / `#00D8FF` / `#F1F5F9`).
-3. **Solar Tactical**: High-contrast aerospace carbon & amber telemetry (`#121212` / `#3E3224` / `#FFB300` / `#FFF8E7`).
-4. **Synthwave Void**: Hot pink and deep violet-black shadows (`#13091B` / `#391945` / `#FF2A6D` / `#FCEEF5`).
-5. **Matrix Core**: Pitch black CRT green terminal (`#050D08` / `#16301D` / `#00FF41` / `#D4FAD9`).
+2. **Protanopia**: Red-blind safe. Blue for OK/active, orange for errors, yellow for warnings (`#11151B` / `#2A3A4D` / `#3DA5FF` / `#F3F4F6`).
+3. **Deuteranopia**: Green-blind safe. Sky blue for OK/active, coral red for errors, yellow for warnings (`#14161A` / `#33404F` / `#56B4E9` / `#F2F2F2`).
+4. **Tritanopia**: Blue-yellow safe. Teal for OK/active, rose red for errors, pale pink for warnings (`#161214` / `#3E2C33` / `#2EC4B6` / `#F7F0F2`).
+5. **Monochrome**: Achromatopsia. Pure grayscale on black; states form a lightness ladder (white OK → light grey info → mid grey warning → dark grey error), with label and icon carrying the meaning (`#000000` / `#3A3A3A` / `#FFFFFF` / `#D6D6D6`).
+6. **Lucy Light**: Lucy parchment canvas with white cards and modals, rich black text, navy framing and secondary text, neon Lucy green fills with black text for active states, dark green text, and steel blue for links and hover. All text meets WCAG AA 4.5:1, including on tinted fills; control frames meet 3:1 (`#F7F1E5` / `#6D8DB0` / `#006C2E` / `#141414`).
+
+The colour-vision presets also recolour the status tokens (`--color-status-active`, `--color-status-error`, `--color-status-warning`, `--color-status-info`), which drive the header status LEDs, ON/OFF switches, joint markers and diagnostics. They also set `--color-text-on-error`, the text colour used on error-filled controls.
+
+The colour-vision presets are checked against simulated protanopia, deuteranopia, tritanopia and achromatopsia (Machado et al. 2009, CIEDE2000), and every preset is checked against WCAG 2.2 contrast. `npm test` runs these checks.
+
+A theme counts as light when `--color-main` is a hex colour with a relative luminance above 0.5. Light themes switch Ant Design to its light algorithm, `--color-main-deep` equals the canvas rather than a lighter tone, the derived surface tiers step darker and more gently (2/4/7% instead of 3/6/10%), `--color-line` uses a 50% tint of the secondary colour, and the `--color-highlight-light` hover tone darkens by 8% instead of lightening. Controls are framed with `--color-line-strong`, containers with `--color-line`. Light themes can also set optional tokens that add colour; each falls back to the dark-theme look when unset: `--color-accent-2` and `--color-accent-2-soft` (links and hover), `--color-header-fill` (card and modal header fill), `--color-header-divider` (1 px line under those headers), `--color-active-fill` (active tab) and `--color-status-tint` (percentage tint behind status boxes, alerts and the robot arm button), `--color-highlight-fill` / `--color-highlight-fill-hover` / `--color-error-fill` / `--color-warning-fill` (vivid fills and LEDs with dark text, separate from the text-safe `--color-highlight`) and `--status-led-glow` (halo around header LEDs). Light themes also get `data-tone="light"` on `<html>`. A preset can also pin the surface tiers (`--color-surface-1/2/3`) instead of deriving them from `--color-main`; Lucy Light does this to put white cards on a parchment canvas. Set `--shadow-1`, `--shadow-2`, `--shadow-modal` and `--shadow-toolbar` to soften the shadows.
 
 To switch between presets, click **"Themes"** in the header bar and click on any preset card!

@@ -5,7 +5,6 @@
 
 import React from 'react';
 import {
-    STATUS_ERROR,
     fonts,
 } from '../Constants/theme.ts';
 
@@ -34,8 +33,8 @@ export const StreamSwitch: React.FC<StreamSwitchProps> = ({ labelA = 'OFF', labe
                 fontSize: 10,
                 fontFamily: fonts.mono,
                 fontWeight: 'bold',
-                backgroundColor: !value ? STATUS_ERROR : 'transparent',
-                color: !value ? '#ffffff' : 'var(--color-text-secondary)',
+                backgroundColor: !value ? 'var(--color-error-fill, var(--color-status-error))' : 'transparent',
+                color: !value ? 'var(--color-text-on-error, #ffffff)' : 'var(--color-text-secondary)',
                 border: 'none',
                 cursor: 'pointer',
             }}
@@ -51,7 +50,7 @@ export const StreamSwitch: React.FC<StreamSwitchProps> = ({ labelA = 'OFF', labe
                 fontSize: 10,
                 fontFamily: fonts.mono,
                 fontWeight: 'bold',
-                backgroundColor: value ? 'var(--color-highlight)' : 'transparent',
+                backgroundColor: value ? 'var(--color-highlight-fill, var(--color-highlight))' : 'transparent',
                 color: value ? 'var(--color-text-on-highlight)' : 'var(--color-text-secondary)',
                 boxShadow: 'none',
                 border: 'none',

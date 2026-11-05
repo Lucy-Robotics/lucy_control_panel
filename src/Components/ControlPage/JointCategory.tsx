@@ -11,7 +11,6 @@ import { JointControl } from './JointControl.tsx';
 import { CustomTitle } from '../CustomTitle.tsx';
 import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from './ReadOnlyHint.tsx';
 import {
-    TEXT_PRIMARY,
 } from '../../Constants/theme.ts';
 
 interface JointCategoryProps {
@@ -94,7 +93,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         style={{
                             backgroundColor: 'transparent',
                             borderColor: 'var(--color-line)',
-                            color: TEXT_PRIMARY,
+                            color: 'var(--color-text-primary)',
                         }}
                         title={disabled ? undefined : `Reset all ${category} joints to their rest value`}
                     >

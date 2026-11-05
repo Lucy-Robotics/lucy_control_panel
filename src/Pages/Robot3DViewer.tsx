@@ -14,6 +14,8 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { RobotGhost } from '../Components/RobotGhost';
+import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
@@ -78,7 +80,6 @@ const SETTINGS_BOX_WIDTH = 165;
 /** Lifts the view cube clear of the page navbar, which overlaps the docked view. */
 const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
 const FOCUS_COLOR = 'var(--color-highlight)';
-const CLICK_DELAY_MS = 250;
 const MOUSE_HINTS = [
     'L-drag · rotate',
     'scroll · zoom',
@@ -107,10 +108,6 @@ const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     target: [...DEFAULT_CAMERA.target],
 };
 let framedRobot: URDFRobot | null = null;
-
-const isEditableTarget = (target: EventTarget | null): boolean =>
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -492,6 +489,7 @@ export interface Robot3DViewerProps {
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -501,6 +499,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     onJointValueChange,
     teleopTarget = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -566,37 +565,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
-    const pendingClickTimerRef = useRef<number | null>(null);
-
-    const cancelPendingClick = useCallback(() => {
-        if (pendingClickTimerRef.current !== null) {
-            window.clearTimeout(pendingClickTimerRef.current);
-            pendingClickTimerRef.current = null;
-        }
-    }, []);
-
-    // Single clicks wait out the double-click window, so a double-click
-    // focuses without briefly opening the gizmo first.
-    const scheduleClick = useCallback((action: () => void) => {
-        cancelPendingClick();
-        pendingClickTimerRef.current = window.setTimeout(() => {
-            pendingClickTimerRef.current = null;
-            action();
-        }, CLICK_DELAY_MS);
-    }, [cancelPendingClick]);
 
     const handlePartClick = useCallback((name: string) => {
         if (!effectiveControlOn) return;
-        scheduleClick(() => setGizmoPartName(prev => (prev === name ? null : name)));
-    }, [effectiveControlOn, scheduleClick]);
+        setGizmoPartName(prev => (prev === name ? null : name));
+    }, [effectiveControlOn]);
 
     useEffect(() => {
         if (effectiveControlOn) return;
-        cancelPendingClick();
         setGizmoPartName(null);
-    }, [effectiveControlOn, cancelPendingClick]);
-
-    useEffect(() => cancelPendingClick, [cancelPendingClick]);
+    }, [effectiveControlOn]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -660,16 +638,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     };
 
     const handlePartDoubleClick = (partName: string) => {
-        cancelPendingClick();
         setSelectedPartName(prev => (prev === partName ? null : partName));
     };
 
     const handlePointerMissed = (e: MouseEvent) => {
         if (e.type === 'dblclick') {
-            cancelPendingClick();
             setSelectedPartName(null);
         } else if (e.type === 'click' && e.detail <= 1) {
-            scheduleClick(() => setGizmoPartName(null));
+            setGizmoPartName(null);
         }
     };
 
@@ -760,7 +736,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
-                {robot && <EndEffectorMarkers robot={robot} ghost={targetPose ? ghost : null} colors={themeColors} />}
+                {robot && (
+                    <EndEffectorMarkers
+                        robot={robot}
+                        ghost={targetPose ? ghost : null}
+                        target={teleopTarget}
+                        phoneOrientation={phoneOrientation}
+                        colors={themeColors}
+                    />
+                )}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}

@@ -20,6 +20,7 @@ import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
 import { useGhostVisible } from '../hooks/useGhostVisible';
+import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -488,6 +489,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const targetPose = useTargetPose(isConnected);
     const isGhostVisible = useGhostVisible();
+    const isEndEffectorVisible = useEndEffectorVisible();
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -708,7 +710,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
-                {robot && (
+                {robot && isEndEffectorVisible && (
                     <EndEffectorMarkers
                         robot={robot}
                         ghost={targetPose ? ghost : null}
@@ -764,7 +766,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 </div>
             </CollapsibleOverlay>
 
-            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
+            {endEffector && isEndEffectorVisible && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

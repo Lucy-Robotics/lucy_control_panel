@@ -14,7 +14,9 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { RobotGhost } from '../Components/RobotGhost';
 import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { ViewCube } from '../Components/ViewCube';
@@ -98,10 +100,6 @@ const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     target: [...DEFAULT_CAMERA.target],
 };
 let framedRobot: URDFRobot | null = null;
-
-const isEditableTarget = (target: EventTarget | null): boolean =>
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -578,49 +576,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
 
@@ -632,11 +587,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     useEffect(() => {
         if (effectiveControlOn) return;
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
-    }, [effectiveControlOn, cancelPendingClick]);
-
-    useEffect(() => cancelPendingClick, [cancelPendingClick]);
+    }, [effectiveControlOn]);
 
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
@@ -802,12 +753,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} phoneOrientation={phoneOrientation} colors={themeColors} />}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
+                {robot && (
+                    <EndEffectorMarkers
+                        robot={robot}
+                        ghost={targetPose ? ghost : null}
+                        target={teleopTarget}
+                        phoneOrientation={phoneOrientation}
+                        colors={themeColors}
+                    />
+                )}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}

@@ -1114,10 +1114,23 @@ h6 {
   filter: brightness(1.3);
 }
 
+/*
+ * An SVG triangle rather than a ▸ character: the character comes from a
+ * fallback font that draws it below the middle of its box, so it never lined
+ * up with the title. The SVG is symmetric, so centring the box centres it.
+ */
 .viewer-overlay-box .collapsible-chevron {
-  display: inline-block;
+  flex: none;
+  width: 0.75em;
+  height: 0.75em;
   color: var(--color-highlight);
   transition: transform 0.25s ease;
+}
+
+.viewer-overlay-box .collapsible-chevron svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .viewer-overlay-box.expanded .collapsible-chevron {

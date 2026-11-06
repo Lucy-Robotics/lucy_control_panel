@@ -193,7 +193,9 @@ const CollapsibleOverlay: React.FC<{
                 }}
                 title={expanded ? `Collapse ${title.toLowerCase()}` : `Expand ${title.toLowerCase()}`}
             >
-                <span className="collapsible-chevron">▸</span>
+                <span className="collapsible-chevron" aria-hidden>
+                    <svg viewBox="0 0 10 10"><path d="M1.5 0L10 5L1.5 10Z" fill="currentColor" /></svg>
+                </span>
                 <span className="collapsible-title">{title}</span>
             </div>
             <div className="collapsible-body">

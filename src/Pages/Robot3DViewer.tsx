@@ -482,11 +482,16 @@ export interface Robot3DViewerProps {
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    /** Controls pinned to the top-left / top-right corners of the view. */
+    hudLeft?: React.ReactNode;
+    hudRight?: React.ReactNode;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     isControlOn: isControlOnProp,
     joints,
+    hudLeft,
+    hudRight,
     onJointValueChange,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
@@ -720,6 +725,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
+            {(hudLeft || hudRight) && (
+                <div className="viewer-hud">
+                    <div className="viewer-hud-slot">{hudLeft}</div>
+                    <div className="viewer-hud-slot">{hudRight}</div>
+                </div>
+            )}
             <Canvas
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
                 onPointerMissed={handlePointerMissed}

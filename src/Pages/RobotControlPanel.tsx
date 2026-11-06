@@ -80,12 +80,14 @@ import { CONTROL_OFF_HINT, ReadOnlyTag } from '../Components/ControlPage/ReadOnl
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
-import { GamepadOutlined } from '../Components/ControlPage/GamepadIcon.tsx';
+import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
+import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
+import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
-import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import type { ControlArm, RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -118,12 +120,12 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         onClose={onClose}
         centered
         initialSize={{ w: 560, h: 280 }}
-        header={<GamepadOutlined style={{ color: UI_WARNING }} />}
+        header={<JoystickOutlined style={{ color: UI_WARNING }} />}
         footer={
             <>
                 <Button
                     type="primary"
-                    icon={<GamepadOutlined />}
+                    icon={<JoystickOutlined />}
                     onClick={onRetake}
                     style={{
                         backgroundColor: UI_ACCENT_GREEN,
@@ -180,6 +182,7 @@ export const RobotControlPanel: React.FC = () => {
         activeHardwareLoading,
         activeHardwareError,
         refetchActiveHardware,
+        serverRobotPackage,
     } = useActiveHardwareRos();
 
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
@@ -708,14 +711,30 @@ export const RobotControlPanel: React.FC = () => {
     const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
     const hasSensors = sensorSources.length > 0;
 
+    const controlArm: ControlArm = {
+        isOn: isSending,
+        onToggle: () => handleControlRobotToggle(!isSending),
+        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
+    };
+
     const dockContent = (
         <Dock
             childrens={{
+                // With the 3D view docked, CONTROL and the robot sit on top of it instead of in the rail.
                 '3D_VIEW': (
                     <Robot3DViewer
                         isControlOn={isSending}
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
+                        hudLeft={serverRobotPackage
+                            ? (
+                                <RobotMenuButton
+                                    robotPackage={serverRobotPackage}
+                                    controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
+                                />
+                            )
+                            : null}
+                        hudRight={<ControlToggleButton {...controlArm} />}
                     />
                 ),
                 'STREAM': <StreamPlayer />,
@@ -741,11 +760,8 @@ export const RobotControlPanel: React.FC = () => {
         return dock.replace('_', ' ');
     };
 
-    const railArm = {
-        isOn: isSending,
-        onToggle: () => handleControlRobotToggle(!isSending),
-        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
-    };
+    // The rail only keeps CONTROL when the 3D view (which carries it) is not docked.
+    const railArm = isVisualizerDocked ? undefined : controlArm;
 
     const railGroups: RailGroup[] = [
         {
@@ -1073,12 +1089,12 @@ export const RobotControlPanel: React.FC = () => {
                 onClose={() => setShowConfirmTakeControlModal(false)}
                 centered
                 initialSize={{ w: 500, h: 300 }}
-                header={<GamepadOutlined style={{ color: UI_WARNING }} />}
+                header={<JoystickOutlined style={{ color: UI_WARNING }} />}
                 footer={[
                     <Button
                         key="take"
                         type="primary"
-                        icon={<GamepadOutlined />}
+                        icon={<JoystickOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
                             backgroundColor: UI_ACCENT_GREEN,

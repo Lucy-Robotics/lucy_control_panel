@@ -26,7 +26,7 @@ export function effortHeat(load: number): number {
 
 export function effortColor(load: number): string {
     const heat = effortHeat(load);
-    return `hsl(${Math.round(60 * (1 - heat))}, 100%, ${Math.round(100 - 50 * heat)}%)`;
+    return `hsl(${Math.round(25 * (1 - heat))}, 100%, ${Math.round(100 - 50 * heat)}%)`;
 }
 
 export function loadsByJoint(state: DynamicJointState): Map<string, number> {

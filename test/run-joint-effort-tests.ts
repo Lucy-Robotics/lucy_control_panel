@@ -40,13 +40,13 @@ function arcSweepFollowsTheLoadSign() {
 }
 
 function colorGoesFromWhiteAtRestToRedUnderLoad() {
-    assert.equal(effortColor(0), 'hsl(60, 100%, 100%)');
+    assert.equal(effortColor(0), 'hsl(25, 100%, 100%)');
     assert.equal(effortColor(0.5), 'hsl(0, 100%, 50%)');
     assert.equal(effortColor(1), 'hsl(0, 100%, 50%)');
 }
 
 function aPressedMotorIsClearlyOffWhite() {
-    assert.equal(effortColor(PRESSED_ELBOW), 'hsl(37, 100%, 81%)');
+    assert.equal(effortColor(PRESSED_ELBOW), 'hsl(16, 100%, 81%)');
 }
 
 function heatIsFullAtHalfLoadInEitherDirection() {

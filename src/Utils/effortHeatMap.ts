@@ -24,9 +24,8 @@ float heatAtFragment() {
 }
 
 vec3 heatRamp(float heat) {
-    vec3 color = mix(vec3(1.0), vec3(1.0, 0.9, 0.1), smoothstep(0.0, 0.35, heat));
-    color = mix(color, vec3(1.0, 0.45, 0.0), smoothstep(0.35, 0.65, heat));
-    return mix(color, vec3(0.9, 0.0, 0.0), smoothstep(0.65, 1.0, heat));
+    vec3 color = mix(vec3(1.0), vec3(1.0, 0.55, 0.25), smoothstep(0.08, 0.55, heat));
+    return mix(color, vec3(0.85, 0.0, 0.0), smoothstep(0.55, 1.0, heat));
 }
 `;
 

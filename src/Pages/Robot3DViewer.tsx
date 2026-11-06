@@ -13,7 +13,8 @@ import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
-import { ViewCube, VIEW_CUBE_CLEARANCE_PX } from '../Components/ViewCube';
+import { ViewCube } from '../Components/ViewCube';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
@@ -140,12 +141,16 @@ const SwitchRow: React.FC<{
 /** Matches the `.collapsible-body` transition in index.css. */
 const COLLAPSE_DURATION_MS = 250;
 
+/** A CollapsibleOverlay is `narrow` only once it has finished closing. */
+const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
+
 const CollapsibleOverlay: React.FC<{
     title: string;
     style?: React.CSSProperties;
     gap?: number;
+    boxRef?: React.Ref<HTMLDivElement>;
     children: React.ReactNode;
-}> = ({ title, style, gap = 4, children }) => {
+}> = ({ title, style, gap = 4, boxRef, children }) => {
     const [expanded, setExpanded] = useState(false);
     // Shrinking to the title's width while the body still fades out squeezes its
     // content into no width, so the panel only narrows once it has closed.
@@ -166,6 +171,7 @@ const CollapsibleOverlay: React.FC<{
 
     return (
         <div
+            ref={boxRef}
             className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}${narrow ? ' narrow' : ''}`}
             style={{ ...OVERLAY_BOX, ...style }}
             onClick={expanded ? undefined : toggle}
@@ -506,6 +512,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
+    // Only the collapsed height counts, so the cube stays put when the panel opens over it.
+    const [settingsRef, settingsHeight] = useMeasuredHeight<HTMLDivElement>(isFullyCollapsed);
 
     const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
         setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction, instant }));
@@ -793,10 +801,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <ProjectionSync controlsRef={controlsRef} />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
-                {!isMobile && (
+                {/* Sits above the collapsed view settings, which cover it when they open. */}
+                {!isMobile && settingsHeight > 0 && (
                     <ViewCube
                         colors={themeColors}
                         onSelectView={handleSelectView}
+                        centerRight={OVERLAY_MARGIN_PX + SETTINGS_BOX_WIDTH / 2}
+                        bottomInset={OVERLAY_MARGIN_PX + settingsHeight + VIEW_CUBE_GAP_PX}
                     />
                 )}
             </Canvas>
@@ -820,15 +831,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
             )}
 
-            {/* Settings — bottom-right, left of the view cube (hidden on mobile) */}
+            {/* Settings — bottom-right, under the view cube */}
             <CollapsibleOverlay
                 title="VIEW SETTINGS"
-                style={{
-                    left: 'auto',
-                    right: isMobile ? OVERLAY_MARGIN_PX : VIEW_CUBE_CLEARANCE_PX + VIEW_CUBE_GAP_PX,
-                    width: SETTINGS_BOX_WIDTH,
-                }}
+                style={{ left: 'auto', right: OVERLAY_MARGIN_PX, width: SETTINGS_BOX_WIDTH }}
                 gap={6}
+                boxRef={settingsRef}
             >
                 {/* Part selector & transparency of unselected parts */}
                 {availableParts.length > 0 && (

@@ -12,22 +12,23 @@ export function temperaturesByJoint(state: DynamicJointState): Map<string, numbe
     return new Map(measured);
 }
 
-export function createTemperatureAverage(windowMs = TEMPERATURE_WINDOW_MS) {
+export function createTemperatureMedian(windowMs = TEMPERATURE_WINDOW_MS) {
     const samples = new Map<string, { atMs: number; celsius: number }[]>();
     const firstSeenMs = new Map<string, number>();
 
     return (readings: ReadonlyMap<string, number>, nowMs: number): Map<string, number> => {
-        const averages = new Map<string, number>();
+        const medians = new Map<string, number>();
         readings.forEach((celsius, joint) => {
             if (!firstSeenMs.has(joint)) firstSeenMs.set(joint, nowMs);
             const recent = (samples.get(joint) ?? []).filter((sample) => nowMs - sample.atMs < windowMs);
             recent.push({ atMs: nowMs, celsius });
             samples.set(joint, recent);
             if (nowMs - firstSeenMs.get(joint)! >= windowMs) {
-                averages.set(joint, recent.reduce((sum, sample) => sum + sample.celsius, 0) / recent.length);
+                const sorted = recent.map((sample) => sample.celsius).sort((a, b) => a - b);
+                medians.set(joint, sorted[Math.floor(sorted.length / 2)]);
             }
         });
-        return averages;
+        return medians;
     };
 }
 

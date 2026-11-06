@@ -4,7 +4,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { createTemperatureAverage, formatTemperature, temperaturesByJoint } from '../src/Utils/jointTemperature.utils.ts';
+import { createTemperatureMedian, formatTemperature, temperaturesByJoint } from '../src/Utils/jointTemperature.utils.ts';
 
 function temperatureIsFoundWhereverTheInterfaceSits() {
     const temperatures = temperaturesByJoint({
@@ -47,29 +47,29 @@ function temperatureIsShownInWholeDegrees() {
 
 const elbow = (celsius: number) => new Map([['elbow', celsius]]);
 
-function feed(average: ReturnType<typeof createTemperatureAverage>, readings: number[], stepMs: number) {
+function feed(median: ReturnType<typeof createTemperatureMedian>, readings: number[], stepMs: number) {
     let result = new Map<string, number>();
-    readings.forEach((celsius, i) => { result = average(elbow(celsius), i * stepMs); });
+    readings.forEach((celsius, i) => { result = median(elbow(celsius), i * stepMs); });
     return result;
 }
 
 function noTemperatureIsReportedBeforeAFullWindow() {
-    assert.equal(feed(createTemperatureAverage(3000), [55, 55, 55], 1000).size, 0);
+    assert.equal(feed(createTemperatureMedian(3000), [55, 55, 55], 1000).size, 0);
 }
 
-function theTemperatureIsTheAverageOfTheWindow() {
-    const result = feed(createTemperatureAverage(3000), [30, 30, 40, 50, 60], 1000);
+function theTemperatureIsTheMedianOfTheWindow() {
+    const result = feed(createTemperatureMedian(3000), [30, 30, 40, 50, 60], 1000);
     assert.equal(result.get('elbow'), 50);
 }
 
-function oneFalseTickDoesNotReachTheLimit() {
-    const readings = Array.from({ length: 300 }, (_, i) => (i === 299 ? 90 : 38));
-    assert.ok(feed(createTemperatureAverage(3000), readings, 10.1).get('elbow')! < 50);
+function aFalseReadingHeldHalfASecondIsIgnored() {
+    const readings = Array.from({ length: 300 }, (_, i) => (i >= 250 ? 255 : 38));
+    assert.equal(feed(createTemperatureMedian(3000), readings, 10.1).get('elbow'), 38);
 }
 
-function aSustainedRiseReachesTheAverage() {
+function aSustainedRiseReachesTheMedian() {
     const readings = [...Array.from({ length: 301 }, () => 38), ...Array.from({ length: 300 }, () => 55)];
-    assert.ok(feed(createTemperatureAverage(3000), readings, 10).get('elbow')! > 54);
+    assert.equal(feed(createTemperatureMedian(3000), readings, 10).get('elbow'), 55);
 }
 
 const checks = [
@@ -79,9 +79,9 @@ const checks = [
     emptyMessagesYieldNoJoints,
     temperatureIsShownInWholeDegrees,
     noTemperatureIsReportedBeforeAFullWindow,
-    theTemperatureIsTheAverageOfTheWindow,
-    oneFalseTickDoesNotReachTheLimit,
-    aSustainedRiseReachesTheAverage,
+    theTemperatureIsTheMedianOfTheWindow,
+    aFalseReadingHeldHalfASecondIsIgnored,
+    aSustainedRiseReachesTheMedian,
 ];
 
 for (const check of checks) check();

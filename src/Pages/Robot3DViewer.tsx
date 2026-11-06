@@ -28,7 +28,10 @@ import {
 } from '../Utils/robotModel.utils';
 import {
     CAMERA_FOV,
+    DEFAULT_CAMERA,
+    DEFAULT_VIEW_DIRECTION,
     MAX_CAMERA_DISTANCE,
+    type Vec3,
     MIN_CAMERA_DISTANCE,
     distanceForZoom,
     getRobotBoundingBox,
@@ -79,17 +82,6 @@ const MOUSE_HINTS = [
     'drag ring · set joint target',
     'click cube · snap view',
 ];
-
-type Vec3 = [number, number, number];
-
-const DEFAULT_CAMERA: { readonly position: Vec3; readonly target: Vec3 } = {
-    position: [0, 2, 3],
-    target: [0, 1, 0],
-};
-
-const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(...DEFAULT_CAMERA.position)
-    .sub(new THREE.Vector3(...DEFAULT_CAMERA.target))
-    .normalize();
 
 const savedCamera: { position: Vec3; target: Vec3 } = {
     position: [...DEFAULT_CAMERA.position],

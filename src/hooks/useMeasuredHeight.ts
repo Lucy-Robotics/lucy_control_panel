@@ -5,8 +5,13 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-/** Tracks an element's rendered height through a callback ref. */
-export function useMeasuredHeight<T extends HTMLElement>(): [(node: T | null) => void, number] {
+/**
+ * Tracks an element's rendered height through a callback ref.
+ * `shouldMeasure` (a stable function) skips sizes taken while it returns false.
+ */
+export function useMeasuredHeight<T extends HTMLElement>(
+    shouldMeasure?: (node: T) => boolean,
+): [(node: T | null) => void, number] {
     const [height, setHeight] = useState(0);
     const observerRef = useRef<ResizeObserver | null>(null);
 
@@ -15,11 +20,14 @@ export function useMeasuredHeight<T extends HTMLElement>(): [(node: T | null) =>
         observerRef.current = null;
         if (!node) return;
 
-        const update = () => setHeight(node.getBoundingClientRect().height);
+        const update = () => {
+            if (shouldMeasure && !shouldMeasure(node)) return;
+            setHeight(node.getBoundingClientRect().height);
+        };
         update();
         observerRef.current = new ResizeObserver(update);
         observerRef.current.observe(node);
-    }, []);
+    }, [shouldMeasure]);
 
     return [measuredRef, height];
 }

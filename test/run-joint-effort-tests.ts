@@ -7,14 +7,13 @@ import assert from 'node:assert/strict';
 import {
     effortArcRad,
     effortColor,
+    effortHeat,
     effortRatio,
     effortSweepSign,
-    effortTints,
     loadsByJoint,
 } from '../src/Utils/jointEffort.utils.ts';
 
 const FULL_TURN = 2 * Math.PI;
-const RESTING_NOISE = 0.048;
 const PRESSED_ELBOW = 0.188;
 
 function ratioIsTheLoadWhateverTheDirection() {
@@ -40,17 +39,21 @@ function arcSweepFollowsTheLoadSign() {
     assert.equal(effortSweepSign(-1), -1);
 }
 
-function colorGoesFromGreenAtRestToRedAtFullLoad() {
-    assert.equal(effortColor(0), 'hsl(120, 90%, 50%)');
-    assert.equal(effortColor(1), 'hsl(0, 90%, 50%)');
+function colorGoesFromWhiteAtRestToRedUnderLoad() {
+    assert.equal(effortColor(0), 'hsl(60, 100%, 100%)');
+    assert.equal(effortColor(0.5), 'hsl(0, 100%, 50%)');
+    assert.equal(effortColor(1), 'hsl(0, 100%, 50%)');
 }
 
-function aPressedMotorGetsItsColor() {
-    assert.equal(effortTints(new Map([['elbow', PRESSED_ELBOW]])).size, 1);
+function aPressedMotorIsClearlyOffWhite() {
+    assert.equal(effortColor(PRESSED_ELBOW), 'hsl(37, 100%, 81%)');
 }
 
-function restingNoiseKeepsTheMotorColor() {
-    assert.equal(effortTints(new Map([['elbow', RESTING_NOISE]])).size, 0);
+function heatIsFullAtHalfLoadInEitherDirection() {
+    assert.equal(effortHeat(0), 0);
+    assert.equal(effortHeat(-0.25), 0.5);
+    assert.equal(effortHeat(0.5), 1);
+    assert.equal(effortHeat(0.9), 1);
 }
 
 function loadsAreReadFromTheDynamicJointState() {
@@ -72,9 +75,9 @@ const checks = [
     arcFillsTheCircleAtFullLoad,
     arcStaysVisibleAtZeroLoad,
     arcSweepFollowsTheLoadSign,
-    colorGoesFromGreenAtRestToRedAtFullLoad,
-    aPressedMotorGetsItsColor,
-    restingNoiseKeepsTheMotorColor,
+    colorGoesFromWhiteAtRestToRedUnderLoad,
+    aPressedMotorIsClearlyOffWhite,
+    heatIsFullAtHalfLoadInEitherDirection,
     loadsAreReadFromTheDynamicJointState,
 ];
 

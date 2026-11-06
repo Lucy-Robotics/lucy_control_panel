@@ -7,7 +7,7 @@ import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFJoint, URDFRobot } from 'urdf-loader';
-import { effortArcRad, effortColor, effortSweepSign } from '../Utils/jointEffort.utils';
+import { effortArcRad, effortColor, effortHeat, effortSweepSign } from '../Utils/jointEffort.utils';
 import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
 const GAUGE_TO_GIZMO_RADIUS = 0.7;
@@ -41,11 +41,30 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; effort: number }> = ({ join
     );
 };
 
-export const JointEffortGauges: React.FC<{ robot: URDFRobot; efforts: ReadonlyMap<string, number> }> = ({ robot, efforts }) => (
-    <>
-        {[...efforts].map(([name, effort]) => {
+export const JointEffortGauges: React.FC<{
+    robot: URDFRobot;
+    efforts: ReadonlyMap<string, number>;
+    heatSources: THREE.Vector4[];
+}> = ({ robot, efforts, heatSources }) => {
+    const jointPosition = useMemo(() => new THREE.Vector3(), []);
+
+    useFrame(() => {
+        let source = 0;
+        efforts.forEach((load, name) => {
             const joint = robot.joints[name];
-            return joint ? <JointEffortGauge key={name} joint={joint} effort={effort} /> : null;
-        })}
-    </>
-);
+            if (!joint || source >= heatSources.length) return;
+            joint.getWorldPosition(jointPosition);
+            heatSources[source++].set(jointPosition.x, jointPosition.y, jointPosition.z, effortHeat(load));
+        });
+        for (; source < heatSources.length; source++) heatSources[source].w = 0;
+    });
+
+    return (
+        <>
+            {[...efforts].map(([name, effort]) => {
+                const joint = robot.joints[name];
+                return joint ? <JointEffortGauge key={name} joint={joint} effort={effort} /> : null;
+            })}
+        </>
+    );
+};

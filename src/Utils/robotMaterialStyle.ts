@@ -7,13 +7,12 @@ import * as THREE from 'three';
 
 const SELECTED_EMISSIVE_INTENSITY = 0.25;
 const OVERHEATED_EMISSIVE_INTENSITY = 0.6;
-const TINTED_EMISSIVE_INTENSITY = 0.35;
 const NO_EMISSIVE = new THREE.Color(0x000000);
 const UNSELECTED_COLOR = new THREE.Color(0xffffff);
 const OVERHEATED_COLOR = new THREE.Color(0xff2020);
 const GREYED_COLOR = new THREE.Color(0x777777);
 
-export type PartStyle = 'normal' | 'selected' | 'unselected' | 'overheated' | 'greyed' | 'tinted';
+export type PartStyle = 'normal' | 'selected' | 'unselected' | 'overheated' | 'greyed';
 
 function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
     return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
@@ -23,13 +22,12 @@ function hasColor(m: THREE.Material): m is THREE.Material & { color: THREE.Color
     return (m as { color?: unknown }).color instanceof THREE.Color;
 }
 
-function colorFor(style: PartStyle, original: THREE.Color, focus: THREE.Color, tint: THREE.Color): THREE.Color {
+function colorFor(style: PartStyle, original: THREE.Color, focus: THREE.Color): THREE.Color {
     switch (style) {
         case 'selected': return focus;
         case 'unselected': return UNSELECTED_COLOR;
         case 'overheated': return OVERHEATED_COLOR;
         case 'greyed': return GREYED_COLOR;
-        case 'tinted': return tint;
         default: return original;
     }
 }
@@ -41,14 +39,13 @@ export function applyStyle(
     wireframe: boolean,
     focus: THREE.Color,
     unselectedOpacity: number,
-    tint: THREE.Color = focus,
 ) {
     if ('wireframe' in display) {
         (display as THREE.MeshStandardMaterial).wireframe = wireframe;
     }
 
     if (hasColor(display) && hasColor(orig)) {
-        display.color.copy(colorFor(style, orig.color, focus, tint));
+        display.color.copy(colorFor(style, orig.color, focus));
     }
 
     if (hasEmissive(display) && hasEmissive(orig)) {
@@ -58,9 +55,6 @@ export function applyStyle(
         } else if (style === 'overheated') {
             display.emissive.copy(OVERHEATED_COLOR);
             display.emissiveIntensity = OVERHEATED_EMISSIVE_INTENSITY;
-        } else if (style === 'tinted') {
-            display.emissive.copy(tint);
-            display.emissiveIntensity = TINTED_EMISSIVE_INTENSITY;
         } else if (style === 'unselected' || style === 'greyed') {
             display.emissive.copy(NO_EMISSIVE);
             display.emissiveIntensity = 0;

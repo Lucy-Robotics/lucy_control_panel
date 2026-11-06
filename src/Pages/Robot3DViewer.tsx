@@ -43,7 +43,7 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
-import { effortTints } from '../Utils/jointEffort.utils';
+import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -496,7 +496,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [showEffort, setShowEffort] = useState(false);
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
-    const jointTints = useMemo(() => effortTints(efforts), [efforts]);
+    const effortHeatMap = useMemo(createEffortHeatMap, []);
+    useEffect(() => () => effortHeatMap.material.dispose(), [effortHeatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
 
@@ -742,7 +743,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
                         overheatedJointNames={overheatedJointNames}
-                        jointTints={jointTints}
+                        heatMaterial={showEffort ? effortHeatMap.material : undefined}
                     />
                 )}
 
@@ -753,7 +754,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     ) : null;
                 })}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} />}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={effortHeatMap.sources} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}

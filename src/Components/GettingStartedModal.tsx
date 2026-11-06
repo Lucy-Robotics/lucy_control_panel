@@ -205,6 +205,7 @@ export const GettingStartedModal: React.FC = () => {
                 >
                     <div style={{ marginBottom: 24 }}>
                         <CustomTitle
+                            prefix=""
                             title={section.name.toUpperCase()}
                             level={2}
                         />

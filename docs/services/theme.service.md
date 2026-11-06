@@ -174,7 +174,7 @@ toggles, `.chamfer-box`) is driven by four variables: `--chamfer` (cut size), `-
 (border colour), `--fill` (background) and `--hud` (corner brackets on containers).
 `--frame`, `--fill` and `--hud` are registered with `@property` so state changes animate.
 Utilities: `.chamfer-box[-xs|-sm|-md|-lg|-modal]`, `.hud-corners`, `.hud-corners-hover`,
-`.section-label`, `.status-led[-pulse]`.
+`.section-label`.
 
 ---
 

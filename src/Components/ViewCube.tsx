@@ -12,11 +12,16 @@ import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
 
 const SIZE = 90;
 const CUBE_HALF_PX = SIZE / 2;
-const CUBE_MARGIN_PX = SIZE;
+const EDGE_GAP_PX = 10;
 const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
+/** Farthest the chamfered cube reaches from its centre, whatever its rotation. */
+const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.hypot(1, INNER, INNER);
+const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
+/** Width the cube takes from the viewer's right edge, whatever its rotation. */
+export const VIEW_CUBE_CLEARANCE_PX = Math.ceil(EDGE_GAP_PX + 2 * CUBE_RADIUS_PX);
 const HOVER_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
 const HOVER_REFRESH_ANGLE = 1e-3;
 
@@ -136,10 +141,9 @@ interface ViewCubeSceneProps {
     mainCamera: THREE.Camera;
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    bottomOffset: number;
 }
 
-const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView, bottomOffset }) => {
+const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView }) => {
     const size = useThree(s => s.size);
     const gl = useThree(s => s.gl);
     const events = useThree(s => s.events);
@@ -191,8 +195,8 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 
     const cubeCenter = useMemo(() => new THREE.Vector2(
         size.width / 2 - CUBE_MARGIN_PX,
-        -size.height / 2 + CUBE_MARGIN_PX + bottomOffset,
-    ), [size, bottomOffset]);
+        -size.height / 2 + CUBE_MARGIN_PX,
+    ), [size]);
 
     useFrame(() => {
         const cube = cubeRef.current;
@@ -269,14 +273,13 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 export interface ViewCubeProps {
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    bottomOffset?: number;
 }
 
-export const ViewCube: React.FC<ViewCubeProps> = ({ colors, onSelectView, bottomOffset = 0 }) => {
+export const ViewCube: React.FC<ViewCubeProps> = ({ colors, onSelectView }) => {
     const mainCamera = useThree(s => s.camera);
     return (
         <Hud renderPriority={1}>
-            <ViewCubeScene mainCamera={mainCamera} colors={colors} onSelectView={onSelectView} bottomOffset={bottomOffset} />
+            <ViewCubeScene mainCamera={mainCamera} colors={colors} onSelectView={onSelectView} />
         </Hud>
     );
 };

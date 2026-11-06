@@ -201,7 +201,6 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ color: colorHighlight, fontFamily: fonts.mono, fontWeight: 'bold' }}>&gt;</span>
                         <span style={{ color: colorText, fontFamily: fonts.title, fontWeight: 'bold', fontSize: 13 }}>
                             LIVE PALETTE PREVIEW
                         </span>

@@ -7,7 +7,6 @@ import React, { useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Space, Grid } from 'antd';
 import {
-    UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
     UI_OVERLAY_BACKDROP_SOFT,
@@ -295,15 +294,6 @@ export function MovableModal({
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    <span style={{
-                        color: UI_ACCENT_GREEN,
-                        fontFamily: 'monospace',
-                        fontWeight: 'bold',
-                        fontSize: 14,
-                        userSelect: 'none',
-                    }}>
-                        &gt;
-                    </span>
                     <span style={{
                         color: UI_TEXT_PRIMARY_ON_DARK,
                         fontFamily: 'monospace',

@@ -18,7 +18,7 @@ How the built-in themes were checked for readability (contrast) and for colour-v
 
 Red–green deficiency together affects about **8 % of men and 0.4 % of women** of Northern-European descent (Birch 2012). In a team of robot operators, someone affected is likely.
 
-The control panel signals robot state with colour: header LEDs, ON/OFF switches, joint markers and the 3D viewer. The default theme is phosphor green `#00FF41` for OK, red `#FF4343` for errors and amber `#FFAA00` for warnings, which is close to the worst case for deutans. Simulated deuteranopia puts **OK vs warning at ΔE00 5.7**, a difference you can see side by side but can't reliably name on its own:
+The control panel signals robot state with colour: header status badge, ON/OFF switches, joint markers and the 3D viewer. The default theme is phosphor green `#00FF41` for OK, red `#FF4343` for errors and amber `#FFAA00` for warnings, which is close to the worst case for deutans. Simulated deuteranopia puts **OK vs warning at ΔE00 5.7**, a difference you can see side by side but can't reliably name on its own:
 
 | Default theme status pair | ΔE00 normal | protanopia | deuteranopia | tritanopia |
 | :--- | :---: | :---: | :---: | :---: |
@@ -39,7 +39,7 @@ Each colour is converted from sRGB to linear RGB and multiplied by the **Machado
 Achromatopsia is simulated by replacing each colour with its relative luminance Y (Rec. 709 weights), so only lightness remains.
 
 ### 2.2 Measuring difference: CIEDE2000
-The simulated colours are converted to CIELAB (D65) and compared with **CIEDE2000** (CIE 2001), implemented after **Sharma, Wu & Dalal (2005)**. Under ideal viewing ΔE00 ≈ 1 is about one just-noticeable difference. **Szafir (2018)** showed that the difference needed to tell colours apart grows sharply as marks get smaller. Our status marks are small: 8 px LEDs, 11 px labels and thin switch fills. "Noticeable when side by side" is also much weaker than "identifiable on its own", which is what an operator glancing at an LED needs.
+The simulated colours are converted to CIELAB (D65) and compared with **CIEDE2000** (CIE 2001), implemented after **Sharma, Wu & Dalal (2005)**. Under ideal viewing ΔE00 ≈ 1 is about one just-noticeable difference. **Szafir (2018)** showed that the difference needed to tell colours apart grows sharply as marks get smaller. Our status marks are small: 11 px labels and thin switch fills. "Noticeable when side by side" is also much weaker than "identifiable on its own", which is what an operator glancing at a status mark needs.
 
 ### 2.3 Thresholds
 
@@ -281,7 +281,7 @@ No palette makes four states identifiable by colour alone for every viewer: achr
 | ON/OFF toggles (`ToggleSwitch`, `StreamSwitch`) | Visible `ON` / `OFF` text and `aria-label` | ✓ |
 | Header ROS bridge status | Badge shown only while connected, with a person icon and the client count | ✓ |
 | Disconnected / connecting state | Text in the page body (`LucyLoader`, `RosConnectionAlert`) | ✓ |
-| Header controller status | Text `CONTROLLED` / `UNCONTROLLED`, shown only while connected | ✓ |
+| Another client controls the robot | Border around the whole screen (no text explains it) | ~ partial |
 | Header "multiple clients" warning | Colour change plus the count | ~ partial |
 
 ---

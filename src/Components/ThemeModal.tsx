@@ -84,7 +84,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ visible, onClose }) => {
                     } as React.CSSProperties}
                 >
                     <div>
-                        <CustomTitle title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
+                        <CustomTitle prefix="" title="THEME ENGINE" subtitle="CUSTOMIZATION" level={4} />
                         <Text style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 12, marginTop: 4 }}>
                             Customize colors with intuitive pickers, choose curated presets, or load full CSS themes.
                         </Text>

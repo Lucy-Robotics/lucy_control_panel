@@ -8,7 +8,6 @@ import { Button, Tooltip, Typography, Grid } from 'antd';
 import { SettingOutlined, ReadOutlined, ExportOutlined, UserOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
-import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import {
     fonts,
 } from '../Constants/theme';
@@ -21,9 +20,6 @@ export const AppHeader: React.FC = () => {
     const { connectionStatus, isConnected, connect, currentUrl } = useRosConnection();
     const [countState, setCountState] = useState<number>(0);
     const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
-    const [activeControllerId, setActiveControllerId] = useState<string>(
-        () => ControlModeHandler.getInstance().currentControllerId
-    );
     const connectionStatusRef = useRef(connectionStatus);
     const currentUrlRef = useRef(currentUrl);
     const screens = useBreakpoint();
@@ -44,10 +40,6 @@ export const AppHeader: React.FC = () => {
         return () => {
             handler.unsubscribe();
         };
-    }, []);
-
-    useEffect(() => {
-        return ControlModeHandler.getInstance().onControllerChanged(setActiveControllerId);
     }, []);
 
     useEffect(() => {
@@ -76,14 +68,7 @@ export const AppHeader: React.FC = () => {
         };
     }, [connect]);
 
-    const getControllerColor = () => {
-        if (activeControllerId === ControlModeHandler.getInstance().clientId) return 'var(--color-highlight)';
-        if (activeControllerId !== '') return 'var(--color-status-warning)';
-        return 'var(--color-text-secondary)';
-    };
-
     const bridgeColor = countState > 1 ? 'var(--color-status-warning)' : 'var(--color-highlight)';
-    const controllerColor = getControllerColor();
 
     const statusStyle: React.CSSProperties = {
         display: 'inline-flex',
@@ -98,39 +83,21 @@ export const AppHeader: React.FC = () => {
         ({ ...statusStyle, '--frame': `color-mix(in srgb, ${color} 45%, transparent)`, '--status-color': color }) as React.CSSProperties;
 
     const statusIndicators = isConnected && (
-        <>
-            <Tooltip title="Number of connected clients to the ROS Bridge.">
-                <div style={statusFrame(bridgeColor)} className="header-status-box">
-                    <Text
-                        style={{
-                            color: bridgeColor,
-                            fontFamily: fonts.mono,
-                            fontSize: 11,
-                            letterSpacing: '0.5px',
-                            lineHeight: 1,
-                        }}
-                    >
-                        <UserOutlined style={{ marginRight: 4 }} />{countState}
-                    </Text>
-                </div>
-            </Tooltip>
-            <Tooltip title={activeControllerId !== '' ? 'A client is currently controlling the robot.' : 'No client is currently controlling the robot.'}>
-                <div style={statusFrame(controllerColor)} className="header-status-box">
-                    <span className="status-led" style={{ color: controllerColor }} />
-                    <Text
-                        style={{
-                            color: controllerColor,
-                            fontFamily: fonts.mono,
-                            fontSize: 11,
-                            letterSpacing: '0.5px',
-                            lineHeight: 1,
-                        }}
-                    >
-                        {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
-                    </Text>
-                </div>
-            </Tooltip>
-        </>
+        <Tooltip title="Number of connected clients to the ROS Bridge.">
+            <div style={statusFrame(bridgeColor)} className="header-status-box">
+                <Text
+                    style={{
+                        color: bridgeColor,
+                        fontFamily: fonts.mono,
+                        fontSize: 11,
+                        letterSpacing: '0.5px',
+                        lineHeight: 1,
+                    }}
+                >
+                    <UserOutlined style={{ marginRight: 4 }} />{countState}
+                </Text>
+            </div>
+        </Tooltip>
     );
 
     const headerActions = (

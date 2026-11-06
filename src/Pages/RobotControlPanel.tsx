@@ -16,7 +16,6 @@ import React, {
 import { Typography, Space, Button, Alert, Spin, message, Grid } from 'antd';
 import {
     ReloadOutlined,
-    ThunderboltOutlined,
     StopOutlined,
     VideoCameraOutlined,
     EyeOutlined,
@@ -81,6 +80,7 @@ import { CONTROL_OFF_HINT, ReadOnlyTag } from '../Components/ControlPage/ReadOnl
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
+import { GamepadOutlined } from '../Components/ControlPage/GamepadIcon.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
@@ -118,12 +118,12 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         onClose={onClose}
         centered
         initialSize={{ w: 560, h: 280 }}
-        header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+        header={<GamepadOutlined style={{ color: UI_WARNING }} />}
         footer={
             <>
                 <Button
                     type="primary"
-                    icon={<ThunderboltOutlined />}
+                    icon={<GamepadOutlined />}
                     onClick={onRetake}
                     style={{
                         backgroundColor: UI_ACCENT_GREEN,
@@ -713,7 +713,6 @@ export const RobotControlPanel: React.FC = () => {
             childrens={{
                 '3D_VIEW': (
                     <Robot3DViewer
-                        docked
                         isControlOn={isSending}
                         joints={joints}
                         onJointValueChange={handleGizmoJointCommit}
@@ -1074,12 +1073,12 @@ export const RobotControlPanel: React.FC = () => {
                 onClose={() => setShowConfirmTakeControlModal(false)}
                 centered
                 initialSize={{ w: 500, h: 300 }}
-                header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+                header={<GamepadOutlined style={{ color: UI_WARNING }} />}
                 footer={[
                     <Button
                         key="take"
                         type="primary"
-                        icon={<ThunderboltOutlined />}
+                        icon={<GamepadOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
                             backgroundColor: UI_ACCENT_GREEN,

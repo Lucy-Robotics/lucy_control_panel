@@ -36,7 +36,7 @@ The control panel has to connect to this bridge everytime, which is made automat
 
 > This is where you'll control your robot, and it's full of stuff, so let's go over the basics!
 
-First thing first, you will need to take control over the robot. This can be achieved by using the ⚡ 'Control Robot' button at the top of the command rail, on the left of the page.
+First thing first, you will need to take control over the robot. This can be achieved by using the 🎮 'Control' button at the top of the command rail, on the left of the page.
 > This security system ensure that no more than one controller is sending instruction to your robot. When activated, this will take control from other control applications.
 
 ---
@@ -74,7 +74,7 @@ The animation system uses the saved poses.
 
 For this part, we will need to travel a bit.
 
-- On the bottom right corner, you will find the navigation bar, select the second option 'Sensors'.
+- In the header at the top of the page, you will find the navigation bar, select the second option 'Sensors'.
 
 > It sure look empty, let's fix it!
 

@@ -6,7 +6,6 @@
 export const OVERHEAT_CELSIUS = 50;
 export const HARD_LIMIT_CELSIUS = 60;
 export const OVERHEAT_REARM_CELSIUS = 48;
-const COOL_CELSIUS = 30;
 
 export interface OverheatState {
     tripped: ReadonlySet<string>;
@@ -52,10 +51,6 @@ export function acceptOverheat(state: OverheatState, temperatures: ReadonlyMap<s
         if (temperatures.get(joint)! > OVERHEAT_REARM_CELSIUS) accepted.add(joint);
     }
     return { tripped, accepted };
-}
-
-export function temperatureHeat(celsius: number): number {
-    return Math.min(Math.max((celsius - COOL_CELSIUS) / (HARD_LIMIT_CELSIUS - COOL_CELSIUS), 0), 1);
 }
 
 export function torqueTopicOf(trajectoryTopic: string): string {

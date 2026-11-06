@@ -10,9 +10,8 @@ const OVERHEATED_EMISSIVE_INTENSITY = 0.6;
 const NO_EMISSIVE = new THREE.Color(0x000000);
 const UNSELECTED_COLOR = new THREE.Color(0xffffff);
 const OVERHEATED_COLOR = new THREE.Color(0xff2020);
-const GREYED_COLOR = new THREE.Color(0x777777);
 
-export type PartStyle = 'normal' | 'selected' | 'unselected' | 'overheated' | 'greyed';
+export type PartStyle = 'normal' | 'selected' | 'unselected' | 'overheated';
 
 function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
     return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
@@ -27,7 +26,6 @@ function colorFor(style: PartStyle, original: THREE.Color, focus: THREE.Color): 
         case 'selected': return focus;
         case 'unselected': return UNSELECTED_COLOR;
         case 'overheated': return OVERHEATED_COLOR;
-        case 'greyed': return GREYED_COLOR;
         default: return original;
     }
 }
@@ -55,7 +53,7 @@ export function applyStyle(
         } else if (style === 'overheated') {
             display.emissive.copy(OVERHEATED_COLOR);
             display.emissiveIntensity = OVERHEATED_EMISSIVE_INTENSITY;
-        } else if (style === 'unselected' || style === 'greyed') {
+        } else if (style === 'unselected') {
             display.emissive.copy(NO_EMISSIVE);
             display.emissiveIntensity = 0;
         } else {

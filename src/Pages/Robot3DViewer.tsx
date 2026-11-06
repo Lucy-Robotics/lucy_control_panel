@@ -14,7 +14,6 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
-import { JointHeatSources } from '../Components/JointHeatSources';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -44,7 +43,7 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
-import { createTemperatureHeatMap } from '../Utils/temperatureHeatMap';
+import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -497,8 +496,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [showEffort, setShowEffort] = useState(true);
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
-    const [showTemperature, setShowTemperature] = useState(false);
-    const heatMap = useMemo(createTemperatureHeatMap, []);
+    const heatMap = useMemo(createEffortHeatMap, []);
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
@@ -745,7 +743,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
                         overheatedJointNames={motorOverheat?.trippedJoints}
-                        heatMaterial={showTemperature ? heatMap.material : undefined}
+                        heatMaterial={showEffort ? heatMap.material : undefined}
                     />
                 )}
 
@@ -756,10 +754,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     ) : null;
                 })}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} />}
-                {robot && showTemperature && motorOverheat && (
-                    <JointHeatSources robot={robot} temperatures={motorOverheat.temperatures} heatSources={heatMap.sources} />
-                )}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -886,7 +881,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
                 <SwitchRow label="EFFORT" value={showEffort} onChange={setShowEffort} />
-                <SwitchRow label="TEMP" value={showTemperature} onChange={setShowTemperature} />
 
                 <button
                     onClick={handleResetCamera}

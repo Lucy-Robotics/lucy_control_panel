@@ -131,7 +131,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
             );
             const selectionStyle: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
-            const style: PartStyle = !hasOverheat ? selectionStyle : overheatedMeshes.has(mesh) ? 'overheated' : 'greyed';
+            const style: PartStyle = !hasOverheat ? selectionStyle : overheatedMeshes.has(mesh) ? 'overheated' : 'unselected';
             if (heatMaterial && style === 'normal') {
                 mesh.material = heatMaterial;
                 return;

@@ -8,9 +8,10 @@ import { interfaceValuesByJoint, type DynamicJointState } from './dynamicJointSt
 const MIN_VISIBLE_LOAD = 0.05;
 const FULL_HEAT_LOAD = 0.5;
 const HEAT_STOPS = [
-    { heat: 0, rgb: [255, 255, 255] },
-    { heat: 0.4, rgb: [255, 230, 0] },
-    { heat: 0.7, rgb: [255, 128, 0] },
+    { heat: 0, rgb: [30, 80, 255] },
+    { heat: 0.25, rgb: [0, 220, 255] },
+    { heat: 0.5, rgb: [0, 217, 51] },
+    { heat: 0.75, rgb: [255, 230, 0] },
     { heat: 1, rgb: [220, 0, 0] },
 ];
 
@@ -27,7 +28,7 @@ export function effortArcRad(load: number): number {
 }
 
 export function effortSweepSign(load: number): 1 | -1 {
-    return load < 0 ? -1 : 1;
+    return load > 0 ? -1 : 1;
 }
 
 export function effortHeat(load: number): number {

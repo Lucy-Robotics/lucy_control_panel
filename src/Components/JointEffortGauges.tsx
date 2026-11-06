@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFJoint, URDFRobot } from 'urdf-loader';
-import { effortArcRad, effortColor, effortSweepSign, isEffortVisible } from '../Utils/jointEffort.utils';
+import { effortArcRad, effortColor, effortHeat, effortSweepSign, isEffortVisible } from '../Utils/jointEffort.utils';
 import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
 const GAUGE_TO_GIZMO_RADIUS = 0.4;
@@ -15,20 +15,23 @@ const TUBE_TO_GAUGE_RADIUS = 0.06;
 const HEAD_TO_GAUGE_RADIUS = 0.18;
 const HEAD_LENGTH_TO_GAUGE_RADIUS = 0.5;
 const RENDER_ORDER = 999;
+const ARROW_OPACITY = 0.5;
 const LOAD_SMOOTHING_RATE = 12;
 const MIN_LOAD_STEP = 0.001;
 const ignoreRaycast = () => null;
 
-const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number }> = ({ joint, load }) => {
+const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number; heatSource: THREE.Vector4 }> = ({ joint, load, heatSource }) => {
     const groupRef = useRef<THREE.Group>(null);
     const shaftRef = useRef<THREE.Mesh>(null);
     const headRef = useRef<THREE.Mesh>(null);
     const shownLoadRef = useRef<number | null>(null);
     const radius = useMemo(() => jointRingRadius(joint) * GAUGE_TO_GIZMO_RADIUS, [joint]);
     const zeroBasis = useMemo(() => jointZeroBasis(joint), [joint]);
+    const jointPosition = useMemo(() => new THREE.Vector3(), []);
     const material = useMemo(() => new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
         transparent: true,
+        opacity: ARROW_OPACITY,
         depthTest: false,
         depthWrite: false,
         toneMapped: false,
@@ -52,6 +55,8 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number }> = ({ joint,
 
         const previous = shownLoadRef.current;
         const next = previous === null ? load : previous + (load - previous) * (1 - Math.exp(-delta * LOAD_SMOOTHING_RATE));
+        joint.getWorldPosition(jointPosition);
+        heatSource.set(jointPosition.x, jointPosition.y, jointPosition.z, effortHeat(next));
         group.visible = isEffortVisible(next);
         if (previous !== null && Math.abs(next - previous) < MIN_LOAD_STEP) return;
 
@@ -74,11 +79,19 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number }> = ({ joint,
     );
 };
 
-export const JointEffortGauges: React.FC<{ robot: URDFRobot; efforts: ReadonlyMap<string, number> }> = ({ robot, efforts }) => (
-    <>
-        {[...efforts].map(([name, load]) => {
-            const joint = robot.joints[name];
-            return joint ? <JointEffortGauge key={name} joint={joint} load={load} /> : null;
-        })}
-    </>
-);
+export const JointEffortGauges: React.FC<{
+    robot: URDFRobot;
+    efforts: ReadonlyMap<string, number>;
+    heatSources: THREE.Vector4[];
+}> = ({ robot, efforts, heatSources }) => {
+    useEffect(() => () => heatSources.forEach((source) => { source.w = 0; }), [heatSources]);
+
+    return (
+        <>
+            {[...efforts].slice(0, heatSources.length).map(([name, load], index) => {
+                const joint = robot.joints[name];
+                return joint ? <JointEffortGauge key={name} joint={joint} load={load} heatSource={heatSources[index]} /> : null;
+            })}
+        </>
+    );
+};

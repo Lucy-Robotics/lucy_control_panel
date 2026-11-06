@@ -24,18 +24,19 @@ float heatAtFragment() {
 }
 
 vec3 heatRamp(float heat) {
-    vec3 color = mix(vec3(1.0), vec3(1.0, 0.9, 0.0), smoothstep(0.06, 0.4, heat));
-    color = mix(color, vec3(1.0, 0.5, 0.0), smoothstep(0.4, 0.7, heat));
-    return mix(color, vec3(0.86, 0.0, 0.0), smoothstep(0.7, 1.0, heat));
+    vec3 color = mix(vec3(0.12, 0.31, 1.0), vec3(0.0, 0.86, 1.0), smoothstep(0.0, 0.25, heat));
+    color = mix(color, vec3(0.0, 0.85, 0.2), smoothstep(0.25, 0.5, heat));
+    color = mix(color, vec3(1.0, 0.9, 0.0), smoothstep(0.5, 0.75, heat));
+    return mix(color, vec3(0.86, 0.0, 0.0), smoothstep(0.75, 1.0, heat));
 }
 `;
 
-export interface TemperatureHeatMap {
+export interface EffortHeatMap {
     material: THREE.MeshStandardMaterial;
     sources: THREE.Vector4[];
 }
 
-export function createTemperatureHeatMap(): TemperatureHeatMap {
+export function createEffortHeatMap(): EffortHeatMap {
     const sources = Array.from({ length: MAX_HEAT_SOURCES }, () => new THREE.Vector4());
     const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, metalness: 0 });
     material.onBeforeCompile = (shader) => {

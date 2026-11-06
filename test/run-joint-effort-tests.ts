@@ -40,16 +40,17 @@ function aPressedMotorShowsItsArrowInEitherDirection() {
     assert.equal(isEffortVisible(-0.188), true);
 }
 
-function arcSweepFollowsTheLoadSign() {
-    assert.equal(effortSweepSign(1), 1);
+function arrowOpposesTheServoLoadSign() {
+    assert.equal(effortSweepSign(1), -1);
     assert.equal(effortSweepSign(0), 1);
-    assert.equal(effortSweepSign(-1), -1);
+    assert.equal(effortSweepSign(-1), 1);
 }
 
-function colorGoesWhiteYellowOrangeRedWithLoad() {
-    assert.equal(effortColor(0), 'rgb(255, 255, 255)');
-    assert.equal(effortColor(0.2), 'rgb(255, 230, 0)');
-    assert.equal(effortColor(0.35), 'rgb(255, 128, 0)');
+function colorGoesFromBlueToRedWithLoad() {
+    assert.equal(effortColor(0), 'rgb(30, 80, 255)');
+    assert.equal(effortColor(0.125), 'rgb(0, 220, 255)');
+    assert.equal(effortColor(0.25), 'rgb(0, 217, 51)');
+    assert.equal(effortColor(0.375), 'rgb(255, 230, 0)');
     assert.equal(effortColor(0.5), 'rgb(220, 0, 0)');
     assert.equal(effortColor(1), 'rgb(220, 0, 0)');
 }
@@ -80,8 +81,8 @@ const checks = [
     arcFillsTheCircleAtFullLoad,
     restingNoiseShowsNoArrow,
     aPressedMotorShowsItsArrowInEitherDirection,
-    arcSweepFollowsTheLoadSign,
-    colorGoesWhiteYellowOrangeRedWithLoad,
+    arrowOpposesTheServoLoadSign,
+    colorGoesFromBlueToRedWithLoad,
     heatIsFullAtHalfLoadInEitherDirection,
     loadsAreReadFromTheDynamicJointState,
 ];

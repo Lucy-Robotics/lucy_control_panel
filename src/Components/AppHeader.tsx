@@ -100,17 +100,20 @@ export const AppHeader: React.FC = () => {
         </Tooltip>
     );
 
+    const documentationButton = (
+        <Tooltip title={<>Access our external documentation</>}>
+            <Button
+                className="nav-item-btn"
+                icon={isMobile ? <ReadOutlined /> : undefined}
+                onClick={() => window.open('https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
+            >
+                {!isMobile && <>Documentation <ExportOutlined /></>}
+            </Button>
+        </Tooltip>
+    );
+
     const headerActions = (
         <>
-            <Tooltip title={<>Access our external documentation</>}>
-                <Button
-                    className="nav-item-btn"
-                    icon={isMobile ? <ReadOutlined /> : undefined}
-                    onClick={() => window.open('https://docs.lucy-robotics.com/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
-                >
-                    {!isMobile && <>Documentation <ExportOutlined /></>}
-                </Button>
-            </Tooltip>
             <Tooltip title="Settings">
                 <Button
                     className="nav-item-btn"
@@ -135,6 +138,7 @@ export const AppHeader: React.FC = () => {
                 gap: isMobile ? 8 : 12,
             }}
         >
+            {documentationButton}
             {statusIndicators}
             {headerActions}
         </div>

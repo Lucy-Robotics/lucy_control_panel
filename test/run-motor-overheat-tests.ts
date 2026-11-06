@@ -12,6 +12,7 @@ import {
     acceptOverheat,
     jointsAllowedToContinue,
     nextOverheatState,
+    temperatureHeat,
     torqueCommands,
     torqueTopicOf,
 } from '../src/Utils/motorOverheat.utils.ts';
@@ -100,6 +101,13 @@ function torqueCommandsDropOnlyTheTrippedJointInControllerOrder() {
     assert.deepEqual(commands, [{ topic: '/so_arm_torque_enable_controller/commands', data: [1, 0, 1] }]);
 }
 
+function heatGoesFromCoolToTheHardLimit() {
+    assert.equal(temperatureHeat(25), 0);
+    assert.equal(temperatureHeat(45), 0.5);
+    assert.equal(temperatureHeat(HARD_LIMIT_CELSIUS), 1);
+    assert.equal(temperatureHeat(90), 1);
+}
+
 const checks = [
     exactlyTheCutoffDoesNotTrip,
     aboveTheCutoffTripsTheMotor,
@@ -116,6 +124,7 @@ const checks = [
     anUnchangedReadingKeepsTheSameState,
     torqueTopicFollowsTheConfigGeneratorNaming,
     torqueCommandsDropOnlyTheTrippedJointInControllerOrder,
+    heatGoesFromCoolToTheHardLimit,
 ];
 
 for (const check of checks) check();

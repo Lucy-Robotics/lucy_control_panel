@@ -23,14 +23,13 @@ import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import {
     CLICK_DRAG_THRESHOLD_PX,
-    findJointForLink,
-    findLinkWithJoint,
     findParentLink,
     resolveActuatedLinkName,
     urdfNameOf,
     wrapAngle,
     type ActuatedJointNames,
 } from '../Utils/robotModel.utils';
+import { motorMeshesOf } from '../Utils/motorMeshes';
 import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
 
 interface RobotMaterialState {
@@ -106,6 +105,10 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         const focus = new THREE.Color(focusColor);
         const isAnySelected = selectedPartName !== null;
         const hasOverheat = overheatedJointNames.size > 0;
+        const overheatedMeshes = new Set([...overheatedJointNames].flatMap((name) => {
+            const joint = robot.joints[name];
+            return joint ? [...motorMeshesOf(joint)] : [];
+        }));
         if (heatMaterial && 'wireframe' in heatMaterial) heatMaterial.wireframe = wireframe;
 
         robot.traverse(child => {
@@ -122,15 +125,13 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 return;
             }
 
-            const link = isAnySelected || hasOverheat ? findParentLink(mesh, robot) : null;
+            const link = isAnySelected ? findParentLink(mesh, robot) : null;
             const isSelected = link !== null && (
                 urdfNameOf(link) === selectedPartName
                 || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
             );
-            const joint = link && findJointForLink(findLinkWithJoint(link, robot, actuatedJointNames), robot, actuatedJointNames);
-            const isOverheated = joint !== null && overheatedJointNames.has(urdfNameOf(joint));
             const selectionStyle: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
-            const style: PartStyle = !hasOverheat ? selectionStyle : isOverheated ? 'overheated' : 'greyed';
+            const style: PartStyle = !hasOverheat ? selectionStyle : overheatedMeshes.has(mesh) ? 'overheated' : 'greyed';
             if (heatMaterial && style === 'normal') {
                 mesh.material = heatMaterial;
                 return;

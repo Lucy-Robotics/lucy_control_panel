@@ -14,6 +14,7 @@ import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
+import { JointHeatSources } from '../Components/JointHeatSources';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
@@ -43,7 +44,7 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
-import { createEffortHeatMap } from '../Utils/effortHeatMap';
+import { createTemperatureHeatMap } from '../Utils/temperatureHeatMap';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -475,7 +476,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
-    const overheatedJointNames = useContext(MotorOverheatContext)?.trippedJoints;
+    const motorOverheat = useContext(MotorOverheatContext);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -496,8 +497,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [showEffort, setShowEffort] = useState(false);
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
-    const effortHeatMap = useMemo(createEffortHeatMap, []);
-    useEffect(() => () => effortHeatMap.material.dispose(), [effortHeatMap]);
+    const [showTemperature, setShowTemperature] = useState(false);
+    const heatMap = useMemo(createTemperatureHeatMap, []);
+    useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
 
@@ -742,8 +744,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartDoubleClick={handlePartDoubleClick}
                         onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
-                        overheatedJointNames={overheatedJointNames}
-                        heatMaterial={showEffort ? effortHeatMap.material : undefined}
+                        overheatedJointNames={motorOverheat?.trippedJoints}
+                        heatMaterial={showTemperature ? heatMap.material : undefined}
                     />
                 )}
 
@@ -754,7 +756,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     ) : null;
                 })}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={effortHeatMap.sources} />}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} />}
+                {robot && showTemperature && motorOverheat && (
+                    <JointHeatSources robot={robot} temperatures={motorOverheat.temperatures} heatSources={heatMap.sources} />
+                )}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -881,6 +886,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
                 <SwitchRow label="EFFORT" value={showEffort} onChange={setShowEffort} />
+                <SwitchRow label="TEMP" value={showTemperature} onChange={setShowTemperature} />
 
                 <button
                     onClick={handleResetCamera}

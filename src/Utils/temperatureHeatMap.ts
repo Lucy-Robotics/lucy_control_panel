@@ -30,12 +30,12 @@ vec3 heatRamp(float heat) {
 }
 `;
 
-export interface EffortHeatMap {
+export interface TemperatureHeatMap {
     material: THREE.MeshStandardMaterial;
     sources: THREE.Vector4[];
 }
 
-export function createEffortHeatMap(): EffortHeatMap {
+export function createTemperatureHeatMap(): TemperatureHeatMap {
     const sources = Array.from({ length: MAX_HEAT_SOURCES }, () => new THREE.Vector4());
     const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, metalness: 0 });
     material.onBeforeCompile = (shader) => {

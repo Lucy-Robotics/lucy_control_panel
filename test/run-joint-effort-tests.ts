@@ -10,6 +10,7 @@ import {
     effortHeat,
     effortRatio,
     effortSweepSign,
+    isEffortVisible,
     loadsByJoint,
 } from '../src/Utils/jointEffort.utils.ts';
 
@@ -29,8 +30,14 @@ function arcFillsTheCircleAtFullLoad() {
     assert.equal(effortArcRad(1), FULL_TURN);
 }
 
-function arcStaysVisibleAtZeroLoad() {
-    assert.ok(effortArcRad(0) > 0);
+function restingNoiseShowsNoArrow() {
+    assert.equal(isEffortVisible(0), false);
+    assert.equal(isEffortVisible(0.048), false);
+}
+
+function aPressedMotorShowsItsArrowInEitherDirection() {
+    assert.equal(isEffortVisible(0.188), true);
+    assert.equal(isEffortVisible(-0.188), true);
 }
 
 function arcSweepFollowsTheLoadSign() {
@@ -71,7 +78,8 @@ const checks = [
     ratioIsTheLoadWhateverTheDirection,
     ratioStaysAtOneAboveFullLoad,
     arcFillsTheCircleAtFullLoad,
-    arcStaysVisibleAtZeroLoad,
+    restingNoiseShowsNoArrow,
+    aPressedMotorShowsItsArrowInEitherDirection,
     arcSweepFollowsTheLoadSign,
     colorGoesWhiteYellowOrangeRedWithLoad,
     heatIsFullAtHalfLoadInEitherDirection,

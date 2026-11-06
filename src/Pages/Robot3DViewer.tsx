@@ -495,7 +495,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
-    const [showEffort, setShowEffort] = useState(false);
+    const [showEffort, setShowEffort] = useState(true);
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const [showTemperature, setShowTemperature] = useState(false);
     const heatMap = useMemo(createTemperatureHeatMap, []);

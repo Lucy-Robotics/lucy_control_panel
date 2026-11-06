@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFJoint, URDFRobot } from 'urdf-loader';
-import { effortArcRad, effortColor, effortSweepSign } from '../Utils/jointEffort.utils';
+import { effortArcRad, effortColor, effortSweepSign, isEffortVisible } from '../Utils/jointEffort.utils';
 import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
 const GAUGE_TO_GIZMO_RADIUS = 0.4;
@@ -52,6 +52,7 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number }> = ({ joint,
 
         const previous = shownLoadRef.current;
         const next = previous === null ? load : previous + (load - previous) * (1 - Math.exp(-delta * LOAD_SMOOTHING_RATE));
+        group.visible = isEffortVisible(next);
         if (previous !== null && Math.abs(next - previous) < MIN_LOAD_STEP) return;
 
         shownLoadRef.current = next;

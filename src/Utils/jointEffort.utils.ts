@@ -5,7 +5,7 @@
 
 import { interfaceValuesByJoint, type DynamicJointState } from './dynamicJointState.utils.ts';
 
-const IDLE_ARC_RATIO = 0.02;
+const MIN_VISIBLE_LOAD = 0.05;
 const FULL_HEAT_LOAD = 0.5;
 const HEAT_STOPS = [
     { heat: 0, rgb: [255, 255, 255] },
@@ -18,8 +18,12 @@ export function effortRatio(load: number): number {
     return Math.min(Math.abs(load), 1);
 }
 
+export function isEffortVisible(load: number): boolean {
+    return effortRatio(load) >= MIN_VISIBLE_LOAD;
+}
+
 export function effortArcRad(load: number): number {
-    return Math.max(effortRatio(load), IDLE_ARC_RATIO) * 2 * Math.PI;
+    return effortRatio(load) * 2 * Math.PI;
 }
 
 export function effortSweepSign(load: number): 1 | -1 {

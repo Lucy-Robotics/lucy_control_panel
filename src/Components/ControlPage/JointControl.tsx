@@ -40,14 +40,18 @@ interface TrackMarkerProps {
   description: string;
   /** Side the tooltip opens on, so it never covers the slider it sits next to. */
   placement: 'top' | 'bottom';
+  /** Drawn on the rail: bigger, with a ring so it shows on the filled (same colour) track too. */
+  onRail?: boolean;
 }
 
 const MARKER_HIT_SIZE = 12;
+/** Vertical centre of the antd slider rail inside the slider wrapper. */
+const SLIDER_RAIL_CENTER_PX = 6;
 const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
-const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, placement }: TrackMarkerProps) => (
+const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, placement, onRail = false }: TrackMarkerProps) => (
   <Tooltip
     placement={placement}
     title={
@@ -79,10 +83,11 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
     >
       <div
         style={{
-          width: 4,
-          height: 4,
+          width: onRail ? 6 : 4,
+          height: onRail ? 6 : 4,
           backgroundColor: color,
-          borderRadius: 2,
+          borderRadius: '50%',
+          boxShadow: onRail ? '0 0 0 2px var(--color-main)' : undefined,
           pointerEvents: 'none',
         }}
       />
@@ -321,7 +326,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             {restBarPercent !== undefined && (
               <TrackMarker
                 percent={restBarPercent}
-                top={-6}
+                top={SLIDER_RAIL_CENTER_PX}
+                onRail
                 color={UI_ACCENT_GREEN}
                 label="Default"
                 valueText={formatMarkerValue(joint.restValue!)}

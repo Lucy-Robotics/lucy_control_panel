@@ -862,6 +862,11 @@ h6 {
   background-color: transparent !important;
 }
 
+/* The handle passes over the rest marker drawn on the joint sliders' rail. */
+.joint-control-card .ant-slider-handle {
+  z-index: 2;
+}
+
 .ant-slider-handle::after {
   background-color: var(--color-text-primary) !important;
   box-shadow: 0 0 0 2px var(--color-highlight-fill, var(--color-highlight)) !important;

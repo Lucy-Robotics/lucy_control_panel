@@ -62,6 +62,8 @@ import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
 import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
 import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
 import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
+import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { withEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
@@ -201,6 +203,7 @@ export const RobotControlPanel: React.FC = () => {
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
     const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
     const isSendingRef = useRef(false);
+    const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -419,19 +422,16 @@ export const RobotControlPanel: React.FC = () => {
         const interval = setInterval(() => {
             setJoints((prev) => {
                 let changed = false;
-                const notSending = !isSendingRef.current;
+                const feedback = {
+                    nobodyControls: ControlModeHandler.getInstance().currentControllerId === '',
+                    holdsControl: isSendingRef.current,
+                };
                 const next = prev.map((j) => {
                     const actual = actualPositionsRef.current.get(j.name);
                     if (actual === undefined) return j;
-                    const isFirstFeedback = j.actualValue === undefined;
-                    const actualChanged = isFirstFeedback || Math.abs(actual - j.actualValue!) >= 0.0005;
-                    if (!actualChanged) return j;
-                    changed = true;
-                    return {
-                        ...j,
-                        actualValue: actual,
-                        ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
-                    };
+                    const updated = withEncoderFeedback(j, actual, feedback);
+                    if (updated !== j) changed = true;
+                    return updated;
                 });
                 return changed ? next : prev;
             });
@@ -458,11 +458,14 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
+    useEffect(() => () => cancelPendingTakeControlRef.current(), []);
+
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
+        cancelPendingTakeControlRef.current();
         if (shouldControl) {
-            ControlModeHandler.getInstance().takeControl();
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(jointsRef.current);
         } else {
             ControlModeHandler.getInstance().releaseControl();
         }

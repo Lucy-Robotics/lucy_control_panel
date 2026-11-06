@@ -14,6 +14,8 @@ import { servoRadToJointRad } from '../../../Utils/actuatorJointMapping.ts';
 import { RosBridgeService } from '../ros.service.ts';
 import { Diagnostics } from '../../diagnostics.service.ts';
 
+export const COMMAND_DURATION_MS = 800;
+
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
 function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
   if (rosTime) return rosTime;
@@ -242,7 +244,7 @@ export class JointStateHandler {
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: COMMAND_DURATION_MS * 1e6 } }],
       });
       topic.publish(message);
       Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);

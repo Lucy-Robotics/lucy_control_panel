@@ -19,11 +19,11 @@ import {
 const reading = (celsius: number) => new Map([['elbow', celsius]]);
 const trippedAt = (celsius: number) => nextOverheatState(NO_OVERHEAT, reading(celsius));
 
-function exactlyThirtyDegreesDoesNotTrip() {
+function exactlyTheCutoffDoesNotTrip() {
     assert.equal(trippedAt(OVERHEAT_CELSIUS).tripped.size, 0);
 }
 
-function aboveThirtyDegreesTripsTheMotor() {
+function aboveTheCutoffTripsTheMotor() {
     assert.ok(trippedAt(OVERHEAT_CELSIUS + 1).tripped.has('elbow'));
 }
 
@@ -76,10 +76,10 @@ function coolingBelowTheRearmPointMakesTheNextOverheatTripAgain() {
     assert.ok(nextOverheatState(cooled, reading(45)).tripped.has('elbow'));
 }
 
-function flickerAroundThirtyDoesNotTripAnAcceptedMotor() {
-    const accepted = acceptOverheat(trippedAt(31), reading(31));
+function flickerAroundTheCutoffDoesNotTripAnAcceptedMotor() {
+    const accepted = acceptOverheat(trippedAt(OVERHEAT_CELSIUS + 1), reading(OVERHEAT_CELSIUS + 1));
     const dipped = nextOverheatState(accepted, reading(OVERHEAT_CELSIUS));
-    assert.equal(nextOverheatState(dipped, reading(31)).tripped.size, 0);
+    assert.equal(nextOverheatState(dipped, reading(OVERHEAT_CELSIUS + 1)).tripped.size, 0);
 }
 
 function anUnchangedReadingKeepsTheSameState() {
@@ -101,8 +101,8 @@ function torqueCommandsDropOnlyTheTrippedJointInControllerOrder() {
 }
 
 const checks = [
-    exactlyThirtyDegreesDoesNotTrip,
-    aboveThirtyDegreesTripsTheMotor,
+    exactlyTheCutoffDoesNotTrip,
+    aboveTheCutoffTripsTheMotor,
     onlyTheHotMotorTrips,
     aTrippedMotorStaysTrippedAfterCooling,
     continuingReleasesTheMotorBelowTheHardLimit,
@@ -112,7 +112,7 @@ const checks = [
     theHardLimitNeedsAFreshContinueAfterCooling,
     aMotorWithoutAReadingCannotContinue,
     coolingBelowTheRearmPointMakesTheNextOverheatTripAgain,
-    flickerAroundThirtyDoesNotTripAnAcceptedMotor,
+    flickerAroundTheCutoffDoesNotTripAnAcceptedMotor,
     anUnchangedReadingKeepsTheSameState,
     torqueTopicFollowsTheConfigGeneratorNaming,
     torqueCommandsDropOnlyTheTrippedJointInControllerOrder,

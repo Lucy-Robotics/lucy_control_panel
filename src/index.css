@@ -1156,8 +1156,9 @@ h6 {
   transition: grid-template-rows 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
 }
 
-/* A collapsed panel is only as wide as its title. */
-.viewer-overlay-box.collapsible:not(.expanded) .collapsible-body {
+/* A collapsed panel is only as wide as its title. `.narrow` is set once the
+   collapse transition has finished (see CollapsibleOverlay). */
+.viewer-overlay-box.collapsible.narrow .collapsible-body {
   width: 0;
 }
 

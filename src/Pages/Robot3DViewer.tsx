@@ -137,6 +137,9 @@ const SwitchRow: React.FC<{
     </div>
 );
 
+/** Matches the `.collapsible-body` transition in index.css. */
+const COLLAPSE_DURATION_MS = 250;
+
 const CollapsibleOverlay: React.FC<{
     title: string;
     style?: React.CSSProperties;
@@ -144,11 +147,26 @@ const CollapsibleOverlay: React.FC<{
     children: React.ReactNode;
 }> = ({ title, style, gap = 4, children }) => {
     const [expanded, setExpanded] = useState(false);
-    const toggle = () => setExpanded(prev => !prev);
+    // Shrinking to the title's width while the body still fades out squeezes its
+    // content into no width, so the panel only narrows once it has closed.
+    const [narrow, setNarrow] = useState(true);
+    const narrowTimerRef = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(narrowTimerRef.current), []);
+
+    const toggle = () => {
+        window.clearTimeout(narrowTimerRef.current);
+        if (expanded) {
+            setExpanded(false);
+            narrowTimerRef.current = window.setTimeout(() => setNarrow(true), COLLAPSE_DURATION_MS);
+        } else {
+            setNarrow(false);
+            setExpanded(true);
+        }
+    };
 
     return (
         <div
-            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}`}
+            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}${narrow ? ' narrow' : ''}`}
             style={{ ...OVERLAY_BOX, ...style }}
             onClick={expanded ? undefined : toggle}
         >

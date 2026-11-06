@@ -6,7 +6,7 @@
 import React, { useContext } from 'react';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import { formatTemperature } from '../Utils/jointTemperature.utils';
-import { HARD_LIMIT_CELSIUS } from '../Utils/motorOverheat.utils';
+import { HARD_LIMIT_CELSIUS, OVERHEAT_CELSIUS } from '../Utils/motorOverheat.utils';
 
 const BOX: React.CSSProperties = {
     position: 'fixed',
@@ -46,7 +46,7 @@ export const MotorOverheatAlert: React.FC = () => {
             <strong style={{ color: 'var(--color-status-error)' }}>MOTOR OVERHEATING: TORQUE OFF</strong>
             {[...trippedJoints].map((joint) => {
                 const celsius = temperatures.get(joint);
-                return <span key={joint}>{joint}: {celsius === undefined ? 'no reading' : formatTemperature(celsius)}</span>;
+                return <span key={joint}>{joint}: {celsius === undefined ? 'no reading' : formatTemperature(celsius)} (limit {OVERHEAT_CELSIUS} °C)</span>;
             })}
             {atHardLimit && <span>Hard limit {HARD_LIMIT_CELSIUS} °C reached: let the motor cool down.</span>}
             {canContinue && (

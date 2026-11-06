@@ -7,6 +7,7 @@
 export const FULL_SCALE_EFFORT_NM = 2.94;
 
 const IDLE_ARC_RATIO = 0.02;
+const MIN_TINT_RATIO = 0.02;
 
 export function effortRatio(effortNm: number): number {
     return Math.min(Math.abs(effortNm) / FULL_SCALE_EFFORT_NM, 1);
@@ -22,6 +23,14 @@ export function effortSweepSign(effortNm: number): 1 | -1 {
 
 export function effortColor(effortNm: number): string {
     return `hsl(${Math.round(120 * (1 - effortRatio(effortNm)))}, 90%, 50%)`;
+}
+
+export function effortTints(efforts: ReadonlyMap<string, number>): Map<string, string> {
+    const tints = new Map<string, string>();
+    efforts.forEach((effort, joint) => {
+        if (effortRatio(effort) >= MIN_TINT_RATIO) tints.set(joint, effortColor(effort));
+    });
+    return tints;
 }
 
 export function effortsByJoint(names: string[], efforts?: (number | null)[]): Map<string, number> {

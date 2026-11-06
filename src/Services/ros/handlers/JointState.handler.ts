@@ -209,7 +209,7 @@ export class JointStateHandler {
    * Positions are in radians.
    * Uses a small non-zero time_from_start (0.2s) so the controller accepts the goal (some drop points with t=0).
    */
-  publishJointStates(joints: JointControlState[]) {
+  publishJointStates(joints: JointControlState[], seedDurationMs?: number) {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) {
       console.warn('Cannot publish joint states: ROS connection not available');
@@ -240,11 +240,11 @@ export class JointStateHandler {
       if (!topic) continue;
       Diagnostics.record('command', 'slider', 'ok', `${names.length} joint(s) on ${cfg.defaultCategory}`);
       Diagnostics.record('command', 'converted', 'ok', 'servo rad -> URDF rad');
-      const stamp = getRosTimeNow(this.lastClock);
+      const stamp = seedDurationMs === undefined ? getRosTimeNow(this.lastClock) : { sec: 0, nanosec: 0 };
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: COMMAND_DURATION_MS * 1e6 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: (seedDurationMs ?? COMMAND_DURATION_MS) * 1e6 } }],
       });
       topic.publish(message);
       Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);

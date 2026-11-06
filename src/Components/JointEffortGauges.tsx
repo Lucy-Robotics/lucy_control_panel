@@ -7,8 +7,6 @@ import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFJoint, URDFRobot } from 'urdf-loader';
-import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
-import { subscribeToJointEfforts } from '../Services/ros/handlers/JointEffort.handler';
 import { effortArcRad, effortColor, effortSweepSign } from '../Utils/jointEffort.utils';
 import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
@@ -43,15 +41,11 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; effort: number }> = ({ join
     );
 };
 
-export const JointEffortGauges: React.FC<{ robot: URDFRobot; isConnected: boolean }> = ({ robot, isConnected }) => {
-    const efforts = useThrottledJointReadings(subscribeToJointEfforts, isConnected);
-
-    return (
-        <>
-            {[...efforts].map(([name, effort]) => {
-                const joint = robot.joints[name];
-                return joint ? <JointEffortGauge key={name} joint={joint} effort={effort} /> : null;
-            })}
-        </>
-    );
-};
+export const JointEffortGauges: React.FC<{ robot: URDFRobot; efforts: ReadonlyMap<string, number> }> = ({ robot, efforts }) => (
+    <>
+        {[...efforts].map(([name, effort]) => {
+            const joint = robot.joints[name];
+            return joint ? <JointEffortGauge key={name} joint={joint} effort={effort} /> : null;
+        })}
+    </>
+);

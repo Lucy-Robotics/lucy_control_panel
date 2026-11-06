@@ -41,6 +41,9 @@ import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
+import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
+import { subscribeToJointEfforts } from '../Services/ros/handlers/JointEffort.handler';
+import { effortTints } from '../Utils/jointEffort.utils';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -492,6 +495,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
     const [showEffort, setShowEffort] = useState(false);
+    const efforts = useThrottledJointReadings(subscribeToJointEfforts, isConnected && showEffort);
+    const jointTints = useMemo(() => effortTints(efforts), [efforts]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
 
@@ -737,6 +742,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
                         overheatedJointNames={overheatedJointNames}
+                        jointTints={jointTints}
                     />
                 )}
 
@@ -747,7 +753,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     ) : null;
                 })}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} isConnected={isConnected} />}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}

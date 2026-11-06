@@ -7,7 +7,7 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { ThunderboltOutlined } from '@ant-design/icons';
+import { LoadingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 export const COMMAND_RAIL_WIDTH = 74;
 
@@ -36,6 +36,7 @@ interface CommandRailProps {
     groups: RailGroup[];
     arm: {
         isOn: boolean;
+        isLoading: boolean;
         onToggle: () => void;
         hint: string;
     };
@@ -101,11 +102,13 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                                 className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
                                 aria-label="Control Robot"
                                 aria-pressed={arm.isOn}
+                                aria-busy={arm.isLoading}
+                                disabled={arm.isLoading}
                                 onClick={arm.onToggle}
                             >
-                                <span className="rail-icon"><ThunderboltOutlined /></span>
+                                <span className="rail-icon">{arm.isLoading ? <LoadingOutlined /> : <ThunderboltOutlined />}</span>
                                 <span className="rail-caption">ROBOT</span>
-                                <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
+                                <span className="rail-arm-state">{arm.isLoading ? '...' : arm.isOn ? 'ON' : 'OFF'}</span>
                             </button>
                         </span>
                     </Tooltip>

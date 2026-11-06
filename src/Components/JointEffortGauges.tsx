@@ -20,7 +20,12 @@ const LOAD_SMOOTHING_RATE = 12;
 const MIN_LOAD_STEP = 0.001;
 const ignoreRaycast = () => null;
 
-const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number; heatSource: THREE.Vector4 }> = ({ joint, load, heatSource }) => {
+const JointEffortGauge: React.FC<{
+    joint: URDFJoint;
+    load: number;
+    heatSource: THREE.Vector4;
+    showArrow: boolean;
+}> = ({ joint, load, heatSource, showArrow }) => {
     const groupRef = useRef<THREE.Group>(null);
     const shaftRef = useRef<THREE.Mesh>(null);
     const headRef = useRef<THREE.Mesh>(null);
@@ -57,7 +62,7 @@ const JointEffortGauge: React.FC<{ joint: URDFJoint; load: number; heatSource: T
         const next = previous === null ? load : previous + (load - previous) * (1 - Math.exp(-delta * LOAD_SMOOTHING_RATE));
         joint.getWorldPosition(jointPosition);
         heatSource.set(jointPosition.x, jointPosition.y, jointPosition.z, effortHeat(next));
-        group.visible = isEffortVisible(next);
+        group.visible = showArrow && isEffortVisible(next);
         if (previous !== null && Math.abs(next - previous) < MIN_LOAD_STEP) return;
 
         shownLoadRef.current = next;
@@ -83,14 +88,15 @@ export const JointEffortGauges: React.FC<{
     robot: URDFRobot;
     efforts: ReadonlyMap<string, number>;
     heatSources: THREE.Vector4[];
-}> = ({ robot, efforts, heatSources }) => {
+    showArrows: boolean;
+}> = ({ robot, efforts, heatSources, showArrows }) => {
     useEffect(() => () => heatSources.forEach((source) => { source.w = 0; }), [heatSources]);
 
     return (
         <>
             {[...efforts].slice(0, heatSources.length).map(([name, load], index) => {
                 const joint = robot.joints[name];
-                return joint ? <JointEffortGauge key={name} joint={joint} load={load} heatSource={heatSources[index]} /> : null;
+                return joint ? <JointEffortGauge key={name} joint={joint} load={load} heatSource={heatSources[index]} showArrow={showArrows} /> : null;
             })}
         </>
     );

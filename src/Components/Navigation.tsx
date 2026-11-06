@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button, Space, Grid } from 'antd';
+import { Button, Space, Grid, Tooltip } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import { ROUTES } from '../Constants/routes.ts';
 
@@ -23,32 +23,29 @@ export const Navigation: React.FC = () => {
 
     if (!screens.md) return null;
 
-    const desktopStyle: React.CSSProperties = {
-        position: 'fixed',
-        bottom: 20,
-        right: 30, // Aligned with 30px screen border
-        zIndex: 1000,
-        padding: '8px 12px',
-    };
+    // Below xl the labels don't fit in the header next to the title and actions.
+    const compact = !screens.xl;
 
     return (
-        <div style={desktopStyle} className="lucy-navigation-bar chamfer-box-lg">
+        <nav style={{ display: 'flex', justifyContent: 'center', gridColumn: 2 }}>
             <Space size={8}>
                 {navigationItems.map(item => {
                     const isActive = location.pathname === item.to;
                     return (
-                        <Link to={item.to} key={item.to}>
-                            <Button
-                                className={`nav-item-btn ${isActive ? 'active' : ''}`}
-                                icon={item.icon}
-                            >
-                                {item.label}
-                            </Button>
-                        </Link>
+                        <Tooltip title={compact ? item.label : undefined} key={item.to}>
+                            <Link to={item.to} aria-label={item.label}>
+                                <Button
+                                    className={`nav-item-btn ${isActive ? 'active' : ''}`}
+                                    icon={item.icon}
+                                >
+                                    {!compact && item.label}
+                                </Button>
+                            </Link>
+                        </Tooltip>
                     );
                 })}
             </Space>
-        </div>
+        </nav>
     );
 };
 

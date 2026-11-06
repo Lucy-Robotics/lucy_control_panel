@@ -7,7 +7,7 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { ThunderboltOutlined } from '@ant-design/icons';
+import { GamepadOutlined } from './GamepadIcon';
 
 export const COMMAND_RAIL_WIDTH = 74;
 
@@ -103,8 +103,8 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                                 aria-pressed={arm.isOn}
                                 onClick={arm.onToggle}
                             >
-                                <span className="rail-icon"><ThunderboltOutlined /></span>
-                                <span className="rail-caption">ROBOT</span>
+                                <span className="rail-icon"><GamepadOutlined /></span>
+                                <span className="rail-caption">CONTROL</span>
                                 <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
                             </button>
                         </span>

@@ -296,22 +296,9 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       styles={{ body: { padding: 12 } }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.displayName ?? joint.name}
-          </Text>
-          <span
-            style={{
-              color: UI_TEXT_SECONDARY_MUTED,
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-          >
-            {joint.type}
-          </span>
-        </div>
+        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+          {joint.displayName ?? joint.name}
+        </Text>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
@@ -394,10 +381,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
           <Text type="secondary" style={{ fontSize: '10px' }}>
-            Min: {minDisplay}{showDegrees ? '°' : 'rad'}
+            {minDisplay}{showDegrees ? '°' : 'rad'}
           </Text>
           <Text type="secondary" style={{ fontSize: '10px' }}>
-            Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
+            {maxDisplay}{showDegrees ? '°' : 'rad'}
           </Text>
         </div>
       </Space>

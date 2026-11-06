@@ -13,7 +13,6 @@ import type { ComponentType } from 'react';
 import { RobotControlPanel } from './Pages/RobotControlPanel';
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
-import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 
 /* Contexts */
@@ -26,6 +25,7 @@ import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
 import { Page } from './Components/Page';
 import { GettingStartedModal } from './Components/GettingStartedModal';
+import { RemoteControlBorder } from './Components/RemoteControlBorder';
 
 /* Constants */
 import { ROUTES } from './Constants/routes.ts';
@@ -146,8 +146,8 @@ function App() {
                     <ActiveHardwareRosProvider>
                         <Layout style={{ minHeight: '100vh' }}>
                             <RoutedPage />
-                            <Navigation />
                             <GettingStartedModal />
+                            <RemoteControlBorder />
                         </Layout>
                     </ActiveHardwareRosProvider>
                 </PaginatedCategoriesProvider>

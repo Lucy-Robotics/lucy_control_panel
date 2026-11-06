@@ -16,6 +16,7 @@ import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import { DockProvider } from '../contexts/DockContext.tsx';
 import { CustomTitle } from './CustomTitle.tsx';
+import { Navigation } from './Navigation.tsx';
 
 const { Header, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -74,14 +75,20 @@ export const Page: React.FC<PageProps> = ({
               zIndex: 10,
             }}
           >
-            <div style={{
+            <div style={!screens.md ? {
               display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between',
-              alignItems: isMobile ? 'stretch' : 'center',
-              gap: isMobile ? 8 : 12,
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: 8,
               width: '100%',
-              minHeight: isMobile ? 0 : 32,
+            } : {
+              // Equal side columns keep the navigation centred on the screen.
+              display: 'grid',
+              gridTemplateColumns: 'minmax(max-content, 1fr) auto minmax(max-content, 1fr)',
+              alignItems: 'center',
+              gap: 12,
+              width: '100%',
+              minHeight: 32,
             }}>
               {title && (
                 <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -121,7 +128,8 @@ export const Page: React.FC<PageProps> = ({
                   />
                 </div>
               )}
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+              <Navigation />
+              <div style={{ gridColumn: 3, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
                 <AppHeader />
               </div>
             </div>

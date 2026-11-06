@@ -13,7 +13,7 @@ import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
-import { ViewCube } from '../Components/ViewCube';
+import { ViewCube, VIEW_CUBE_CLEARANCE_PX } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
@@ -65,8 +65,9 @@ const getInitialUnselectedOpacity = (): number => {
     return 0.25;
 };
 
+const OVERLAY_MARGIN_PX = 10;
 const SETTINGS_BOX_WIDTH = 165;
-const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
+const VIEW_CUBE_GAP_PX = 6;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -111,12 +112,14 @@ const CENTERED_FILL: React.CSSProperties = {
 /** Shared chrome for the floating overlay panels (each adds its own position). */
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
-    left: 10,
+    bottom: OVERLAY_MARGIN_PX,
+    left: OVERLAY_MARGIN_PX,
     fontFamily: 'monospace',
     fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
     display: 'flex',
-    flexDirection: 'column',
+    // The title stays under the pointer while the body opens above it.
+    flexDirection: 'column-reverse',
 };
 
 const SWITCH_ROW: React.CSSProperties = {
@@ -136,7 +139,7 @@ const SwitchRow: React.FC<{
 
 const CollapsibleOverlay: React.FC<{
     title: string;
-    style: React.CSSProperties;
+    style?: React.CSSProperties;
     gap?: number;
     children: React.ReactNode;
 }> = ({ title, style, gap = 4, children }) => {
@@ -450,14 +453,12 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
-    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
-    docked = false,
     isControlOn: isControlOnProp,
     joints,
     onJointValueChange,
@@ -778,13 +779,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     <ViewCube
                         colors={themeColors}
                         onSelectView={handleSelectView}
-                        bottomOffset={docked ? DOCKED_VIEW_CUBE_OFFSET_PX : 0}
                     />
                 )}
             </Canvas>
 
-            {/* Controls hint — top-left */}
-            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ top: 10, userSelect: 'none' }}>
+            {/* Controls hint — bottom-left */}
+            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ userSelect: 'none' }}>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
@@ -802,10 +802,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
             )}
 
-            {/* Settings */}
+            {/* Settings — bottom-right, left of the view cube (hidden on mobile) */}
             <CollapsibleOverlay
-                title="SETTINGS"
-                style={{ top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH }}
+                title="VIEW SETTINGS"
+                style={{
+                    left: 'auto',
+                    right: isMobile ? OVERLAY_MARGIN_PX : VIEW_CUBE_CLEARANCE_PX + VIEW_CUBE_GAP_PX,
+                    width: SETTINGS_BOX_WIDTH,
+                }}
                 gap={6}
             >
                 {/* Part selector & transparency of unselected parts */}

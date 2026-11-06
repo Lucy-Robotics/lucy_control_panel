@@ -13,7 +13,7 @@ import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFra
 const GAUGE_TO_GIZMO_RADIUS = 0.7;
 const TUBE_TO_GAUGE_RADIUS = 0.04;
 const RENDER_ORDER = 999;
-const LOAD_SMOOTHING_RATE = 5;
+const LOAD_SMOOTHING_RATE = 12;
 const MIN_LOAD_STEP = 0.001;
 const ignoreRaycast = () => null;
 

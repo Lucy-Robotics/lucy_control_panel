@@ -7,6 +7,12 @@ import { interfaceValuesByJoint, type DynamicJointState } from './dynamicJointSt
 
 const IDLE_ARC_RATIO = 0.02;
 const FULL_HEAT_LOAD = 0.5;
+const HEAT_STOPS = [
+    { heat: 0, rgb: [255, 255, 255] },
+    { heat: 0.4, rgb: [255, 230, 0] },
+    { heat: 0.7, rgb: [255, 128, 0] },
+    { heat: 1, rgb: [220, 0, 0] },
+];
 
 export function effortRatio(load: number): number {
     return Math.min(Math.abs(load), 1);
@@ -26,7 +32,12 @@ export function effortHeat(load: number): number {
 
 export function effortColor(load: number): string {
     const heat = effortHeat(load);
-    return `hsl(${Math.round(25 * (1 - heat))}, 100%, ${Math.round(100 - 50 * heat)}%)`;
+    const upper = HEAT_STOPS.findIndex((stop) => heat <= stop.heat);
+    const to = HEAT_STOPS[upper];
+    const from = HEAT_STOPS[Math.max(upper - 1, 0)];
+    const blend = to === from ? 0 : (heat - from.heat) / (to.heat - from.heat);
+    const [red, green, blue] = from.rgb.map((channel, i) => Math.round(channel + (to.rgb[i] - channel) * blend));
+    return `rgb(${red}, ${green}, ${blue})`;
 }
 
 export function loadsByJoint(state: DynamicJointState): Map<string, number> {

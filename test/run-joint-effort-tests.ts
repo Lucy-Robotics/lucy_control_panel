@@ -39,14 +39,12 @@ function arcSweepFollowsTheLoadSign() {
     assert.equal(effortSweepSign(-1), -1);
 }
 
-function colorGoesFromWhiteAtRestToRedUnderLoad() {
-    assert.equal(effortColor(0), 'hsl(25, 100%, 100%)');
-    assert.equal(effortColor(0.5), 'hsl(0, 100%, 50%)');
-    assert.equal(effortColor(1), 'hsl(0, 100%, 50%)');
-}
-
-function aPressedMotorIsClearlyOffWhite() {
-    assert.equal(effortColor(PRESSED_ELBOW), 'hsl(16, 100%, 81%)');
+function colorGoesWhiteYellowOrangeRedWithLoad() {
+    assert.equal(effortColor(0), 'rgb(255, 255, 255)');
+    assert.equal(effortColor(0.2), 'rgb(255, 230, 0)');
+    assert.equal(effortColor(0.35), 'rgb(255, 128, 0)');
+    assert.equal(effortColor(0.5), 'rgb(220, 0, 0)');
+    assert.equal(effortColor(1), 'rgb(220, 0, 0)');
 }
 
 function heatIsFullAtHalfLoadInEitherDirection() {
@@ -75,8 +73,7 @@ const checks = [
     arcFillsTheCircleAtFullLoad,
     arcStaysVisibleAtZeroLoad,
     arcSweepFollowsTheLoadSign,
-    colorGoesFromWhiteAtRestToRedUnderLoad,
-    aPressedMotorIsClearlyOffWhite,
+    colorGoesWhiteYellowOrangeRedWithLoad,
     heatIsFullAtHalfLoadInEitherDirection,
     loadsAreReadFromTheDynamicJointState,
 ];

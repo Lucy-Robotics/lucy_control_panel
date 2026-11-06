@@ -475,7 +475,10 @@ export const RobotControlPanel: React.FC = () => {
         cancelPendingTakeControlRef.current();
         setIsTakingControl(shouldControl);
         if (shouldControl) {
-            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(jointsRef.current);
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
+                ...joint,
+                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
+            })));
         } else {
             ControlModeHandler.getInstance().releaseControl();
         }

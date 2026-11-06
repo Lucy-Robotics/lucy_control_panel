@@ -46,7 +46,13 @@ export const MotorOverheatAlert: React.FC = () => {
             <strong style={{ color: 'var(--color-status-error)' }}>MOTOR OVERHEATING: TORQUE OFF</strong>
             {[...trippedJoints].map((joint) => {
                 const celsius = temperatures.get(joint);
-                return <span key={joint}>{joint}: {celsius === undefined ? 'no reading' : formatTemperature(celsius)} (limit {OVERHEAT_CELSIUS} °C)</span>;
+                const cooled = celsius !== undefined && celsius <= OVERHEAT_CELSIUS;
+                return (
+                    <span key={joint}>
+                        {joint}: {celsius === undefined ? 'no reading' : formatTemperature(celsius)}
+                        {cooled ? ` (went over ${OVERHEAT_CELSIUS} °C, stays off until you continue)` : ` (limit ${OVERHEAT_CELSIUS} °C)`}
+                    </span>
+                );
             })}
             {atHardLimit && <span>Hard limit {HARD_LIMIT_CELSIUS} °C reached: let the motor cool down.</span>}
             {canContinue && (

@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
-import { subscribeToJointTemperatures } from '../Services/ros/handlers/JointTemperature.handler';
+import { subscribeToJointTemperatures } from '../Services/ros/handlers/DynamicJointState.handler';
 import { publishJointTorque } from '../Services/ros/handlers/JointTorque.handler';
 import {
     NO_OVERHEAT,

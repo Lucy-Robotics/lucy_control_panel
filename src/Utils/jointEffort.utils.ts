@@ -3,41 +3,35 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-// shortcut: Feetech stall torque, the only actuator reporting effort; read it from the hardware config once exposed
-export const FULL_SCALE_EFFORT_NM = 2.94;
+import { interfaceValuesByJoint, type DynamicJointState } from './dynamicJointState.utils.ts';
 
 const IDLE_ARC_RATIO = 0.02;
-const MIN_TINT_RATIO = 0.02;
+const MIN_TINT_RATIO = 0.05;
 
-export function effortRatio(effortNm: number): number {
-    return Math.min(Math.abs(effortNm) / FULL_SCALE_EFFORT_NM, 1);
+export function effortRatio(load: number): number {
+    return Math.min(Math.abs(load), 1);
 }
 
-export function effortArcRad(effortNm: number): number {
-    return Math.max(effortRatio(effortNm), IDLE_ARC_RATIO) * 2 * Math.PI;
+export function effortArcRad(load: number): number {
+    return Math.max(effortRatio(load), IDLE_ARC_RATIO) * 2 * Math.PI;
 }
 
-export function effortSweepSign(effortNm: number): 1 | -1 {
-    return effortNm < 0 ? -1 : 1;
+export function effortSweepSign(load: number): 1 | -1 {
+    return load < 0 ? -1 : 1;
 }
 
-export function effortColor(effortNm: number): string {
-    return `hsl(${Math.round(120 * (1 - effortRatio(effortNm)))}, 90%, 50%)`;
+export function effortColor(load: number): string {
+    return `hsl(${Math.round(120 * (1 - effortRatio(load)))}, 90%, 50%)`;
 }
 
-export function effortTints(efforts: ReadonlyMap<string, number>): Map<string, string> {
+export function effortTints(loads: ReadonlyMap<string, number>): Map<string, string> {
     const tints = new Map<string, string>();
-    efforts.forEach((effort, joint) => {
-        if (effortRatio(effort) >= MIN_TINT_RATIO) tints.set(joint, effortColor(effort));
+    loads.forEach((load, joint) => {
+        if (effortRatio(load) >= MIN_TINT_RATIO) tints.set(joint, effortColor(load));
     });
     return tints;
 }
 
-export function effortsByJoint(names: string[], efforts?: (number | null)[]): Map<string, number> {
-    const byJoint = new Map<string, number>();
-    names.forEach((name, i) => {
-        const effort = efforts?.[i];
-        if (typeof effort === 'number' && Number.isFinite(effort)) byJoint.set(name, effort);
-    });
-    return byJoint;
+export function loadsByJoint(state: DynamicJointState): Map<string, number> {
+    return interfaceValuesByJoint(state, 'load');
 }

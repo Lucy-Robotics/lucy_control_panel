@@ -42,7 +42,7 @@ import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
-import { subscribeToJointEfforts } from '../Services/ros/handlers/JointEffort.handler';
+import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
 import { effortTints } from '../Utils/jointEffort.utils';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
@@ -495,7 +495,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
     const [showEffort, setShowEffort] = useState(false);
-    const efforts = useThrottledJointReadings(subscribeToJointEfforts, isConnected && showEffort);
+    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const jointTints = useMemo(() => effortTints(efforts), [efforts]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);

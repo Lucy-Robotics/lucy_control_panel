@@ -5,74 +5,77 @@
 
 import assert from 'node:assert/strict';
 import {
-    FULL_SCALE_EFFORT_NM,
     effortArcRad,
     effortColor,
     effortRatio,
     effortSweepSign,
     effortTints,
-    effortsByJoint,
+    loadsByJoint,
 } from '../src/Utils/jointEffort.utils.ts';
 
 const FULL_TURN = 2 * Math.PI;
+const RESTING_NOISE = 0.048;
+const PRESSED_ELBOW = 0.188;
 
-function ratioIsTheShareOfStallTorqueWhateverTheDirection() {
-    assert.equal(effortRatio(FULL_SCALE_EFFORT_NM / 2), 0.5);
-    assert.equal(effortRatio(-FULL_SCALE_EFFORT_NM / 2), 0.5);
+function ratioIsTheLoadWhateverTheDirection() {
+    assert.equal(effortRatio(0.5), 0.5);
+    assert.equal(effortRatio(-0.5), 0.5);
 }
 
-function ratioStaysAtOneAboveStallTorque() {
-    assert.equal(effortRatio(FULL_SCALE_EFFORT_NM * 3), 1);
+function ratioStaysAtOneAboveFullLoad() {
+    assert.equal(effortRatio(3), 1);
 }
 
-function arcFillsTheCircleAtStallTorque() {
-    assert.equal(effortArcRad(FULL_SCALE_EFFORT_NM), FULL_TURN);
+function arcFillsTheCircleAtFullLoad() {
+    assert.equal(effortArcRad(1), FULL_TURN);
 }
 
-function arcStaysVisibleAtZeroEffort() {
+function arcStaysVisibleAtZeroLoad() {
     assert.ok(effortArcRad(0) > 0);
 }
 
-function arcSweepFollowsTheEffortSign() {
+function arcSweepFollowsTheLoadSign() {
     assert.equal(effortSweepSign(1), 1);
     assert.equal(effortSweepSign(0), 1);
     assert.equal(effortSweepSign(-1), -1);
 }
 
-function colorGoesFromGreenAtRestToRedAtStall() {
+function colorGoesFromGreenAtRestToRedAtFullLoad() {
     assert.equal(effortColor(0), 'hsl(120, 90%, 50%)');
-    assert.equal(effortColor(FULL_SCALE_EFFORT_NM), 'hsl(0, 90%, 50%)');
+    assert.equal(effortColor(1), 'hsl(0, 90%, 50%)');
 }
 
-function aMotorUnderLoadGetsItsEffortColor() {
-    assert.deepEqual([...effortTints(new Map([['a', FULL_SCALE_EFFORT_NM]]))], [['a', 'hsl(0, 90%, 50%)']]);
+function aPressedMotorGetsItsColor() {
+    assert.equal(effortTints(new Map([['elbow', PRESSED_ELBOW]])).size, 1);
 }
 
-function aMotorAtRestKeepsItsOwnColor() {
-    assert.equal(effortTints(new Map([['a', 0]])).size, 0);
+function restingNoiseKeepsTheMotorColor() {
+    assert.equal(effortTints(new Map([['elbow', RESTING_NOISE]])).size, 0);
 }
 
-function jointsWithoutAMeasuredEffortAreLeftOut() {
-    const efforts = effortsByJoint(['a', 'b', 'c', 'd'], [1.5, null, NaN, 0]);
-    assert.deepEqual([...efforts], [['a', 1.5], ['d', 0]]);
-}
-
-function messagesWithoutEffortsYieldNoJoints() {
-    assert.equal(effortsByJoint(['a'], []).size, 0);
-    assert.equal(effortsByJoint(['a']).size, 0);
+function loadsAreReadFromTheDynamicJointState() {
+    const loads = loadsByJoint({
+        joint_names: ['a', 'b', 'c', 'd'],
+        interface_values: [
+            { interface_names: ['position', 'load'], values: [1, -0.25] },
+            { interface_names: ['load'], values: [0] },
+            { interface_names: ['load'], values: [null] },
+            { interface_names: ['position'], values: [1] },
+        ],
+    });
+    assert.deepEqual([...loads], [['a', -0.25], ['b', 0]]);
 }
 
 const checks = [
-    ratioIsTheShareOfStallTorqueWhateverTheDirection,
-    ratioStaysAtOneAboveStallTorque,
-    arcFillsTheCircleAtStallTorque,
-    arcStaysVisibleAtZeroEffort,
-    arcSweepFollowsTheEffortSign,
-    colorGoesFromGreenAtRestToRedAtStall,
-    aMotorUnderLoadGetsItsEffortColor,
-    aMotorAtRestKeepsItsOwnColor,
-    jointsWithoutAMeasuredEffortAreLeftOut,
-    messagesWithoutEffortsYieldNoJoints,
+    ratioIsTheLoadWhateverTheDirection,
+    ratioStaysAtOneAboveFullLoad,
+    arcFillsTheCircleAtFullLoad,
+    arcStaysVisibleAtZeroLoad,
+    arcSweepFollowsTheLoadSign,
+    colorGoesFromGreenAtRestToRedAtFullLoad,
+    aPressedMotorGetsItsColor,
+    restingNoiseKeepsTheMotorColor,
+    loadsAreReadFromTheDynamicJointState,
 ];
 
 for (const check of checks) check();

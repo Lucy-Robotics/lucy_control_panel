@@ -1523,6 +1523,125 @@ h6 {
   box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
 }
 
+/* ─── Controls pinned over the docked 3D view (robot + CONTROL) ──────────── */
+.viewer-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none; /* Dragging between the two still orbits the camera. */
+}
+
+.viewer-hud-slot {
+  display: flex;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.control-toggle,
+.robot-menu-btn {
+  --chamfer: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* The main action of the page: bigger than the robot menu beside it. */
+.control-toggle {
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  --chamfer: 8px;
+  --tone: var(--color-status-error);
+  --frame: color-mix(in srgb, var(--tone) 70%, transparent);
+  --fill: color-mix(in srgb, var(--tone) 14%, var(--color-surface-1));
+  color: var(--tone);
+  cursor: pointer;
+}
+
+.control-toggle:hover {
+  --frame: var(--tone);
+  --fill: color-mix(in srgb, var(--tone) 24%, var(--color-surface-1));
+}
+
+.control-toggle.is-on,
+.control-toggle.is-on:hover {
+  --tone: var(--color-highlight);
+  --frame: var(--tone);
+  --fill: var(--tone);
+  color: var(--color-text-on-highlight);
+}
+
+.control-toggle:focus-visible,
+.robot-menu-btn:focus-visible {
+  outline: 2px solid var(--color-highlight);
+  outline-offset: 2px;
+}
+
+.control-toggle-icon {
+  font-size: 22px;
+}
+
+.control-toggle-state {
+  /* Room for "OFF" (3 monospace characters + letter spacing) in both states, so the button doesn't resize. */
+  display: inline-block;
+  box-sizing: content-box;
+  width: calc(3ch + 4.5px);
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.robot-menu-btn {
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 92%, transparent);
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.robot-menu-btn:disabled {
+  --frame: var(--color-line);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.robot-menu-icon {
+  font-size: 15px;
+  color: var(--color-highlight);
+}
+
+.robot-menu-caret {
+  font-size: 9px;
+  color: var(--color-text-secondary);
+}
+
+.robot-menu-btn:disabled .robot-menu-icon,
+.robot-menu-btn:disabled .robot-menu-caret {
+  color: var(--color-text-muted);
+}
+
+.robot-menu-slot {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
 .rail-arm {
   min-height: 62px;
   --frame: color-mix(in srgb, var(--color-status-error) 60%, transparent);

@@ -6,7 +6,7 @@
 import Icon from '@ant-design/icons';
 import type { GetProps } from 'antd';
 
-const GamepadSvg = () => (
+const JoystickSvg = () => (
     <svg
         viewBox="0 0 24 24"
         width="1em"
@@ -18,14 +18,13 @@ const GamepadSvg = () => (
         strokeLinejoin="round"
         aria-hidden
     >
-        <path d="M7 6h10a4 4 0 0 1 3.94 3.3l1 5.7a3 3 0 0 1-5.1 2.6L15 16H9l-1.84 1.6A3 3 0 0 1 2.06 15l1-5.7A4 4 0 0 1 7 6z" />
-        <path d="M8 9.5v3" />
-        <path d="M6.5 11h3" />
-        <path d="M15 12h.01" />
-        <path d="M17.5 10h.01" />
+        <circle cx="12" cy="5.5" r="3" />
+        <path d="M12 8.5v8" />
+        <path d="M5 16.5h14a2 2 0 0 1 2 2v1.5H3v-1.5a2 2 0 0 1 2-2z" />
+        <path d="M17 13.5h.01" />
     </svg>
 );
 
-export const GamepadOutlined = (props: Partial<GetProps<typeof Icon>>) => (
-    <Icon component={GamepadSvg} {...props} />
+export const JoystickOutlined = (props: Partial<GetProps<typeof Icon>>) => (
+    <Icon component={JoystickSvg} {...props} />
 );

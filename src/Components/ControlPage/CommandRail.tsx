@@ -7,7 +7,7 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { GamepadOutlined } from './GamepadIcon';
+import { JoystickOutlined } from './JoystickIcon';
 
 export const COMMAND_RAIL_WIDTH = 74;
 
@@ -32,13 +32,16 @@ export interface RailGroup {
     pinEnd?: boolean;
 }
 
+export interface ControlArm {
+    isOn: boolean;
+    onToggle: () => void;
+    hint: string;
+}
+
 interface CommandRailProps {
     groups: RailGroup[];
-    arm: {
-        isOn: boolean;
-        onToggle: () => void;
-        hint: string;
-    };
+    /** CONTROL toggle; left out when it is shown elsewhere (over the docked 3D view). */
+    arm?: ControlArm;
     orientation: 'vertical' | 'horizontal';
     className?: string;
     style?: React.CSSProperties;
@@ -92,28 +95,32 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 className={`command-rail ${className}`.trim()}
                 style={style}
             >
-                <div className="rail-group">
-                    <span className="rail-code" aria-hidden>CONTROL</span>
-                    <Tooltip placement={placement} title={arm.hint}>
-                        <span className="rail-slot">
-                            <button
-                                type="button"
-                                className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
-                                aria-label="Control Robot"
-                                aria-pressed={arm.isOn}
-                                onClick={arm.onToggle}
-                            >
-                                <span className="rail-icon"><GamepadOutlined /></span>
-                                <span className="rail-caption">CONTROL</span>
-                                <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
-                            </button>
-                        </span>
-                    </Tooltip>
-                </div>
+                {arm && (
+                    <div className="rail-group">
+                        <span className="rail-code" aria-hidden>CONTROL</span>
+                        <Tooltip placement={placement} title={arm.hint}>
+                            <span className="rail-slot">
+                                <button
+                                    type="button"
+                                    className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
+                                    aria-label="Control Robot"
+                                    aria-pressed={arm.isOn}
+                                    onClick={arm.onToggle}
+                                >
+                                    <span className="rail-icon"><JoystickOutlined /></span>
+                                    <span className="rail-caption">CONTROL</span>
+                                    <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
+                                </button>
+                            </span>
+                        </Tooltip>
+                    </div>
+                )}
 
-                {groups.map((group) => (
+                {groups.map((group, index) => (
                     <React.Fragment key={group.key}>
-                        <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
+                        {(arm || index > 0) && (
+                            <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
+                        )}
                         <div className="rail-group" role="group" aria-label={group.code}>
                             <span className="rail-code" aria-hidden>{group.code}</span>
                             {group.items.map(renderItem)}

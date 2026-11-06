@@ -36,7 +36,7 @@ The control panel has to connect to this bridge everytime, which is made automat
 
 > This is where you'll control your robot, and it's full of stuff, so let's go over the basics!
 
-First thing first, you will need to take control over the robot. This can be achieved by using the 🎮 'Control' button at the top of the command rail, on the left of the page.
+First thing first, you will need to take control over the robot. This can be achieved by using the 🕹️ 'Control' button at the top right of the 3D view. If the 3D view is not docked, the button sits at the top of the command rail, on the left of the page.
 > This security system ensure that no more than one controller is sending instruction to your robot. When activated, this will take control from other control applications.
 
 ---

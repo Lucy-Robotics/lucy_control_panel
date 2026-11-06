@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-export const OVERHEAT_CELSIUS = 40;
+export const OVERHEAT_CELSIUS = 50;
 export const HARD_LIMIT_CELSIUS = 60;
-export const OVERHEAT_REARM_CELSIUS = 38;
+export const OVERHEAT_REARM_CELSIUS = 48;
 
 export interface OverheatState {
     tripped: ReadonlySet<string>;

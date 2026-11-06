@@ -28,21 +28,21 @@ function aboveTheCutoffTripsTheMotor() {
 }
 
 function onlyTheHotMotorTrips() {
-    const state = nextOverheatState(NO_OVERHEAT, new Map([['elbow', 45], ['jaw', 25]]));
+    const state = nextOverheatState(NO_OVERHEAT, new Map([['elbow', 55], ['jaw', 25]]));
     assert.deepEqual([...state.tripped], ['elbow']);
 }
 
 function aTrippedMotorStaysTrippedAfterCooling() {
-    assert.ok(nextOverheatState(trippedAt(45), reading(20)).tripped.has('elbow'));
+    assert.ok(nextOverheatState(trippedAt(55), reading(20)).tripped.has('elbow'));
 }
 
 function continuingReleasesTheMotorBelowTheHardLimit() {
-    assert.equal(acceptOverheat(trippedAt(45), reading(45)).tripped.size, 0);
+    assert.equal(acceptOverheat(trippedAt(55), reading(55)).tripped.size, 0);
 }
 
 function anAcceptedMotorDoesNotTripAgainWhileItStaysHot() {
-    const accepted = acceptOverheat(trippedAt(45), reading(45));
-    assert.equal(nextOverheatState(accepted, reading(50)).tripped.size, 0);
+    const accepted = acceptOverheat(trippedAt(55), reading(55));
+    assert.equal(nextOverheatState(accepted, reading(57)).tripped.size, 0);
 }
 
 function continuingIsRefusedAtTheHardLimit() {
@@ -52,28 +52,28 @@ function continuingIsRefusedAtTheHardLimit() {
 }
 
 function theHardLimitOverridesAnEarlierContinue() {
-    const accepted = acceptOverheat(trippedAt(45), reading(45));
+    const accepted = acceptOverheat(trippedAt(55), reading(55));
     const state = nextOverheatState(accepted, reading(HARD_LIMIT_CELSIUS));
     assert.ok(state.tripped.has('elbow'));
     assert.equal(state.accepted.size, 0);
 }
 
 function theHardLimitNeedsAFreshContinueAfterCooling() {
-    const accepted = acceptOverheat(trippedAt(45), reading(45));
+    const accepted = acceptOverheat(trippedAt(55), reading(55));
     const atLimit = nextOverheatState(accepted, reading(HARD_LIMIT_CELSIUS));
-    const cooled = nextOverheatState(atLimit, reading(45));
+    const cooled = nextOverheatState(atLimit, reading(55));
     assert.ok(cooled.tripped.has('elbow'));
-    assert.deepEqual(jointsAllowedToContinue(cooled, reading(45)), ['elbow']);
+    assert.deepEqual(jointsAllowedToContinue(cooled, reading(55)), ['elbow']);
 }
 
 function aMotorWithoutAReadingCannotContinue() {
-    assert.deepEqual(jointsAllowedToContinue(trippedAt(45), new Map()), []);
+    assert.deepEqual(jointsAllowedToContinue(trippedAt(55), new Map()), []);
 }
 
 function coolingBelowTheRearmPointMakesTheNextOverheatTripAgain() {
-    const accepted = acceptOverheat(trippedAt(45), reading(45));
+    const accepted = acceptOverheat(trippedAt(55), reading(55));
     const cooled = nextOverheatState(accepted, reading(OVERHEAT_REARM_CELSIUS));
-    assert.ok(nextOverheatState(cooled, reading(45)).tripped.has('elbow'));
+    assert.ok(nextOverheatState(cooled, reading(55)).tripped.has('elbow'));
 }
 
 function flickerAroundTheCutoffDoesNotTripAnAcceptedMotor() {
@@ -83,8 +83,8 @@ function flickerAroundTheCutoffDoesNotTripAnAcceptedMotor() {
 }
 
 function anUnchangedReadingKeepsTheSameState() {
-    const state = trippedAt(45);
-    assert.equal(nextOverheatState(state, reading(46)), state);
+    const state = trippedAt(55);
+    assert.equal(nextOverheatState(state, reading(56)), state);
 }
 
 function torqueTopicFollowsTheConfigGeneratorNaming() {

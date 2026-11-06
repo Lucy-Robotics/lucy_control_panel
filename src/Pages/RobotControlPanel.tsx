@@ -59,6 +59,9 @@ import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
+import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
+import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
+import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
@@ -196,6 +199,7 @@ export const RobotControlPanel: React.FC = () => {
         () => ControlModeHandler.getInstance().currentControllerId
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -858,7 +862,9 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
+        <MotorOverheatContext.Provider value={motorOverheat}>
         <JointPreviewContext.Provider value={jointPreviewStore}>
+            <MotorOverheatAlert />
             <Robot3DViewerModal
                 isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
@@ -1114,5 +1120,6 @@ export const RobotControlPanel: React.FC = () => {
             </MovableModal>
 
         </JointPreviewContext.Provider>
+        </MotorOverheatContext.Provider>
     );
 };

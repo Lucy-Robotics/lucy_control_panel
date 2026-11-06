@@ -23,12 +23,15 @@ import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import {
     CLICK_DRAG_THRESHOLD_PX,
+    findJointForLink,
+    findLinkWithJoint,
     findParentLink,
     resolveActuatedLinkName,
     urdfNameOf,
     wrapAngle,
     type ActuatedJointNames,
 } from '../Utils/robotModel.utils';
+import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
 
 interface RobotMaterialState {
     originals: Map<THREE.Mesh, THREE.Material | THREE.Material[]>;
@@ -48,59 +51,7 @@ function getMaterialState(robot: URDFRobot): RobotMaterialState {
 
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
-const SELECTED_EMISSIVE_INTENSITY = 0.25;
-const NO_EMISSIVE = new THREE.Color(0x000000);
-const UNSELECTED_COLOR = new THREE.Color(0xffffff);
-
-type PartStyle = 'normal' | 'selected' | 'unselected';
-
-function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
-    return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
-}
-
-function hasColor(m: THREE.Material): m is THREE.Material & { color: THREE.Color } {
-    return (m as { color?: unknown }).color instanceof THREE.Color;
-}
-
-function applyStyle(
-    display: THREE.Material,
-    orig: THREE.Material,
-    style: PartStyle,
-    wireframe: boolean,
-    focus: THREE.Color,
-    unselectedOpacity: number,
-) {
-    if ('wireframe' in display) {
-        (display as THREE.MeshStandardMaterial).wireframe = wireframe;
-    }
-
-    if (hasColor(display) && hasColor(orig)) {
-        display.color.copy(style === 'selected' ? focus
-            : style === 'unselected' ? UNSELECTED_COLOR
-            : orig.color);
-    }
-
-    if (hasEmissive(display) && hasEmissive(orig)) {
-        if (style === 'selected') {
-            display.emissive.copy(focus);
-            display.emissiveIntensity = SELECTED_EMISSIVE_INTENSITY;
-        } else if (style === 'unselected') {
-            display.emissive.copy(NO_EMISSIVE);
-            display.emissiveIntensity = 0;
-        } else {
-            display.emissive.copy(orig.emissive);
-            display.emissiveIntensity = orig.emissiveIntensity;
-        }
-    }
-
-    const opacity = style === 'unselected' ? unselectedOpacity : orig.opacity;
-    const transparent = style === 'unselected' ? unselectedOpacity < 1 : orig.transparent;
-    if (display.transparent !== transparent) {
-        display.transparent = transparent;
-        display.needsUpdate = true;
-    }
-    display.opacity = opacity;
-}
+const NO_JOINTS: ReadonlySet<string> = new Set();
 
 export interface RobotFKModelProps {
     robot: URDFRobot;
@@ -113,6 +64,7 @@ export interface RobotFKModelProps {
     onPartDoubleClick?: (partName: string) => void;
     onPartHover?: (partName: string | null) => void;
     actuatedJointNames?: ActuatedJointNames;
+    overheatedJointNames?: ReadonlySet<string>;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -126,6 +78,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     onPartDoubleClick,
     onPartHover,
     actuatedJointNames,
+    overheatedJointNames = NO_JOINTS,
 }) => {
     const { gl } = useThree();
     const displayedAnglesRef = useRef<Map<string, number>>(new Map());
@@ -150,6 +103,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         const { originals, displays } = getMaterialState(robot);
         const focus = new THREE.Color(focusColor);
         const isAnySelected = selectedPartName !== null;
+        const hasOverheat = overheatedJointNames.size > 0;
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
@@ -160,17 +114,20 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             }
             const origMat = originals.get(mesh)!;
 
-            if (!isAnySelected && !wireframe) {
+            if (!isAnySelected && !wireframe && !hasOverheat) {
                 mesh.material = origMat;
                 return;
             }
 
-            const link = isAnySelected ? findParentLink(mesh, robot) : null;
+            const link = isAnySelected || hasOverheat ? findParentLink(mesh, robot) : null;
             const isSelected = link !== null && (
                 urdfNameOf(link) === selectedPartName
                 || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
             );
-            const style: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
+            const joint = link && findJointForLink(findLinkWithJoint(link, robot, actuatedJointNames), robot, actuatedJointNames);
+            const isOverheated = joint !== null && overheatedJointNames.has(urdfNameOf(joint));
+            const selectionStyle: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
+            const style: PartStyle = !hasOverheat ? selectionStyle : isOverheated ? 'overheated' : 'greyed';
 
             let slots = displays.get(mesh);
             if (!slots) {
@@ -186,7 +143,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 ? origMat.map(restyle)
                 : restyle(origMat, 0);
         });
-    }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor, unselectedOpacity]);
+    }, [robot, wireframe, selectedPartName, actuatedJointNames, overheatedJointNames, focusColor, unselectedOpacity]);
 
     useFrame((_state, delta) => {
         if (jointAngles.size === 0) return;

@@ -13,11 +13,14 @@ import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { JointEffortGauges } from '../Components/JointEffortGauges';
+import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { ViewCube } from '../Components/ViewCube';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { JointPreviewContext } from '../hooks/useJointPreview';
+import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -183,7 +186,8 @@ const InfoBadge: React.FC<{
     partName: string;
     jointName?: string;
     onUnfocus?: () => void;
-}> = ({ label, partName, jointName, onUnfocus }) => (
+    children?: React.ReactNode;
+}> = ({ label, partName, jointName, onUnfocus, children }) => (
     <div
         className="chamfer-box viewer-overlay-box"
         style={{
@@ -211,6 +215,7 @@ const InfoBadge: React.FC<{
                 <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{jointName}</span>
             </>
         )}
+        {children}
         {onUnfocus && (
             <button
                 onClick={onUnfocus}
@@ -467,6 +472,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const jointPreview = useContext(JointPreviewContext);
+    const overheatedJointNames = useContext(MotorOverheatContext)?.trippedJoints;
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -485,6 +491,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
+    const [showEffort, setShowEffort] = useState(false);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
 
@@ -729,6 +736,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartDoubleClick={handlePartDoubleClick}
                         onPartHover={setHoveredPartName}
                         actuatedJointNames={actuatedJointNames}
+                        overheatedJointNames={overheatedJointNames}
                     />
                 )}
 
@@ -738,6 +746,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
                     ) : null;
                 })}
+
+                {robot && showEffort && <JointEffortGauges robot={robot} isConnected={isConnected} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -792,7 +802,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (
-                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)} />
+                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)}>
+                    <JointTemperatureReadout jointName={urdfNameOf(hoveredJoint)} />
+                </InfoBadge>
             ) : selectedPartName && (
                 <InfoBadge
                     label="FOLLOWING:"
@@ -861,6 +873,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
+                <SwitchRow label="EFFORT" value={showEffort} onChange={setShowEffort} />
 
                 <button
                     onClick={handleResetCamera}

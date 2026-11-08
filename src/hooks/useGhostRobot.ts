@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { isURDFJoint, isURDFLink, isURDFVisual } from '../Utils/robotModel.utils';
 
-const GHOST_OPACITY = 0.3;
+const GHOST_OPACITY = 0.15;
 const noRaycast = () => {};
 
 function isOverlay(obj: THREE.Object3D): boolean {

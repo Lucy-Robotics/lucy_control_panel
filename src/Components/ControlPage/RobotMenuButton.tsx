@@ -3,35 +3,46 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Tooltip } from 'antd';
-import { DownOutlined, RobotOutlined } from '@ant-design/icons';
+import { Dropdown, Tooltip } from 'antd';
+import { DownOutlined, LoadingOutlined, RobotOutlined } from '@ant-design/icons';
 import { robotLabel } from '../../Utils/robotPackages';
+import type { RobotList } from '../../Utils/robotPackages';
 import { HUD_TOOLTIP_DELAY_S } from './ControlToggleButton';
-import type { RobotController } from './robotSwitchRules';
+import { robotSwitchMenu } from './robotRailGroup';
 
 interface RobotMenuButtonProps {
     robotPackage: string;
-    controller: RobotController;
+    robots: RobotList | null;
+    switchingTo: string | null;
+    blockedReason: string | null;
+    onSelect: (robotPackage: string) => void;
 }
 
-const DISABLED_REASON: Record<RobotController, string> = {
-    self: 'Turn CONTROL off to switch robot',
-    other: 'Another client is controlling the robot: it must turn CONTROL off before the robot can be switched',
-    // TODO(aes/latest merge): gate the switcher with canSwitchRobot(), not isSending.
-    none: 'Robot switching is not available yet',
-};
-
-export const RobotMenuButton = ({ robotPackage, controller }: RobotMenuButtonProps) => {
-    const name = robotLabel(robotPackage);
+export const RobotMenuButton = ({ robotPackage, robots, switchingTo, blockedReason, onSelect }: RobotMenuButtonProps) => {
+    const name = robotLabel(switchingTo ?? robotPackage);
+    const reason = blockedReason ?? (robots && robots.available.length > 1 ? null : 'No other robot is installed');
+    const button = (
+        <button
+            type="button"
+            className="chamfer-box robot-menu-btn"
+            disabled={reason !== null}
+            aria-label={`Robot: ${name}`}
+            aria-haspopup={reason === null ? 'menu' : undefined}
+        >
+            {switchingTo ? <LoadingOutlined className="robot-menu-icon" /> : <RobotOutlined className="robot-menu-icon" />}
+            {name}
+            <DownOutlined className="robot-menu-caret" />
+        </button>
+    );
     return (
-        <Tooltip placement="bottomLeft" title={DISABLED_REASON[controller]} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
-            {/* Disabled buttons don't trigger tooltips. */}
+        <Tooltip placement="bottomLeft" title={reason ?? 'Switch robot (restarts Lucy)'} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
+            {/* A disabled button fires no pointer events, so the wrapper carries the tooltip. */}
             <span className="robot-menu-slot">
-                <button type="button" className="chamfer-box robot-menu-btn" disabled aria-label={`Robot: ${name}`}>
-                    <RobotOutlined className="robot-menu-icon" />
-                    {name}
-                    <DownOutlined className="robot-menu-caret" />
-                </button>
+                {reason === null && robots ? (
+                    <Dropdown menu={robotSwitchMenu(robots, onSelect)} trigger={['click']} placement="bottomLeft">
+                        {button}
+                    </Dropdown>
+                ) : button}
             </span>
         </Tooltip>
     );

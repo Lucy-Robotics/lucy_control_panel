@@ -48,6 +48,9 @@ import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
 import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
 
+import { availableDock, useDock } from '../contexts/DockContext.tsx';
+import type { Dock as DockName } from '../contexts/DockContext.tsx';
+
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
@@ -88,12 +91,13 @@ import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
+import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import { switchBlockedReason } from '../Components/ControlPage/robotSwitchRules.ts';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
-import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
-import { robotRailGroup } from '../Components/ControlPage/robotRailGroup.tsx';
+import type { ControlArm, RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
 import { JogPad } from '../Components/ControlPage/JogPad.tsx';
@@ -140,8 +144,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
                     icon={<JoystickOutlined />}
                     onClick={onRetake}
                     style={{
-                        backgroundColor: UI_ACCENT_GREEN,
-                        borderColor: UI_ACCENT_GREEN,
+                        backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                        borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                         color: UI_TEXT_ON_ACCENT,
                     }}
                 >
@@ -786,6 +790,17 @@ export const RobotControlPanel: React.FC = () => {
     const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
     const hasSensors = sensorSources.length > 0;
 
+    const controlArm: ControlArm = {
+        isOn: isSending,
+        onToggle: () => handleControlRobotToggle(!isSending),
+        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
+    };
+
+    const robotSwitchBlocked = switchBlockedReason(
+        activeControllerId === '' ? 'none' : isSending ? 'self' : 'other',
+        switchingTo,
+    );
+
     const dockContent = (
         <Dock
             childrens={{
@@ -797,6 +812,18 @@ export const RobotControlPanel: React.FC = () => {
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={teleopTarget}
                         phoneOrientation={phoneOrientation}
+                        hudLeft={serverRobotPackage
+                            ? (
+                                <RobotMenuButton
+                                    robotPackage={serverRobotPackage}
+                                    robots={robots}
+                                    switchingTo={switchingTo}
+                                    blockedReason={robotSwitchBlocked}
+                                    onSelect={setRobotToConfirm}
+                                />
+                            )
+                            : null}
+                        hudRight={<ControlToggleButton {...controlArm} />}
                     />
                 )
                 : null}
@@ -828,6 +855,10 @@ export const RobotControlPanel: React.FC = () => {
     };
 
     const robotGroup = robotRailGroup({ robots, switchingTo, canSwitch: isSending, onSelect: setRobotToConfirm });
+
+    const robotGroup = isVisualizerDocked
+        ? null
+        : robotRailGroup({ robots, switchingTo, blockedReason: robotSwitchBlocked, onSelect: setRobotToConfirm });
 
     const railGroups: RailGroup[] = [
         ...(robotGroup ? [robotGroup] : []),
@@ -1158,6 +1189,7 @@ export const RobotControlPanel: React.FC = () => {
                 onCancel={() => setRobotToConfirm(null)}
                 onConfirm={(robotPackage) => {
                     setRobotToConfirm(null);
+                    if (robotSwitchBlocked) return;
                     selectRobot(robotPackage);
                 }}
             />
@@ -1176,8 +1208,8 @@ export const RobotControlPanel: React.FC = () => {
                         icon={<JoystickOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
-                            backgroundColor: UI_ACCENT_GREEN,
-                            borderColor: UI_ACCENT_GREEN,
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
                             color: UI_TEXT_ON_ACCENT,
                         }}
                     >

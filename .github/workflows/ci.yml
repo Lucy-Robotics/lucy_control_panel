@@ -9,6 +9,17 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: corepack yarn@4.18.0 install --immutable
+      - run: corepack yarn@4.18.0 lint
+
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -19,4 +30,12 @@ jobs:
       - run: corepack enable
       - run: corepack yarn@4.18.0 install --immutable
       - run: corepack yarn@4.18.0 build
-      - run: corepack yarn@4.18.0 test
+      - run: corepack yarn@4.18.0 coverage
+      - uses: codecov/codecov-action@v4
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          flags: lucy_control_panel
+          name: lucy_control_panel
+          fail_ci_if_error: false

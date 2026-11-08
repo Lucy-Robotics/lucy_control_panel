@@ -8,7 +8,7 @@ import { DownOutlined, LoadingOutlined, RobotOutlined } from '@ant-design/icons'
 import { robotLabel } from '../../Utils/robotPackages';
 import type { RobotList } from '../../Utils/robotPackages';
 import { HUD_TOOLTIP_DELAY_S } from './ControlToggleButton';
-import { robotSwitchMenu } from '../../Utils/robotSwitchMenu.ts';
+import { robotSwitchMenu } from './robotRailGroup';
 
 interface RobotMenuButtonProps {
     robotPackage: string;

@@ -40,6 +40,13 @@ const inv = withUrdfCalibration(
 close(servo(inv, 0), 80 * DEG);
 close(servo(inv, 1.149), 0);
 
+// Inverted through a negative scale: FIT keeps it inverted.
+const negScale = withUrdfCalibration(
+    { urdf_joint: 'thumb', limit_min: 0, limit_max: 80 * DEG, default: 0, direction: 1, scale: -0.5 }, limits);
+assert.ok(Number(negScale.scale) < 0);
+close(servo(negScale, 0), 80 * DEG);
+close(servo(negScale, 1.149), 0);
+
 // No URDF range (robot not connected) or an empty travel: left alone.
 const unknown = { urdf_joint: 'nope', limit_min: 0, limit_max: 1, scale: 1, offset: 0 };
 assert.equal(withUrdfCalibration(unknown, limits), unknown);

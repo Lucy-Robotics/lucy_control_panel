@@ -23,9 +23,10 @@ export function withUrdfCalibration(
     if (!urdf || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return row;
 
     const direction = Number(row.direction) === -1 ? -1 : 1;
-    const scale = (urdf.upperRad - urdf.lowerRad) / (max - min);
+    const inverted = direction * Math.sign(Number(row.scale) || 1);
+    const scale = inverted * direction * (urdf.upperRad - urdf.lowerRad) / (max - min);
     // Inverted servos reach their max at the URDF lower limit.
-    const offset = (direction === 1 ? min : max) - urdf.lowerRad / (direction * scale);
+    const offset = (inverted === 1 ? min : max) - urdf.lowerRad / (direction * scale);
     const next: Record<string, unknown> = { ...row, scale: round5(scale), offset: round5(offset) };
 
     const def = Number(row.default);

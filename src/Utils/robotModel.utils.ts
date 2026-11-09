@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import type { URDFLink, URDFVisual, URDFJoint } from 'urdf-loader';
-import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
+import { JointStateHandler } from '../Services/ros/handlers/JointState.handler.ts';
 import type { JointControlState } from '../Constants/robotTypes';
 
 export function isURDFLink(obj: THREE.Object3D): obj is URDFLink {

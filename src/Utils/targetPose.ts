@@ -4,27 +4,27 @@
  */
 
 import type { JointControlState } from '../Constants/robotTypes';
-import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
-import { DEFAULT_ACTUATOR_MAPPING, servoRadToJointRad } from './actuatorJointMapping';
-import { TARGET_REACHED_TOLERANCE_RAD } from './robotModel.utils';
+import { JointStateHandler } from '../Services/ros/handlers/JointState.handler.ts';
+import { DEFAULT_ACTUATOR_MAPPING, servoRadToJointRad, type ActuatorMapping } from './actuatorJointMapping.ts';
+import { TARGET_REACHED_TOLERANCE_RAD } from './robotModel.utils.ts';
 import type { JointMove } from '../hooks/useJointMove';
 import type { JointPositions } from './jointStateMessage';
 
-export function toJointRad(name: string, servoRad: number): number {
-    const mapping = JointStateHandler.getInstance().getJointMeta(name)?.mapping ?? DEFAULT_ACTUATOR_MAPPING;
-    return servoRadToJointRad(servoRad, mapping);
-}
+type MappingOf = (name: string) => ActuatorMapping;
 
-export function targetPoseOf(joints: JointControlState[], move: JointMove | null): JointPositions {
+const handlerMapping: MappingOf = name =>
+    JointStateHandler.getInstance().getJointMeta(name)?.mapping ?? DEFAULT_ACTUATOR_MAPPING;
+
+export function targetPoseOf(joints: JointControlState[], move: JointMove | null, mappingOf = handlerMapping): JointPositions {
     return Object.fromEntries(joints.map(joint => [
         joint.name,
-        toJointRad(joint.name, joint.name === move?.name ? move.value : joint.currentValue),
+        servoRadToJointRad(joint.name === move?.name ? move.value : joint.currentValue, mappingOf(joint.name)),
     ]));
 }
 
-export function actualPoseOf(joints: JointControlState[]): JointPositions {
+export function actualPoseOf(joints: JointControlState[], mappingOf = handlerMapping): JointPositions {
     return Object.fromEntries(joints.flatMap(joint => (
-        joint.actualValue === undefined ? [] : [[joint.name, toJointRad(joint.name, joint.actualValue)]]
+        joint.actualValue === undefined ? [] : [[joint.name, servoRadToJointRad(joint.actualValue, mappingOf(joint.name))]]
     )));
 }
 

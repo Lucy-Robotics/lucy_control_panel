@@ -7,6 +7,7 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
+import { LoadingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 export const COMMAND_RAIL_WIDTH = 74;
 
@@ -35,6 +36,12 @@ const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: h
 
 interface CommandRailProps {
     groups: RailGroup[];
+    arm: {
+        isOn: boolean;
+        isPending?: boolean;
+        onToggle: () => void;
+        hint: string;
+    };
     orientation: 'vertical' | 'horizontal';
     className?: string;
     style?: React.CSSProperties;
@@ -97,11 +104,12 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                                 className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
                                 aria-label="Control Robot"
                                 aria-pressed={arm.isOn}
+                                aria-busy={arm.isPending}
                                 onClick={arm.onToggle}
                             >
                                 <span className="rail-icon"><ThunderboltOutlined /></span>
                                 <span className="rail-caption">ROBOT</span>
-                                <span className="rail-arm-state">{arm.isOn ? 'ON' : 'OFF'}</span>
+                                <span className="rail-arm-state">{arm.isPending ? <LoadingOutlined aria-label="Turning ON" /> : arm.isOn ? 'ON' : 'OFF'}</span>
                             </button>
                         </span>
                     </Tooltip>

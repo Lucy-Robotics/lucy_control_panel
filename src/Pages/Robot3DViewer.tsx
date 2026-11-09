@@ -20,6 +20,7 @@ import { JointReadingsLine } from '../Components/JointReadingsLine';
 import { RobotGhost } from '../Components/RobotGhost';
 import { useGhostRobot } from '../hooks/useGhostRobot';
 import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
+import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -501,6 +502,7 @@ export interface Robot3DViewerProps {
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
     hudCenter?: React.ReactNode;
+    isHandsOn?: boolean;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -510,6 +512,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     hudCenter,
     onJointValueChange,
+    isHandsOn = false,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -519,6 +522,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const ghost = useGhostRobot(loading ? null : robot, themeColors.active);
     const targetPose = useTargetPose(isConnected);
     const isGhostVisible = useGhostVisible();
+    const isTeleopGhostVisible = useTeleopGhostVisible();
+    const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -761,7 +766,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghost && isGhostVisible && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+                {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
 

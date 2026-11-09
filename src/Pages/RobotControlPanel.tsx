@@ -29,6 +29,7 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
+import { SERVO_POSE_HINT, isJointAnglePose } from '../Utils/poseUnits.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
@@ -638,6 +639,11 @@ export const RobotControlPanel: React.FC = () => {
 
         if (poses.length < animation.poseIds.length) {
             message.error('Some poses in the animation could not be found.');
+            setIsAnimating(false);
+            return;
+        }
+        if (!poses.every(isJointAnglePose)) {
+            message.error(SERVO_POSE_HINT);
             setIsAnimating(false);
             return;
         }

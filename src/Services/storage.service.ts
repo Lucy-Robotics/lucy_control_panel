@@ -18,6 +18,7 @@ export interface SavedPose {
   timestamp: number;
   date?: string;
   joints: Record<string, number>; // joint name -> value mapping
+  unit?: 'joint';
 }
 
 export interface SavedAnimation {
@@ -96,7 +97,8 @@ class LocalStorageService implements StorageService {
       name: name.trim(),
       timestamp: Date.now(),
       date: new Date().toISOString(),
-      joints: jointValues
+      joints: jointValues,
+      unit: 'joint',
     };
 
     // Check for duplicate names and add counter if needed

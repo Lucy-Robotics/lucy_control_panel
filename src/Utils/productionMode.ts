@@ -23,11 +23,12 @@ export function isMockHardware(urdfXml: string): boolean {
 }
 
 function jointSpaceLimit(lim: JointLimitRad, urdf: UrdfJointLimitRad | undefined): JointLimitRad {
-    // URDF limits; without them, the servo travel seen as joint angles (an inverted servo swaps its ends).
+    // Servo travel seen as joint angles (an inverted servo swaps its ends), cut to the URDF range.
     const a = servoRadToJointRad(lim.minRad, lim.mapping);
     const b = servoRadToJointRad(lim.maxRad, lim.mapping);
-    const minRad = urdf ? urdf.lowerRad : Math.min(a, b);
-    const maxRad = urdf ? urdf.upperRad : Math.max(a, b);
+    const lower = Math.max(urdf?.lowerRad ?? -Infinity, Math.min(a, b));
+    const upper = Math.min(urdf?.upperRad ?? Infinity, Math.max(a, b));
+    const [minRad, maxRad] = lower < upper ? [lower, upper] : [Math.min(a, b), Math.max(a, b)];
     const rest = servoRadToJointRad(lim.defaultRad, lim.mapping);
     return {
         minRad,
@@ -38,7 +39,7 @@ function jointSpaceLimit(lim: JointLimitRad, urdf: UrdfJointLimitRad | undefined
 }
 
 /**
- * Production mode: every joint's limits become joint angles (the URDF range) with an identity
+ * Production mode: every joint's limits become joint angles (the reachable URDF range) with an identity
  * mapping, so sliders, commands, feedback and the gizmo all work in
  * URDF angles. The hardware interface still applies offset / direction / scale and clamps to
  * the servo travel, so INVERTED servos move the same way as the others.

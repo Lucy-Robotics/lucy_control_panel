@@ -19,12 +19,13 @@ const PoseSvg = () => (
         strokeLinejoin="round"
         aria-hidden
     >
-        <circle cx="12" cy="4.5" r="2" />
-        <path d="M12 7.5v6" />
-        <path d="M12 9.5 7.5 5" />
-        <path d="M12 9.5l5 1.5" />
-        <path d="M12 13.5 8.5 20.5" />
-        <path d="M12 13.5l3.5 7" />
+        <circle cx="12" cy="4" r="2.4" />
+        <path d="M12 7.4v7.1" />
+        {/* Raised arm, bent at the elbow so the hand stays clear of the shoulder and head */}
+        <path d="M12 9.5 7 8.2 4.8 3.2" />
+        <path d="M12 9.5l8.2 1.8" />
+        <path d="M12 14.5 7.5 22" />
+        <path d="M12 14.5l4.5 7.5" />
     </svg>
 );
 

@@ -6,6 +6,7 @@
 /* Layout */
 import { ConfigProvider, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
+import { useBootRouting } from './features/hardwareConfiguration/calibration/useBootRouting.ts';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import type { ComponentType } from 'react';
 
@@ -60,6 +61,7 @@ const PAGE_CONFIG: Record<string, {
 
 const RoutedPage = () => {
     const { pathname } = useLocation();
+    useBootRouting();
     const screens = useBreakpoint();
     const page = PAGE_CONFIG[pathname];
     const PageComponent = page?.component ?? NotFound;

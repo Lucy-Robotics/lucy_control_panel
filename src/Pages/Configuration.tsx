@@ -3,4 +3,4 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-export { default } from '../features/hardwareConfiguration/ConfigurationPage.tsx';
+export { default } from '../features/hardwareConfiguration/ConfigurationTabs.tsx';

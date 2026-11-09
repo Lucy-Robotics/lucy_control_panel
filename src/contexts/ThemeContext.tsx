@@ -43,7 +43,7 @@ interface ThemeContextType {
     setActiveTheme: (id: string) => void;
     setCustomThemeEnabled: (enabled: boolean) => void;
     setCustomCss: (css: string) => void;
-    setThemeColors: (colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }) => void;
+    setThemeColors: (colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string; ghost?: string }) => void;
     loadThemeFromUrl: (url: string, policy?: SecurityPolicyOptions) => Promise<FetchCssResult>;
     loadThemeFromFile: (file: File, policy?: SecurityPolicyOptions) => Promise<string>;
     inspectCss: (css: string, policy?: SecurityPolicyOptions) => CssSecurityInspectionResult;
@@ -242,7 +242,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         themeService.exportThemeTemplateFile();
     }, []);
 
-    const setThemeColors = useCallback((colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }) => {
+    const setThemeColors = useCallback((colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string; ghost?: string }) => {
         themeService.setThemeColors(colors);
     }, []);
 

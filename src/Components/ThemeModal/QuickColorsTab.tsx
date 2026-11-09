@@ -33,6 +33,7 @@ interface QuickColorsTabProps {
         secondary: string;
         highlight: string;
         text: string;
+        ghost?: string;
     };
     onApplyColors: (colors: {
         main: string;
@@ -40,6 +41,7 @@ interface QuickColorsTabProps {
         highlight: string;
         text: string;
         textSecondary: string;
+        ghost: string;
     }) => void;
 }
 
@@ -52,6 +54,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
     const [colorHighlight, setColorHighlight] = useState(activeColors?.highlight || HIGHLIGHT_COLOR);
     const [colorText, setColorText] = useState(activeColors?.text || TEXT_PRIMARY);
     const [colorTextSecondary, setColorTextSecondary] = useState(TEXT_SECONDARY);
+    const [colorGhost, setColorGhost] = useState(activeColors?.ghost || activeColors?.text || TEXT_PRIMARY);
 
     useEffect(() => {
         if (activeColors) {
@@ -59,6 +62,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             setColorSecondary(activeColors.secondary || SECONDARY_COLOR);
             setColorHighlight(activeColors.highlight || HIGHLIGHT_COLOR);
             setColorText(activeColors.text || TEXT_PRIMARY);
+            setColorGhost(activeColors.ghost || activeColors.text || TEXT_PRIMARY);
         }
     }, [activeColors]);
 
@@ -69,6 +73,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             highlight: colorHighlight,
             text: colorText,
             textSecondary: colorTextSecondary,
+            ghost: colorGhost,
         });
         message.success('Colors applied successfully to control panel');
     };
@@ -79,12 +84,14 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
         setColorHighlight(HIGHLIGHT_COLOR);
         setColorText(TEXT_PRIMARY);
         setColorTextSecondary(TEXT_SECONDARY);
+        setColorGhost(TEXT_PRIMARY);
         onApplyColors({
             main: MAIN_COLOR,
             secondary: SECONDARY_COLOR,
             highlight: HIGHLIGHT_COLOR,
             text: TEXT_PRIMARY,
             textSecondary: TEXT_SECONDARY,
+            ghost: TEXT_PRIMARY,
         });
         message.success('Colors reset to default Lucy theme');
     };
@@ -117,6 +124,13 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             value: colorText,
             fallback: TEXT_PRIMARY,
             setter: setColorText,
+        },
+        {
+            title: 'INTENT / GHOST',
+            subtitle: 'Ghost, moving slider and gizmo drag: where you send the robot',
+            value: colorGhost,
+            fallback: TEXT_PRIMARY,
+            setter: setColorGhost,
         },
     ];
 

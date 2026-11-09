@@ -16,6 +16,7 @@ globalThis.localStorage ??= {
 import { createServer, type ViteDevServer } from 'vite';
 import ROSLIB from 'roslib';
 import * as model from '../src/features/hardwareConfiguration/calibration/calibrationModel.ts';
+import { parseHardwareConfigYaml, stringifyHardwareConfigYaml } from '../src/Utils/hardwareConfigYaml.ts';
 
 const STATUS_TOPIC = '/lucy/calibration/status';
 
@@ -58,6 +59,7 @@ check('parseStatus parses a valid status payload', deepEqual(
 ));
 check('parseStatus rejects malformed JSON', model.parseStatus('{not json') === null);
 check('parseStatus rejects a bare JSON number', model.parseStatus('42') === null);
+check('parseStatus rejects the literal null', model.parseStatus('null') === null);
 
 check('wizardStepIndex: mid_pose is step 1', model.wizardStepIndex('mid_pose') === 1);
 check('wizardStepIndex: joints is step 2', model.wizardStepIndex('joints') === 2);
@@ -102,6 +104,8 @@ check('rangeBar marks a wide-enough sweep as enough', barWithRange.enough === tr
 check('rangeBar marks a too-narrow sweep as not enough', model.rangeBar([1000, 1100], 1050, 1500).enough === false);
 const barNoRange = model.rangeBar(null, null, 100);
 check('rangeBar with no range centers on the half-turn tick and has no span', barNoRange.span === 0 && barNoRange.tick === null);
+const barClamped = model.rangeBar([0, 4095], 5000, 100);
+check('rangeBar stays on the track for an out-of-range tick', barClamped.left === 0 && barClamped.width === 100 && barClamped.tick === 100);
 
 check('demoAngle starts at the midpoint at t=0', Math.abs(model.demoAngle(0, -1, 1) - 0) < 1e-9);
 check('demoAngle is periodic', Math.abs(model.demoAngle(0, -1, 1, 4) - model.demoAngle(4, -1, 1, 4)) < 1e-9);
@@ -264,6 +268,18 @@ try {
 } finally {
     await server?.close();
 }
+
+console.log('\n[SECTION 4] hardwareConfigYaml.ts (preset round-trip)');
+console.log('----------------------------------------------------------------');
+
+const yamlDoc = parseHardwareConfigYaml(
+    "version: 1\ncalibration:\n  adapter_serial: '5970072960'\n  homing_offsets: {rotation: -5}\n",
+);
+const yamlAgain = parseHardwareConfigYaml(stringifyHardwareConfigYaml(yamlDoc));
+check('saving a preset from the YAML editor keeps its calibration', deepEqual(
+    yamlAgain.calibration,
+    { adapter_serial: '5970072960', homing_offsets: { rotation: -5 } },
+));
 
 console.log('\n================================================================');
 console.log(`TEST SUMMARY: ${passCount} passed, ${failCount} failed (${passCount + failCount} total)`);

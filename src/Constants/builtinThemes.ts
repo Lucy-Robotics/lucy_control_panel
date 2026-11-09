@@ -21,6 +21,7 @@ export interface ThemePreset {
         secondary: string;
         highlight: string;
         text: string;
+        ghost?: string;
     };
     css?: string;
 }

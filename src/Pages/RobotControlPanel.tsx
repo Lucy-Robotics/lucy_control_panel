@@ -26,6 +26,7 @@ import {
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
+import { useControlRequest } from '../hooks/useControlRequest';
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
@@ -495,20 +496,21 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
+    const { isPending: isControlPending, start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
         cancelPendingTakeControlRef.current();
         setIsTakingControl(shouldControl);
         if (shouldControl) {
-            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
-                ...joint,
-                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
-            })));
+            startControlRequest();
+            ControlModeHandler.getInstance().takeControl();
         } else {
+            cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();
         }
-    }, []);
+    }, [startControlRequest, cancelControlRequest]);
 
     const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
         const handler = ControlModeHandler.getInstance();
@@ -873,6 +875,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const railArm = {
         isOn: isSending,
+        isPending: isControlPending && !isSending,
         onToggle: () => handleControlRobotToggle(!isSending),
         hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
     };

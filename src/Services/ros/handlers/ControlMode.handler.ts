@@ -4,6 +4,7 @@
  */
 
 import ROSLIB from 'roslib';
+import { message as antdMessage } from 'antd';
 import { RosBridgeService } from '../ros.service.ts';
 
 const HEARTBEAT_TOPIC = '/lucy/client_heartbeat';
@@ -155,7 +156,12 @@ export class ControlModeHandler {
     // The resulting controller arrives on ACTIVE_CLIENT_TOPIC.
     service.callService(
       new ROSLIB.ServiceRequest({ client_id: CLIENT_ID, acquire }),
-      () => { },
+      (response: unknown) => {
+        const { success, message: reason } = response as { success?: boolean; message?: string };
+        if (acquire && success === false) {
+          antdMessage.warning(`Control Robot was refused: ${reason ?? 'unknown reason'}`);
+        }
+      },
       () => { },
     );
   }

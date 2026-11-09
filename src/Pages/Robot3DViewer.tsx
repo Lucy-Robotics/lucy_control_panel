@@ -859,6 +859,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 step={0.05}
                                 value={unselectedOpacity}
                                 onChange={handleUnselectedOpacityChange}
+                                disabled={!selectedPartName}
                                 style={{ margin: 0 }}
                                 tooltip={{ open: false }}
                             />

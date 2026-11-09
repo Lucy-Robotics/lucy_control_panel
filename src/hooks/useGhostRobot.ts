@@ -8,17 +8,15 @@ import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { isURDFJoint, isURDFLink, isURDFVisual } from '../Utils/robotModel.utils';
 
-const GHOST_OPACITY = 0.15;
 const noRaycast = () => {};
 
 function isOverlay(obj: THREE.Object3D): boolean {
     return obj.parent !== null && isURDFLink(obj.parent) && !isURDFJoint(obj) && !isURDFVisual(obj);
 }
 
-export function useGhostRobot(robot: URDFRobot | null, color: string): URDFRobot | null {
+export function useGhostRobot(robot: URDFRobot | null, color: string, opacity: number): URDFRobot | null {
     const material = useMemo(() => new THREE.MeshStandardMaterial({
         transparent: true,
-        opacity: GHOST_OPACITY,
         depthWrite: false,
         emissiveIntensity: 0.6,
         side: THREE.DoubleSide,
@@ -30,6 +28,10 @@ export function useGhostRobot(robot: URDFRobot | null, color: string): URDFRobot
         material.color.set(color);
         material.emissive.set(color);
     }, [material, color]);
+
+    useEffect(() => {
+        material.opacity = opacity;
+    }, [material, opacity]);
 
     return useMemo(() => {
         if (!robot) return null;

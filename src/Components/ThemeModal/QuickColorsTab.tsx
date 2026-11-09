@@ -14,6 +14,7 @@ import {
     TEXT_SECONDARY,
     fonts,
 } from '../../Constants/theme';
+import type { QuickColors } from '../../Services/theme.service';
 
 const { Text } = Typography;
 
@@ -28,21 +29,8 @@ function normalizeHex(color: string, fallback: string): string {
 }
 
 interface QuickColorsTabProps {
-    activeColors?: {
-        main: string;
-        secondary: string;
-        highlight: string;
-        text: string;
-        ghost?: string;
-    };
-    onApplyColors: (colors: {
-        main: string;
-        secondary: string;
-        highlight: string;
-        text: string;
-        textSecondary: string;
-        ghost: string;
-    }) => void;
+    activeColors?: QuickColors;
+    onApplyColors: (colors: QuickColors) => void;
 }
 
 export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({

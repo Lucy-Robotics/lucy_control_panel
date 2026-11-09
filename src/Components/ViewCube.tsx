@@ -42,13 +42,17 @@ interface FaceLabel {
 
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
+/**
+ * Faces are named after the robot's own (URDF / ROS, Z-up) axes, not Three.js's:
+ * RobotFKModel turns the robot by Rx(-π/2), so URDF (x, y, z) shows at Three (x, z, -y).
+ */
 const FACE_LABELS: FaceLabel[] = [
-    { text: 'FRONT', normal: v(1, 0, 0), right: v(0, 0, -1), up: v(0, 1, 0) },
-    { text: 'BACK', normal: v(-1, 0, 0), right: v(0, 0, 1), up: v(0, 1, 0) },
-    { text: 'RIGHT', normal: v(0, 0, 1), right: v(1, 0, 0), up: v(0, 1, 0) },
-    { text: 'LEFT', normal: v(0, 0, -1), right: v(-1, 0, 0), up: v(0, 1, 0) },
-    { text: 'TOP', normal: v(0, 1, 0), right: v(0, 0, -1), up: v(-1, 0, 0) },
-    { text: 'BOTTOM', normal: v(0, -1, 0), right: v(0, 0, -1), up: v(1, 0, 0) },
+    { text: '+X', normal: v(1, 0, 0), right: v(0, 0, -1), up: v(0, 1, 0) },
+    { text: '−X', normal: v(-1, 0, 0), right: v(0, 0, 1), up: v(0, 1, 0) },
+    { text: '−Y', normal: v(0, 0, 1), right: v(1, 0, 0), up: v(0, 1, 0) },
+    { text: '+Y', normal: v(0, 0, -1), right: v(-1, 0, 0), up: v(0, 1, 0) },
+    { text: '+Z', normal: v(0, 1, 0), right: v(0, 0, -1), up: v(-1, 0, 0) },
+    { text: '−Z', normal: v(0, -1, 0), right: v(0, 0, -1), up: v(1, 0, 0) },
 ];
 
 const point = (coords: Record<Axis, number>) => v(coords[0], coords[1], coords[2]);
@@ -126,7 +130,7 @@ function labelTexture(text: string, color: string): THREE.CanvasTexture {
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${text.length > 5 ? 22 : 26}px monospace`;
+    ctx.font = 'bold 40px monospace';
     ctx.fillText(text, LABEL_TEXTURE_PX / 2, LABEL_TEXTURE_PX / 2);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -168,14 +172,20 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
         mats.hover.color.set(colors.accent);
     }, [mats, colors]);
 
+    // Same grey as the joint sliders' empty rail (text colour at 24% over the surface).
+    const labelColor = useMemo(
+        () => `#${new THREE.Color(colors.surface).lerp(new THREE.Color(colors.text), 0.24).getHexString()}`,
+        [colors.surface, colors.text],
+    );
+
     const labels = useMemo(() => FACE_LABELS.map(label => {
-        const texture = labelTexture(label.text, colors.active);
+        const texture = labelTexture(label.text, labelColor);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(
             new THREE.Matrix4().makeBasis(label.right, label.up, label.normal),
         );
         const position = label.normal.clone().multiplyScalar(1 + LABEL_OFFSET);
         return { text: label.text, texture, quaternion, position };
-    }), [colors.active]);
+    }), [labelColor]);
     useEffect(() => () => labels.forEach(l => l.texture.dispose()), [labels]);
 
     const labelGeometry = useMemo(() => new THREE.PlaneGeometry(2 * INNER, 2 * INNER), []);

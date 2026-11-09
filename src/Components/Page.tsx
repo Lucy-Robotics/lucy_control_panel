@@ -14,7 +14,6 @@ import {
 } from '../Constants/theme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import { DockProvider } from '../contexts/DockContext.tsx';
 import { CustomTitle } from './CustomTitle.tsx';
 import { Navigation } from './Navigation.tsx';
 
@@ -58,7 +57,7 @@ export const Page: React.FC<PageProps> = ({
 
   return (
     <Layout style={{ minHeight: '100vh' }} className={`${backgroundClass} ${className}`.trim()}>
-      <DockProvider>
+      <>
         {showHeader && (
           <Header
             ref={headerRef}
@@ -141,7 +140,7 @@ export const Page: React.FC<PageProps> = ({
             {children}
           </HeaderHeightContext.Provider>
         </Content>
-      </DockProvider>
+      </>
 
       {removeScrollbars && <style>{'html, body { overflow: hidden !important; }'}</style>}
     </Layout>

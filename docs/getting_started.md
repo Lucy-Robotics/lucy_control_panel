@@ -36,7 +36,7 @@ The control panel has to connect to this bridge everytime, which is made automat
 
 > This is where you'll control your robot, and it's full of stuff, so let's go over the basics!
 
-First thing first, you will need to take control over the robot. This can be achieved by using the 🕹️ 'Control' button at the top right of the 3D view. If the 3D view is not docked, the button sits at the top of the command rail, on the left of the page.
+First thing first, you will need to take control over the robot. This can be achieved by using the 🕹️ 'Take control' button at the top right of the 3D view (it reads 'Release control' once you have it).
 > This security system ensure that no more than one controller is sending instruction to your robot. When activated, this will take control from other control applications.
 
 ---
@@ -49,14 +49,14 @@ The main part of the screen is occupied by the 'actuators categories', each of t
 
 Each of these actuators has its own control box, letting you update its position in real time.
 Every slider comes with two indicators:
-- The top green one indicates the default position for this actuator.
+- The mark across the slider indicates the default position for this actuator.
 - The bottom blue one indicates the actual position. It will move more or less slowly depending on the physical configuration of the actuator.
 
 <-- Poses & Animations -->
 
 ## Poses
 
-In the command rail, the 'Manage poses & animations' button opens the 'Save pose' & 'Load pose' popups. The same rail also lets you reset every joint, try a random pose, start teleoperation and choose which windows & docked panel are shown.
+In the command rail, the 'Manage poses & animations' button opens the 'Save pose' & 'Load pose' popups. The same rail also lets you reset every joint, try a random pose, drive the robot with your hand through the camera ('Hands') and open the camera stream. The 3D view always sits on the right of the joints.
 
 They will let you save every actuators position and load them at a later time when needed.
 

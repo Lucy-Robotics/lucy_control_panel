@@ -14,7 +14,6 @@ import { useJointPreview } from '../../hooks/useJointPreview.ts';
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
   UI_ACCENT_BLUE,
-  UI_ACCENT_GREEN,
   UI_BORDER_SOFT,
   UI_COLOR_TRANSPARENT,
   UI_TEXT_PRIMARY_ON_DARK,
@@ -40,7 +39,10 @@ interface TrackMarkerProps {
   description: string;
   /** Side the tooltip opens on, so it never covers the slider it sits next to. */
   placement: 'top' | 'bottom';
-  /** Drawn on the rail: bigger, with a ring so it shows on the filled (same colour) track too. */
+  /**
+   * Drawn across the rail as a tick, like a ruler mark: it reads as a reference
+   * value rather than a second handle, and shows on the filled track as on the empty one.
+   */
   onRail?: boolean;
 }
 
@@ -82,12 +84,19 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
       }}
     >
       <div
-        style={{
-          width: onRail ? 6 : 4,
-          height: onRail ? 6 : 4,
+        style={onRail ? {
+          // Sticks out 5px above and below the 4px rail.
+          width: 2,
+          height: 14,
           backgroundColor: color,
-          borderRadius: '50%',
-          boxShadow: onRail ? '0 0 0 2px var(--color-main)' : undefined,
+          borderRadius: 1,
+          boxShadow: '0 0 0 1px var(--color-main)',
+          pointerEvents: 'none',
+        } : {
+          width: 4,
+          height: 4,
+          backgroundColor: color,
+          borderRadius: 2,
           pointerEvents: 'none',
         }}
       />
@@ -305,8 +314,9 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           {joint.displayName ?? joint.name}
         </Text>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
+        {/* Grid so the min / max row below sits under the slider only, not under the input. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative', containerType: 'inline-size' }}>
             <ReadOnlyHint reason={readOnlyReason} block>
               <Slider
                 min={minDisplay}
@@ -328,7 +338,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 percent={restBarPercent}
                 top={SLIDER_RAIL_CENTER_PX}
                 onRail
-                color={UI_ACCENT_GREEN}
+                // Neutral grey: the filled part of the rail is already the highlight green.
+                color={UI_TEXT_SECONDARY_MUTED}
                 label="Default"
                 valueText={formatMarkerValue(joint.restValue!)}
                 description="Rest position of this joint: where the reset button sends it back to."
@@ -348,6 +359,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             )}
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ReadOnlyHint reason={readOnlyReason}>
             <InputNumber
               min={minDisplay}
@@ -383,15 +395,17 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               />
             </ReadOnlyHint>
           )}
-        </div>
+          </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            {minDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            {maxDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
+          {/* Min / max under the slider: the max angle lines up with the slider's end. */}
+          <div style={{ gridColumn: 1, display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              {minDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              {maxDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+          </div>
         </div>
       </Space>
     </Card>

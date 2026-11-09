@@ -18,10 +18,6 @@ import {
     ReloadOutlined,
     StopOutlined,
     VideoCameraOutlined,
-    EyeOutlined,
-    CodeSandboxOutlined,
-    UnorderedListOutlined,
-    LayoutOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -32,13 +28,9 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
-import { useSensorSources } from '../hooks/useSensorSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
-
-import { availableDock, useDock } from '../contexts/DockContext.tsx';
-import type { Dock as DockName } from '../contexts/DockContext.tsx';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -57,7 +49,6 @@ import {
 import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
-import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
@@ -78,17 +69,16 @@ import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
 import { CONTROL_OFF_HINT, ReadOnlyTag } from '../Components/ControlPage/ReadOnlyHint.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
-import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
-import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
-import type { ControlArm, RailGroup } from '../Components/ControlPage/CommandRail.tsx';
-import { StreamPlayer } from '../Components/StreamPlayer.tsx';
+import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
+import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
+import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -165,17 +155,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
     </MovableModal>
 );
 
-const DOCK_SHORT_LABEL: Record<DockName, string> = {
-    NONE: 'NONE',
-    '3D_VIEW': '3D',
-    STREAM: 'STREAM',
-    TELEOPERATION: 'TELEOP',
-    SENSOR_DISPLAY: 'SENSORS',
-};
-
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
-    const { currentDock, setCurrentDock, isDockLoaded } = useDock();
 
     const {
         controllerConfigsFromActive,
@@ -214,10 +195,8 @@ export const RobotControlPanel: React.FC = () => {
     const headerHeight = useContext(HeaderHeightContext);
 
     const [isStreamVisible, setIsStreamVisible] = usePersistentBoolean('lucy_stream_visible');
-    const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
 
     const { hasLiveCamera } = useLiveCameraSources();
-    const sensorSources = useSensorSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
@@ -234,27 +213,8 @@ export const RobotControlPanel: React.FC = () => {
         return () => { root.style.removeProperty('--mobile-nav-height'); };
     }, [isMobile, railHeight]);
 
-    useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
-
-    const isVisualizerDocked = currentDock === '3D_VIEW';
-    const isStreamDocked = currentDock === 'STREAM';
-    const isTeleoperationDocked = currentDock === 'TELEOPERATION';
-
-    useEffect(() => {
-        if (!isDockLoaded) { return; }
-        if (isVisualizerDocked) { setIsVisualizerVisible(false); }
-        if (isStreamDocked) { setIsStreamVisible(false); }
-        if (isTeleoperationDocked) { setIsWebcamActive(false); }
-    }, [
-        isDockLoaded,
-        isVisualizerDocked,
-        isStreamDocked,
-        isTeleoperationDocked,
-        setIsVisualizerVisible,
-        setIsStreamVisible,
-    ]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -706,67 +666,39 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
-    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
-    const showStreamWindow = isStreamVisible && !isStreamDocked;
-    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
-    const hasSensors = sensorSources.length > 0;
+    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
 
-    const controlArm: ControlArm = {
-        isOn: isSending,
-        onToggle: () => handleControlRobotToggle(!isSending),
-        hint: `Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`,
-    };
-
-    const dockContent = (
-        <Dock
-            childrens={{
-                // With the 3D view docked, CONTROL and the robot sit on top of it instead of in the rail.
-                '3D_VIEW': (
-                    <Robot3DViewer
-                        isControlOn={isSending}
-                        joints={joints}
-                        onJointValueChange={handleGizmoJointCommit}
-                        hudLeft={serverRobotPackage
-                            ? (
-                                <RobotMenuButton
-                                    robotPackage={serverRobotPackage}
-                                    controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
-                                />
-                            )
-                            : null}
-                        hudRight={<ControlToggleButton {...controlArm} />}
+    // The 3D view always sits on the right; CONTROL and the robot are pinned on top of it.
+    const viewer = (
+        <Robot3DViewer
+            isControlOn={isSending}
+            joints={joints}
+            onJointValueChange={handleGizmoJointCommit}
+            hudLeft={serverRobotPackage
+                ? (
+                    <RobotMenuButton
+                        robotPackage={serverRobotPackage}
+                        controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
                     />
-                ),
-                'STREAM': <StreamPlayer />,
-                'TELEOPERATION': (
-                    <Suspense fallback={<Spin size="large" />}>
-                        <MediapipeHandTracker moveRobotIndex={handleTeleopJoint} />
-                    </Suspense>
-                ),
-                'SENSOR_DISPLAY': <SensorDisplay />,
-                'NONE': null,
-            }}
-            current={currentDock}
+                )
+                : null}
+            hudRight={(
+                <ControlToggleButton
+                    isOn={isSending}
+                    onToggle={() => handleControlRobotToggle(!isSending)}
+                    hint={`Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`}
+                />
+            )}
         />
     );
 
     // Control Robot OFF publishes nothing, so every command control is inert.
     const readOnlyReason = isSending ? undefined : CONTROL_OFF_HINT;
 
-    const dockLabel = (dock: DockName) => {
-        if (dock === 'NONE') return 'No dock';
-        if (dock === 'SENSOR_DISPLAY') return `Sensors${hasSensors ? '' : ' (unavailable)'}`;
-        if (dock === 'STREAM') return `Stream${hasLiveCamera ? '' : ' (unavailable)'}`;
-        return dock.replace('_', ' ');
-    };
-
-    // The rail only keeps CONTROL when the 3D view (which carries it) is not docked.
-    const railArm = isVisualizerDocked ? undefined : controlArm;
-
     const railGroups: RailGroup[] = [
         {
             key: 'pose',
-            code: 'POSE',
+            label: 'Pose',
             items: [
                 {
                     key: 'reset',
@@ -797,7 +729,7 @@ export const RobotControlPanel: React.FC = () => {
                     },
                 {
                     key: 'poses',
-                    icon: <UnorderedListOutlined />,
+                    icon: <PoseOutlined />,
                     label: 'Manage poses & animations',
                     caption: 'POSES',
                     onClick: () => setIsManagePosesVisible(true),
@@ -805,68 +737,26 @@ export const RobotControlPanel: React.FC = () => {
             ],
         },
         {
-            key: 'mode',
-            code: 'MODE',
+            key: 'windows',
+            label: 'Hands & stream',
             items: [
                 {
-                    key: 'teleop',
-                    icon: <EyeOutlined />,
-                    label: `Teleoperation${isSending ? '' : ` (${CONTROL_OFF_HINT})`}`,
-                    caption: 'TELEOP',
+                    key: 'hands',
+                    icon: <HandOutlined />,
+                    label: `Hands: the robot follows your hand through the camera${isSending ? '' : ` (${CONTROL_OFF_HINT})`}`,
+                    caption: 'HANDS',
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
-                    disabled: isTeleoperationDocked,
-                    disabledReason: 'Teleoperation is currently displayed in the dock',
-                },
-            ],
-        },
-        {
-            key: 'layout',
-            code: 'LAYOUT',
-            pinEnd: true,
-            items: [
-                {
-                    key: '3d-view',
-                    icon: <CodeSandboxOutlined />,
-                    label: showVisualizerWindow ? 'Hide 3D view window' : 'Show 3D view window',
-                    caption: '3D VIEW',
-                    onClick: () => setIsVisualizerVisible(v => !v),
-                    active: showVisualizerWindow,
-                    disabled: isVisualizerDocked,
-                    disabledReason: '3D view is currently displayed in the dock',
                 },
                 {
                     key: 'stream',
                     icon: <VideoCameraOutlined />,
-                    label: showStreamWindow ? 'Hide stream window' : 'Show stream window',
+                    label: isStreamVisible ? 'Hide stream window' : 'Show stream window',
                     caption: 'STREAM',
                     onClick: () => setIsStreamVisible(v => !v),
-                    active: showStreamWindow,
+                    active: isStreamVisible,
                     disabled: isStreamDisabled,
-                    disabledReason: isStreamDocked
-                        ? 'Stream is currently displayed in the dock'
-                        : 'No camera is publishing',
-                },
-                {
-                    key: 'dock',
-                    icon: <LayoutOutlined />,
-                    label: `Docked panel: ${dockLabel(currentDock)} (click to change)`,
-                    caption: 'DOCK',
-                    detail: DOCK_SHORT_LABEL[currentDock],
-                    menu: {
-                        selectable: true,
-                        selectedKeys: [currentDock],
-                        onClick: ({ key }) => setCurrentDock(key as DockName),
-                        items: [
-                            { key: 'dock-title', type: 'group', label: 'DOCKED PANEL' },
-                            ...availableDock.map((dock) => ({
-                                key: dock,
-                                label: dockLabel(dock),
-                                disabled: (dock === 'STREAM' && !hasLiveCamera)
-                                    || (dock === 'SENSOR_DISPLAY' && !hasSensors),
-                            })),
-                        ],
-                    },
+                    disabledReason: 'No camera is publishing',
                 },
             ],
         },
@@ -874,16 +764,8 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <JointPreviewContext.Provider value={jointPreviewStore}>
-            <Robot3DViewerModal
-                isVisible={showVisualizerWindow}
-                onClose={() => setIsVisualizerVisible(false)}
-                isControlOn={isSending}
-                joints={joints}
-                onJointValueChange={handleGizmoJointCommit}
-            />
-
             <StreamPlayerModal
-                isVisible={showStreamWindow}
+                isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
             />
 
@@ -931,7 +813,6 @@ export const RobotControlPanel: React.FC = () => {
                             ref={railRef}
                             orientation="horizontal"
                             groups={railGroups}
-                            arm={railArm}
                             className="command-rail-bottom"
                         />
                     )}
@@ -977,24 +858,22 @@ export const RobotControlPanel: React.FC = () => {
 
                     {isMobile ? (
                         <>
-                            {currentDock !== 'NONE' && (
-                                <div
-                                    style={{
-                                        width: '100%',
-                                        position: 'sticky',
-                                        top: headerHeight + screenPadding,
-                                        zIndex: 4,
-                                        backgroundColor: 'var(--color-main)',
-                                        height: '34vh',
-                                        minHeight: 204,
-                                        marginBottom: 12,
-                                        flexShrink: 0,
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    {dockContent}
-                                </div>
-                            )}
+                            <div
+                                style={{
+                                    width: '100%',
+                                    position: 'sticky',
+                                    top: headerHeight + screenPadding,
+                                    zIndex: 4,
+                                    backgroundColor: 'var(--color-main)',
+                                    height: '34vh',
+                                    minHeight: 204,
+                                    marginBottom: 12,
+                                    flexShrink: 0,
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {viewer}
+                            </div>
                             <div style={{ width: '100%', minHeight: 0 }}>
                                 <PaginatedJointCategories
                                     categoryOrder={categoryOrder}
@@ -1020,13 +899,12 @@ export const RobotControlPanel: React.FC = () => {
                             <CommandRail
                                 orientation="vertical"
                                 groups={railGroups}
-                                arm={railArm}
                                 style={{ alignSelf: 'stretch', flexShrink: 0, width: COMMAND_RAIL_WIDTH }}
                             />
                             <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
                                 <ResizablePanels
                                     direction="horizontal"
-                                    proportions={currentDock === "NONE" ? [100] : [30, 70]}
+                                    proportions={[30, 70]}
                                     minSize={25}
                                     gap={20}
                                 >
@@ -1040,7 +918,7 @@ export const RobotControlPanel: React.FC = () => {
                                         disabled={!isSending}
                                     />
 
-                                    {currentDock !== "NONE" && dockContent}
+                                    {viewer}
                                 </ResizablePanels>
                             </div>
                         </div>

@@ -4,14 +4,22 @@
  */
 
 import { Tooltip } from 'antd';
-import type { ControlArm } from './CommandRail';
 import { JoystickOutlined } from './JoystickIcon';
 
 /** Tooltip delay of the controls over the 3D view, in seconds (antd's unit). */
 export const HUD_TOOLTIP_DELAY_S = 0.3;
 
-/** Compact CONTROL ON/OFF button, shown over the docked 3D view. */
-export const ControlToggleButton = ({ isOn, onToggle, hint }: ControlArm) => (
+interface ControlToggleButtonProps {
+    isOn: boolean;
+    onToggle: () => void;
+    hint: string;
+}
+
+/**
+ * CONTROL toggle shown over the 3D view. Its label names the action:
+ * TAKE CONTROL while off, RELEASE CONTROL while on.
+ */
+export const ControlToggleButton = ({ isOn, onToggle, hint }: ControlToggleButtonProps) => (
     <Tooltip placement="bottomRight" title={hint} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
         <button
             type="button"
@@ -21,8 +29,10 @@ export const ControlToggleButton = ({ isOn, onToggle, hint }: ControlArm) => (
             onClick={onToggle}
         >
             <JoystickOutlined className="control-toggle-icon" />
-            CONTROL
-            <span className="control-toggle-state">{isOn ? 'ON' : 'OFF'}</span>
+            <span className="control-toggle-label">
+                <span className={isOn ? undefined : 'is-current'}>TAKE CONTROL</span>
+                <span className={isOn ? 'is-current' : undefined}>RELEASE CONTROL</span>
+            </span>
         </button>
     </Tooltip>
 );

@@ -867,6 +867,28 @@ h6 {
   z-index: 2;
 }
 
+/*
+ * Smaller visible knob (6px, 8px on hover/drag, plus its 2px ring) so the
+ * default-position tick stands out. Only ::after shrinks: the handle and its
+ * ::before hit area keep antd's size, so the slider is as easy to grab as before.
+ */
+.joint-control-card .ant-slider-handle::after {
+  width: 6px !important;
+  height: 6px !important;
+  inset-inline-start: 2px !important;
+  inset-block-start: 2px !important;
+}
+
+.joint-control-card .ant-slider-handle:hover::after,
+.joint-control-card .ant-slider-handle:active::after,
+.joint-control-card .ant-slider-handle:focus::after,
+.joint-control-card .ant-slider-handle-dragging::after {
+  width: 8px !important;
+  height: 8px !important;
+  inset-inline-start: 1px !important;
+  inset-block-start: 1px !important;
+}
+
 .ant-slider-handle::after {
   background-color: var(--color-text-primary) !important;
   box-shadow: 0 0 0 2px var(--color-highlight-fill, var(--color-highlight)) !important;
@@ -1390,20 +1412,6 @@ h6 {
   gap: 2px;
 }
 
-.rail-code {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1;
-  color: var(--color-text-muted);
-  user-select: none;
-}
-
-.command-rail[data-orientation="horizontal"] .rail-code {
-  display: none;
-}
-
 .rail-divider {
   flex: none;
   width: 36px;
@@ -1476,8 +1484,7 @@ h6 {
 
 .rail-btn:not(:disabled):hover .rail-caption,
 .rail-btn[aria-pressed="true"] .rail-caption,
-.rail-btn-danger .rail-caption,
-.rail-arm .rail-caption {
+.rail-btn-danger .rail-caption {
   color: inherit;
 }
 
@@ -1599,13 +1606,22 @@ h6 {
   font-size: 22px;
 }
 
-.control-toggle-state {
-  /* Room for "OFF" (3 monospace characters + letter spacing) in both states, so the button doesn't resize. */
-  display: inline-block;
-  box-sizing: content-box;
-  width: calc(3ch + 4.5px);
-  padding-left: 10px;
-  border-left: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+/*
+ * Both labels share one grid cell and only the current one is visible, so the
+ * button is always as wide as the longer label and never resizes when toggled.
+ */
+.control-toggle-label {
+  display: grid;
+}
+
+.control-toggle-label > span {
+  grid-area: 1 / 1;
+  text-align: center;
+  visibility: hidden;
+}
+
+.control-toggle-label > span.is-current {
+  visibility: visible;
 }
 
 .robot-menu-btn {
@@ -1642,38 +1658,6 @@ h6 {
   cursor: not-allowed;
 }
 
-.rail-arm {
-  min-height: 62px;
-  --frame: color-mix(in srgb, var(--color-status-error) 60%, transparent);
-  --fill: color-mix(in srgb, var(--color-status-error) var(--color-status-tint, 8%), transparent);
-  color: var(--color-status-error);
-}
-
-.rail-arm:not(:disabled):hover {
-  --frame: var(--color-status-error);
-  --fill: color-mix(in srgb, var(--color-status-error) 16%, transparent);
-  color: var(--color-status-error);
-}
-
-.rail-arm.is-on,
-.rail-arm.is-on:not(:disabled):hover {
-  --frame: var(--color-highlight-fill, var(--color-highlight));
-  --fill: var(--color-highlight-fill, var(--color-highlight));
-  color: var(--color-text-on-highlight);
-}
-
-.rail-arm .rail-caption {
-  opacity: 0.8;
-}
-
-.rail-arm-state {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1;
-}
-
 .command-rail[data-orientation="horizontal"] .rail-btn {
   width: 35px;
   min-height: 40px;
@@ -1688,14 +1672,6 @@ h6 {
 }
 
 .command-rail[data-orientation="horizontal"] .rail-detail {
-  display: none;
-}
-
-.command-rail[data-orientation="horizontal"] .rail-arm {
-  width: 40px;
-}
-
-.command-rail[data-orientation="horizontal"] .rail-arm .rail-caption {
   display: none;
 }
 

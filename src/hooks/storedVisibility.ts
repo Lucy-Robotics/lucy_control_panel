@@ -5,11 +5,12 @@
 
 import { useSyncExternalStore } from 'react';
 
-function readVisible(storageKey: string): boolean {
+function readVisible(storageKey: string, defaultVisible: boolean): boolean {
     try {
-        return localStorage.getItem(storageKey) !== 'false';
+        const stored = localStorage.getItem(storageKey);
+        return stored === null ? defaultVisible : stored !== 'false';
     } catch {
-        return true;
+        return defaultVisible;
     }
 }
 
@@ -22,9 +23,9 @@ function writeVisible(storageKey: string, visible: boolean): boolean {
     }
 }
 
-export function storedVisibility(storageKey: string) {
+export function storedVisibility(storageKey: string, defaultVisible = true) {
     const listeners = new Set<() => void>();
-    let visible = readVisible(storageKey);
+    let visible = readVisible(storageKey, defaultVisible);
 
     const subscribe = (listener: () => void) => {
         listeners.add(listener);

@@ -66,6 +66,7 @@ import {
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
+import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
@@ -261,6 +262,25 @@ export const RobotControlPanel: React.FC = () => {
 
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+
+    const isVisualizerDocked = currentDock === '3D_VIEW';
+    const isStreamDocked = currentDock === 'STREAM';
+    const isTeleoperationDocked = currentDock === 'TELEOPERATION';
+    const isHandsOn = isWebcamActive || isTeleoperationDocked;
+
+    useEffect(() => {
+        if (!isDockLoaded) { return; }
+        if (isVisualizerDocked) { setIsVisualizerVisible(false); }
+        if (isStreamDocked) { setIsStreamVisible(false); }
+        if (isTeleoperationDocked) { setIsWebcamActive(false); }
+    }, [
+        isDockLoaded,
+        isVisualizerDocked,
+        isStreamDocked,
+        isTeleoperationDocked,
+        setIsVisualizerVisible,
+        setIsStreamVisible,
+    ]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -809,6 +829,7 @@ export const RobotControlPanel: React.FC = () => {
                         onJointValueChange={handleGizmoJointCommit}
                         teleopTarget={teleopTarget}
                         phoneOrientation={phoneOrientation}
+                        isHandsOn={isHandsOn}
                         hudLeft={serverRobotPackage
                             ? (
                                 <RobotMenuButton
@@ -968,6 +989,7 @@ export const RobotControlPanel: React.FC = () => {
                 onJointValueChange={handleGizmoJointCommit}
                 teleopTarget={teleopTarget}
                 phoneOrientation={phoneOrientation}
+                isHandsOn={isHandsOn}
             />
 
             <StreamPlayerModal
@@ -1045,6 +1067,7 @@ export const RobotControlPanel: React.FC = () => {
                                         WEBCAM
                                     </span>
                                     <ReadOnlyTag reason={readOnlyReason} />
+                                    <TeleopGhostSwitch />
                                 </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
@@ -1129,7 +1152,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
-                    header={<ReadOnlyTag reason={readOnlyReason} />}
+                    header={<><ReadOnlyTag reason={readOnlyReason} /><TeleopGhostSwitch /></>}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}

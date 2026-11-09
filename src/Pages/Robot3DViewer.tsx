@@ -22,6 +22,8 @@ import { useGhostRobot } from '../hooks/useGhostRobot';
 import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
 import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
+import { useGhostOpacity } from '../hooks/useGhostOpacity';
+import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -513,7 +515,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
     const targetPose = useTargetPose(isConnected);
     const isGhostVisible = useGhostVisible();
     const isTeleopGhostVisible = useTeleopGhostVisible();
@@ -876,6 +878,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
 
                 <SwitchRow label="GHOST" value={isGhostVisible} onChange={setGhostVisible} />
+                <GhostOpacitySlider enabled={isGhostVisible} />
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />

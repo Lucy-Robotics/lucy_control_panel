@@ -229,7 +229,7 @@ The first strict pass reached full WCAG compliance with dark-slate frames everyw
 | :--- | :---: | :--- |
 | `--color-accent-2` / `-soft` | `#2F5D84` / 10 % | Second accent: links, hover on buttons, tabs, nav, rail, toggles. Green stays "active / selected". |
 | `--color-active-fill` | green 10 % | Background of the active tab |
-| `--color-highlight-fill` / `-fill-hover`, `--color-error-fill`, `--color-warning-fill` | `#00FF41` / `#00E03A`, `#FF4343`, `#FFAA00` | Vivid fills: primary buttons, active nav, the ROBOT ON button, ON/OFF toggles, tab ink bar, sliders, switches, title bars and header LEDs. Text on them is black `#141414` (13.5 : 1 on green, 10.3 : 1 on hover green, 5.4 : 1 on red). Text-coloured green stays the dark `#006C2E`, because neon green as text on white is only 1.4 : 1 |
+| `--color-highlight-fill` / `-fill-hover`, `--color-error-fill`, `--color-warning-fill` | `#00FF41` / `#00E03A`, `#FF4343`, `#FFAA00` | Vivid fills: primary buttons, active nav, the RELEASE CONTROL button, ON/OFF toggles, tab ink bar, sliders, switches, title bars and the remote-control border. Text on them is black `#141414` (13.5 : 1 on green, 10.3 : 1 on hover green, 5.4 : 1 on red). Text-coloured green stays the dark `#006C2E`, because neon green as text on white is only 1.4 : 1 |
 | `--color-status-tint` | `10%` | Tinted fill of header status boxes (via `--status-color`), alerts and the robot arm button |
 
 - **Navy instead of grey or brown.** Frames, secondary text and muted text come from the Lucy gray-blue `#2B3E50`, saturated so they read as colour rather than grey: frames `#6D8DB0`, text `#2B3E50` / `#4B617A`. Canvas grid dots, shadows, off-state switch tracks (Ant Design `Switch`) and the disabled-switch fill use the same navy family.

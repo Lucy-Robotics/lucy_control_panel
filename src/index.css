@@ -1363,7 +1363,7 @@ h6 {
   inset: 0;
   z-index: 3000;
   box-sizing: border-box;
-  border: 3px solid var(--color-highlight);
+  border: 3px solid var(--color-highlight-fill, var(--color-highlight));
   pointer-events: none;
 }
 
@@ -1590,7 +1590,7 @@ h6 {
 
 .control-toggle.is-on,
 .control-toggle.is-on:hover {
-  --tone: var(--color-highlight);
+  --tone: var(--color-highlight-fill, var(--color-highlight));
   --frame: var(--tone);
   --fill: var(--tone);
   color: var(--color-text-on-highlight);

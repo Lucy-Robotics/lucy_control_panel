@@ -19,7 +19,7 @@ import { overheatMock } from '../Services/overheatMock';
 import { JointReadingsLine } from '../Components/JointReadingsLine';
 import { RobotGhost } from '../Components/RobotGhost';
 import { useGhostRobot } from '../hooks/useGhostRobot';
-import { useGhostVisible } from '../hooks/useGhostVisible';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -879,6 +879,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </div>
                 )}
 
+                <SwitchRow label="GHOST" value={isGhostVisible} onChange={setGhostVisible} />
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />

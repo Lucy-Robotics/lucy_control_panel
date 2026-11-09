@@ -862,16 +862,10 @@ h6 {
   background-color: transparent !important;
 }
 
-/* The handle passes over the rest marker drawn on the joint sliders' rail. */
 .joint-control-card .ant-slider-handle {
   z-index: 2;
 }
 
-/*
- * Smaller visible knob (6px, 8px on hover/drag, plus its 2px ring) so the
- * default-position tick stands out. Only ::after shrinks: the handle and its
- * ::before hit area keep antd's size, so the slider is as easy to grab as before.
- */
 .joint-control-card .ant-slider-handle::after {
   width: 6px !important;
   height: 6px !important;
@@ -1022,7 +1016,6 @@ h6 {
   --fill: color-mix(in srgb, currentColor 12%, transparent);
 }
 
-/* Ant Design's preset tag tones are tuned for pure white; on light themes use the readable status tones. */
 [data-tone="light"] .ant-tag:is(.ant-tag-green, .ant-tag-success, .ant-tag-lime) {
   color: var(--color-status-active) !important;
 }
@@ -1115,7 +1108,7 @@ h6 {
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* Collapsible overlay panels: anchored to the bottom, collapsed to their title, expand upwards on click */
+/* Collapsible overlay panels: collapsed to their title, expand on click */
 .viewer-overlay-box.collapsible {
   transition: transform 0.2s ease;
 }
@@ -1156,11 +1149,7 @@ h6 {
   filter: brightness(1.3);
 }
 
-/*
- * An SVG triangle rather than a ▸ character: the character comes from a
- * fallback font that draws it below the middle of its box, so it never lined
- * up with the title. The SVG is symmetric, so centring the box centres it.
- */
+/* SVG rather than ▸: its fallback font draws it off-centre. */
 .viewer-overlay-box .collapsible-chevron {
   flex: none;
   width: 0.75em;
@@ -1196,8 +1185,7 @@ h6 {
   transition: grid-template-rows 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
 }
 
-/* A collapsed panel is only as wide as its title. `.narrow` is set once the
-   collapse transition has finished (see CollapsibleOverlay). */
+/* `.narrow` is set once the collapse transition has finished. */
 .viewer-overlay-box.collapsible.narrow .collapsible-body {
   width: 0;
 }
@@ -1357,7 +1345,6 @@ h6 {
   line-height: 1;
 }
 
-/* Above modals and popups; clicks pass through to the page. */
 .remote-control-border {
   position: fixed;
   inset: 0;
@@ -1530,7 +1517,7 @@ h6 {
   box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
 }
 
-/* ─── Controls pinned over the docked 3D view (robot + CONTROL) ──────────── */
+/* ─── Viewer HUD ──────────────────────────────────────────────────────────── */
 .viewer-hud {
   position: absolute;
   top: 12px;
@@ -1541,7 +1528,7 @@ h6 {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  pointer-events: none; /* Dragging between the two still orbits the camera. */
+  pointer-events: none;
 }
 
 .viewer-hud-slot {
@@ -1568,7 +1555,6 @@ h6 {
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* The main action of the page: bigger than the robot menu beside it. */
 .control-toggle {
   gap: 10px;
   height: 44px;
@@ -1606,10 +1592,6 @@ h6 {
   font-size: 22px;
 }
 
-/*
- * Both labels share one grid cell and only the current one is visible, so the
- * button is always as wide as the longer label and never resizes when toggled.
- */
 .control-toggle-label {
   display: grid;
 }

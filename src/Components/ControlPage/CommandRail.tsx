@@ -26,7 +26,6 @@ export interface RailItem {
 
 export interface RailGroup {
     key: string;
-    /** Accessible name of the group (not shown: groups are only set apart by a divider). */
     label: string;
     items: RailItem[];
     pinEnd?: boolean;

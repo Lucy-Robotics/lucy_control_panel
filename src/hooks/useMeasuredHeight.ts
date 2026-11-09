@@ -5,10 +5,6 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-/**
- * Tracks an element's rendered height through a callback ref.
- * `shouldMeasure` (a stable function) skips sizes taken while it returns false.
- */
 export function useMeasuredHeight<T extends HTMLElement>(
     shouldMeasure?: (node: T) => boolean,
 ): [(node: T | null) => void, number] {

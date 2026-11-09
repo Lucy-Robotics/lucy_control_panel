@@ -6,7 +6,6 @@
 import React, { useEffect, useState } from 'react';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 
-/** Frames the whole screen while another client is controlling the robot. */
 export const RemoteControlBorder: React.FC = () => {
     const handler = ControlModeHandler.getInstance();
     const [controllerId, setControllerId] = useState(handler.currentControllerId);

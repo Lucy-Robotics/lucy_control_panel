@@ -6,7 +6,6 @@
 import { Tooltip } from 'antd';
 import { JoystickOutlined } from './JoystickIcon';
 
-/** Tooltip delay of the controls over the 3D view, in seconds (antd's unit). */
 export const HUD_TOOLTIP_DELAY_S = 0.3;
 
 interface ControlToggleButtonProps {
@@ -15,10 +14,6 @@ interface ControlToggleButtonProps {
     hint: string;
 }
 
-/**
- * CONTROL toggle shown over the 3D view. Its label names the action:
- * TAKE CONTROL while off, RELEASE CONTROL while on.
- */
 export const ControlToggleButton = ({ isOn, onToggle, hint }: ControlToggleButtonProps) => (
     <Tooltip placement="bottomRight" title={hint} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
         <button

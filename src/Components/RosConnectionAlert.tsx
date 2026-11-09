@@ -8,11 +8,9 @@ import { Alert } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 
 interface RosConnectionAlertProps {
-    /** Shown while disconnected: what the page needs the ROS bridge for. */
     message: string;
 }
 
-/** Warning banner for pages that stay visible while the ROS bridge is not connected. */
 export const RosConnectionAlert: React.FC<RosConnectionAlertProps> = ({ message }) => {
     const { isConnected, isConnecting } = useRosConnection();
 

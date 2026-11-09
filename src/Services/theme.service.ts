@@ -44,7 +44,6 @@ class ThemeService {
     private static instance: ThemeService;
     private listeners: Set<() => void> = new Set();
     private lastSecurityInspection: CssSecurityInspectionResult | null = null;
-    /** Variables the previous theme wrote onto :root, cleared on the next apply so none leak across themes. */
     private appliedVars: Set<string> = new Set();
 
     private constructor() {
@@ -240,7 +239,6 @@ class ThemeService {
 
         // Baseline: Always apply canonical default CSS variables first
         injectThemeVariables(root);
-        // Lets stylesheets target light themes, e.g. to remap third-party colours tuned for white.
         root.dataset.tone = 'dark';
 
         if (!this.isCustomThemeEnabled()) {

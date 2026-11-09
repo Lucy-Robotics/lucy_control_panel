@@ -17,18 +17,15 @@ interface RobotMenuButtonProps {
 const DISABLED_REASON: Record<RobotController, string> = {
     self: 'Turn CONTROL off to switch robot',
     other: 'Another client is controlling the robot: it must turn CONTROL off before the robot can be switched',
-    // Placeholder until the switcher from aes/latest is merged (robotRailGroup /
-    // RobotSwitchConfirmModal). On merge, gate it with canSwitchRobot() rather than
-    // aes/latest's `canSwitch: isSending`, which requires CONTROL on instead.
+    // TODO(aes/latest merge): gate the switcher with canSwitchRobot(), not isSending.
     none: 'Robot switching is not available yet',
 };
 
-/** Shows the active robot over the docked 3D view. Never opens for now (see above). */
 export const RobotMenuButton = ({ robotPackage, controller }: RobotMenuButtonProps) => {
     const name = robotLabel(robotPackage);
     return (
         <Tooltip placement="bottomLeft" title={DISABLED_REASON[controller]} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
-            {/* A disabled button fires no pointer events, so the wrapper carries the tooltip. */}
+            {/* Disabled buttons don't trigger tooltips. */}
             <span className="robot-menu-slot">
                 <button type="button" className="chamfer-box robot-menu-btn" disabled aria-label={`Robot: ${name}`}>
                     <RobotOutlined className="robot-menu-icon" />

@@ -668,7 +668,6 @@ export const RobotControlPanel: React.FC = () => {
 
     const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
 
-    // The 3D view always sits on the right; CONTROL and the robot are pinned on top of it.
     const viewer = (
         <Robot3DViewer
             isControlOn={isSending}

@@ -39,15 +39,10 @@ interface TrackMarkerProps {
   description: string;
   /** Side the tooltip opens on, so it never covers the slider it sits next to. */
   placement: 'top' | 'bottom';
-  /**
-   * Drawn across the rail as a tick, like a ruler mark: it reads as a reference
-   * value rather than a second handle, and shows on the filled track as on the empty one.
-   */
   onRail?: boolean;
 }
 
 const MARKER_HIT_SIZE = 12;
-/** Vertical centre of the antd slider rail inside the slider wrapper. */
 const SLIDER_RAIL_CENTER_PX = 6;
 const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
@@ -85,7 +80,6 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
     >
       <div
         style={onRail ? {
-          // Sticks out 5px above and below the 4px rail.
           width: 2,
           height: 14,
           backgroundColor: color,
@@ -314,7 +308,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           {joint.displayName ?? joint.name}
         </Text>
 
-        {/* Grid so the min / max row below sits under the slider only, not under the input. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative', containerType: 'inline-size' }}>
             <ReadOnlyHint reason={readOnlyReason} block>
@@ -338,7 +331,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 percent={restBarPercent}
                 top={SLIDER_RAIL_CENTER_PX}
                 onRail
-                // Neutral grey: the filled part of the rail is already the highlight green.
                 color={UI_TEXT_SECONDARY_MUTED}
                 label="Default"
                 valueText={formatMarkerValue(joint.restValue!)}
@@ -397,7 +389,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
           )}
           </div>
 
-          {/* Min / max under the slider: the max angle lines up with the slider's end. */}
           <div style={{ gridColumn: 1, display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
             <Text type="secondary" style={{ fontSize: '10px' }}>
               {minDisplay}{showDegrees ? '°' : 'rad'}

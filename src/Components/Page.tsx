@@ -81,7 +81,6 @@ export const Page: React.FC<PageProps> = ({
               gap: 8,
               width: '100%',
             } : {
-              // Equal side columns keep the navigation centred on the screen.
               display: 'grid',
               gridTemplateColumns: 'minmax(max-content, 1fr) auto minmax(max-content, 1fr)',
               alignItems: 'center',

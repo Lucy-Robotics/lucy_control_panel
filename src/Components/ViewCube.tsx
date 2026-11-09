@@ -17,7 +17,6 @@ const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
-/** Farthest the chamfered cube reaches from its centre, whatever its rotation. */
 const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.hypot(1, INNER, INNER);
 const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
 const HOVER_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
@@ -42,10 +41,7 @@ interface FaceLabel {
 
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
-/**
- * Faces are named after the robot's own (URDF / ROS, Z-up) axes, not Three.js's:
- * RobotFKModel turns the robot by Rx(-π/2), so URDF (x, y, z) shows at Three (x, z, -y).
- */
+// Faces use the robot's URDF axes (Z-up), not Three.js ones.
 const FACE_LABELS: FaceLabel[] = [
     { text: '+X', normal: v(1, 0, 0), right: v(0, 0, -1), up: v(0, 1, 0) },
     { text: '−X', normal: v(-1, 0, 0), right: v(0, 0, 1), up: v(0, 1, 0) },
@@ -172,7 +168,6 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
         mats.hover.color.set(colors.accent);
     }, [mats, colors]);
 
-    // Same grey as the joint sliders' empty rail (text colour at 24% over the surface).
     const labelColor = useMemo(
         () => `#${new THREE.Color(colors.surface).lerp(new THREE.Color(colors.text), 0.24).getHexString()}`,
         [colors.surface, colors.text],
@@ -283,9 +278,7 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 export interface ViewCubeProps {
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    /** Distance from the viewer's right edge to the cube's centre, in pixels. */
     centerRight?: number;
-    /** Space kept free below the cube, in pixels. */
     bottomInset?: number;
 }
 

@@ -119,7 +119,6 @@ const OVERLAY_BOX: React.CSSProperties = {
     fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
     display: 'flex',
-    // The title stays under the pointer while the body opens above it.
     flexDirection: 'column-reverse',
 };
 
@@ -141,7 +140,6 @@ const SwitchRow: React.FC<{
 /** Matches the `.collapsible-body` transition in index.css. */
 const COLLAPSE_DURATION_MS = 250;
 
-/** A CollapsibleOverlay is `narrow` only once it has finished closing. */
 const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
 
 const CollapsibleOverlay: React.FC<{
@@ -152,8 +150,6 @@ const CollapsibleOverlay: React.FC<{
     children: React.ReactNode;
 }> = ({ title, style, gap = 4, boxRef, children }) => {
     const [expanded, setExpanded] = useState(false);
-    // Shrinking to the title's width while the body still fades out squeezes its
-    // content into no width, so the panel only narrows once it has closed.
     const [narrow, setNarrow] = useState(true);
     const narrowTimerRef = useRef<number | undefined>(undefined);
     useEffect(() => () => window.clearTimeout(narrowTimerRef.current), []);
@@ -482,7 +478,6 @@ export interface Robot3DViewerProps {
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    /** Controls pinned to the top-left / top-right corners of the view. */
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
 }
@@ -519,7 +514,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
-    // Only the collapsed height counts, so the cube stays put when the panel opens over it.
     const [settingsRef, settingsHeight] = useMeasuredHeight<HTMLDivElement>(isFullyCollapsed);
 
     const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
@@ -814,7 +808,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <ProjectionSync controlsRef={controlsRef} />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
-                {/* Sits above the collapsed view settings, which cover it when they open. */}
                 {!isMobile && settingsHeight > 0 && (
                     <ViewCube
                         colors={themeColors}

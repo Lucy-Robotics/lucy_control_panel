@@ -6,7 +6,6 @@
 import Icon from '@ant-design/icons';
 import type { GetProps } from 'antd';
 
-/** A figure holding a pose: one arm raised, the other held out, legs apart. */
 const PoseSvg = () => (
     <svg
         viewBox="0 0 24 24"
@@ -21,7 +20,6 @@ const PoseSvg = () => (
     >
         <circle cx="12" cy="4" r="2.4" />
         <path d="M12 7.4v7.1" />
-        {/* Raised arm, bent at the elbow so the hand stays clear of the shoulder and head */}
         <path d="M12 9.5 7 8.2 4.8 3.2" />
         <path d="M12 9.5l8.2 1.8" />
         <path d="M12 14.5 7.5 22" />

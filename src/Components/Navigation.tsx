@@ -23,7 +23,6 @@ export const Navigation: React.FC = () => {
 
     if (!screens.md) return null;
 
-    // Below xl the labels don't fit in the header next to the title and actions.
     const compact = !screens.xl;
 
     return (

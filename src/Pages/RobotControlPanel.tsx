@@ -18,12 +18,10 @@ import {
     ReloadOutlined,
     StopOutlined,
     VideoCameraOutlined,
-    UserOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
-import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -227,7 +225,6 @@ export const RobotControlPanel: React.FC = () => {
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
-    const isGhostVisible = useGhostVisible();
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [railRef, railHeight] = useMeasuredHeight<HTMLDivElement>();
@@ -858,23 +855,6 @@ export const RobotControlPanel: React.FC = () => {
                     active: isStreamVisible,
                     disabled: isStreamDisabled,
                     disabledReason: 'No camera is publishing',
-                },
-            ],
-        },
-        {
-            key: 'view',
-            label: 'View',
-            pinEnd: true,
-            items: [
-                {
-                    key: 'ghost',
-                    icon: <UserOutlined />,
-                    label: isGhostVisible
-                        ? 'Hide the ghost: where the robot is heading'
-                        : 'Show the ghost: where the robot is heading',
-                    caption: 'GHOST',
-                    onClick: () => setGhostVisible(!isGhostVisible),
-                    active: isGhostVisible,
                 },
             ],
         },

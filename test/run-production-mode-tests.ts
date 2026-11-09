@@ -15,7 +15,7 @@ const pinkyMapping = { offsetRad: 170 * DEG, direction: -1, scale: 0.45769 };
 const indexMapping = { offsetRad: 0, direction: 1, scale: 0.57384 };
 const configs = [{
     topic: '/right_controller/joint_trajectory',
-    joints: ['pinky', 'index', 'no_urdf', 'narrow'],
+    joints: ['pinky', 'index', 'no_urdf', 'narrow', 'disjoint'],
     defaultCategory: 'Right',
     jointLimits: {
         pinky: { minRad: 0, maxRad: 170 * DEG, defaultRad: 170 * DEG, mapping: pinkyMapping },
@@ -23,12 +23,14 @@ const configs = [{
         no_urdf: { minRad: 0, maxRad: Math.PI, defaultRad: Math.PI / 2, mapping: indexMapping },
         // Servo travel narrower than the URDF range (0..60 deg seen as joint 0..0.6).
         narrow: { minRad: 0, maxRad: 60 * DEG, defaultRad: 0, mapping: indexMapping },
+        disjoint: { minRad: 0, maxRad: 60 * DEG, defaultRad: 0, mapping: indexMapping },
     },
 }];
 const urdf = new Map([
     ['pinky', { lowerRad: 0, upperRad: 1.358 }],
     ['index', { lowerRad: 0, upperRad: 1.302 }],
     ['narrow', { lowerRad: -0.5, upperRad: 1.5 }],
+    ['disjoint', { lowerRad: -1.5, upperRad: -1 }],
 ]);
 
 const [joint] = toJointSpace(configs, urdf);
@@ -39,9 +41,12 @@ close(pinky.maxRad, 1.358);
 close(pinky.defaultRad, 0);
 assert.deepEqual(pinky.mapping, { offsetRad: 0, direction: 1, scale: 1 });
 close(joint.jointLimits!.index.maxRad, 1.302);
-// URDF joint sliders keep the URDF limits even where the servo travel is narrower.
-close(joint.jointLimits!.narrow.minRad, -0.5);
-close(joint.jointLimits!.narrow.maxRad, 1.5);
+// URDF joint sliders stop where the servo travel ends, inside the URDF range.
+close(joint.jointLimits!.narrow.minRad, 0);
+close(joint.jointLimits!.narrow.maxRad, servoRadToJointRad(60 * DEG, indexMapping));
+// A servo travel outside the URDF range keeps the travel rather than an empty slider.
+close(joint.jointLimits!.disjoint.minRad, 0);
+close(joint.jointLimits!.disjoint.maxRad, servoRadToJointRad(60 * DEG, indexMapping));
 // Without URDF limits the servo travel, seen as joint angles, bounds the slider.
 close(joint.jointLimits!.no_urdf.maxRad, servoRadToJointRad(Math.PI, indexMapping));
 

@@ -54,6 +54,7 @@ import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
 import { CustomTitle } from './CustomTitle';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
+import { SERVO_POSE_HINT, isJointAnglePose } from '../Utils/poseUnits.ts';
 
 const { Text } = Typography;
 
@@ -251,6 +252,10 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             const pose = await storageService.loadPose(id);
             if (!pose) {
                 message.error('Pose not found');
+                return;
+            }
+            if (!isJointAnglePose(pose)) {
+                message.error(SERVO_POSE_HINT);
                 return;
             }
             onLoadPose(pose.joints);

@@ -184,7 +184,6 @@ export const BUILTIN_THEMES: ThemePreset[] = [
   --color-highlight-glow: rgba(0, 255, 65, 0.35);
   --color-highlight-glow-strong: rgba(0, 255, 65, 0.6);
   --color-highlight-glow-subtle: rgba(0, 255, 65, 0.18);
-  --status-led-glow: 0 0 6px currentColor;
   --color-accent-2: #2F5D84;
   --color-accent-2-soft: rgba(47, 93, 132, 0.10);
   --color-highlight-soft: rgba(0, 255, 65, 0.14);

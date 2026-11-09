@@ -52,6 +52,7 @@ import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
+import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
@@ -219,6 +220,7 @@ export const RobotControlPanel: React.FC = () => {
 
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+    const isHandsOn = isWebcamActive;
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -718,6 +720,7 @@ export const RobotControlPanel: React.FC = () => {
             isControlOn={isSending}
             joints={joints}
             onJointValueChange={handleGizmoJointCommit}
+            isHandsOn={isHandsOn}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton
@@ -889,6 +892,7 @@ export const RobotControlPanel: React.FC = () => {
                                         WEBCAM
                                     </span>
                                     <ReadOnlyTag reason={readOnlyReason} />
+                                    <TeleopGhostSwitch />
                                 </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
@@ -973,7 +977,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
-                    header={<ReadOnlyTag reason={readOnlyReason} />}
+                    header={<><ReadOnlyTag reason={readOnlyReason} /><TeleopGhostSwitch /></>}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}

@@ -17,12 +17,12 @@ export const RobotGhost: React.FC<{ ghost: URDFRobot; robot: URDFRobot; pose: Jo
     useFrame(() => {
         if (!pose) return;
         for (const [name, joint] of Object.entries(ghost.joints)) {
-            const value = pose[name];
-            if (value !== undefined) {
-                joint.setJointValue(value);
-            } else if (robot.joints[name]) {
-                joint.setJointValue(...robot.joints[name].jointValue);
-            }
+            const real = robot.joints[name];
+            if (real) joint.setJointValue(...real.jointValue);
+        }
+        // Applied last so a target also moves the joints mimicking it.
+        for (const [name, value] of Object.entries(pose)) {
+            ghost.joints[name]?.setJointValue(value);
         }
         showDivergentLinks(ghost, robot);
     });

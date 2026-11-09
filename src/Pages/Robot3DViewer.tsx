@@ -19,7 +19,7 @@ import { isEditableTarget } from '../Utils/isEditableTarget';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
 import { useGhostRobot } from '../hooks/useGhostRobot';
-import { useGhostVisible } from '../hooks/useGhostVisible';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
@@ -866,6 +866,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </div>
                 )}
 
+                <SwitchRow label="GHOST" value={isGhostVisible} onChange={setGhostVisible} />
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />

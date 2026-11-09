@@ -186,7 +186,7 @@ class ThemeService {
         this.notify();
     }
 
-    public setThemeColors(colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string }): void {
+    public setThemeColors(colors: { main: string; secondary: string; highlight: string; text: string; textSecondary?: string; ghost?: string }): void {
         const textSec = colors.textSecondary || '#6C7D8E';
         const css = `:root {
   --color-main: ${colors.main};
@@ -196,7 +196,7 @@ class ThemeService {
   --color-text-primary: ${colors.text};
   --color-text-secondary: ${textSec};
   --ui-accent-green: ${colors.highlight};
-}`;
+${colors.ghost ? `  --color-ghost: ${colors.ghost};\n` : ''}}`;
         this.setCustomCss(css);
     }
 
@@ -216,6 +216,7 @@ class ThemeService {
                 secondary: extract('--color-secondary', SECONDARY_COLOR),
                 highlight: extract('--color-highlight', HIGHLIGHT_COLOR),
                 text: extract('--color-text-primary', TEXT_PRIMARY),
+                ghost: extract('--color-ghost', extract('--color-text-primary', TEXT_PRIMARY)),
             };
         }
         const preset = BUILTIN_THEMES.find(t => t.id === activeId);

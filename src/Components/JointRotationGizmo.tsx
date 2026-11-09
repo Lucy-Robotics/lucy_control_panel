@@ -408,8 +408,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         fadeRef.current = Math.min(1, fadeRef.current + delta / FADE_IN_S);
         const fade = fadeRef.current;
-        mats.ring.color.set(dragging ? colors.active : colors.accent);
-        mats.knob.color.set(colors.active);
+        mats.ring.color.set(dragging ? colors.ghost : colors.accent);
+        mats.knob.color.set(dragging ? colors.ghost : colors.active);
         mats.ring.opacity = (dragging ? 1 : hovered ? 0.9 : 0.55) * fade;
         mats.knob.opacity = fade;
 
@@ -458,7 +458,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                             style={{
                                 fontFamily: 'monospace',
                                 fontSize: 11,
-                                color: isDragging ? colors.active : colors.accent,
+                                color: isDragging ? colors.ghost : colors.accent,
                                 textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
                                 whiteSpace: 'nowrap',
                             }}

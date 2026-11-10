@@ -1592,6 +1592,10 @@ h6 {
   font-size: 22px;
 }
 
+.control-toggle:disabled {
+  cursor: wait;
+}
+
 .control-toggle-label {
   display: grid;
 }

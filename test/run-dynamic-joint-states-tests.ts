@@ -26,7 +26,7 @@ fakeRos.emit('/dynamic_joint_states', {
     interface_values: [{ interface_names: ['temperature'], values: [42] }],
 });
 assert.equal(temperatures.length, 1, 'each dynamic joint state yields one temperature reading');
-assert.deepEqual(temperatures[0], new Map([['Pitch', 42]]), 'temperatures are read per joint');
+assert.equal(temperatures[0].size, 0, 'temperatures wait for a full median window');
 unsubscribe();
 
 const state = {

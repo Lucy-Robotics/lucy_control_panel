@@ -28,13 +28,13 @@ export function withEncoderFeedback(
 export function withJointsEncoderFeedback(
     joints: JointControlState[],
     actuals: ReadonlyMap<string, number>,
-    feedback: { nobodyControls: boolean; holdsControl: boolean },
+    { nobodyControls, holdsControl, tripped }: { nobodyControls: boolean; holdsControl: boolean; tripped: ReadonlySet<string> },
 ): JointControlState[] {
     let changed = false;
     const next = joints.map((joint) => {
         const actual = actuals.get(joint.name);
         if (actual === undefined) return joint;
-        const updated = withEncoderFeedback(joint, actual, feedback);
+        const updated = withEncoderFeedback(joint, actual, { nobodyControls: nobodyControls || tripped.has(joint.name), holdsControl });
         if (updated !== joint) changed = true;
         return updated;
     });

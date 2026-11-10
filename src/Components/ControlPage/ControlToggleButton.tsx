@@ -28,7 +28,7 @@ export const ControlToggleButton = ({ isOn, isLoading = false, onToggle, hint }:
             onClick={onToggle}
         >
             {isLoading
-                ? <LoadingOutlined className="control-toggle-icon" />
+                ? <LoadingOutlined className="control-toggle-icon" aria-label="Turning ON" />
                 : <JoystickOutlined className="control-toggle-icon" />}
             <span className="control-toggle-label">
                 <span className={isOn ? undefined : 'is-current'}>TAKE CONTROL</span>

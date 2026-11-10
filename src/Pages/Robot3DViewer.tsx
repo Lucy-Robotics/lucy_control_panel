@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -12,7 +12,19 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { RobotGhost } from '../Components/RobotGhost';
+import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
+import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
+import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
+import { useGhostOpacity } from '../hooks/useGhostOpacity';
+import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
@@ -23,7 +35,6 @@ import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import {
     findJointForLink,
@@ -500,6 +511,7 @@ export interface Robot3DViewerProps {
     isHandsOn?: boolean;
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
+    hudCenter?: React.ReactNode;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -507,6 +519,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     joints,
     hudLeft,
     hudRight,
+    hudCenter,
     onJointValueChange,
     teleopTarget = null,
     isHandsOn = false,
@@ -517,7 +530,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
+    const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
+    const isTeleopGhostVisible = useTeleopGhostVisible();
+    const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
+    const isEndEffectorVisible = useEndEffectorVisible();
     const motorOverheat = useContext(MotorOverheatContext);
     const isMobile = !AntGrid.useBreakpoint().md;
 
@@ -704,9 +722,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
-            {(hudLeft || hudRight) && (
+            {(hudLeft || hudRight || hudCenter) && (
                 <div className="viewer-hud">
                     <div className="viewer-hud-slot">{hudLeft}</div>
+                    <div className="viewer-hud-slot">{hudCenter}</div>
                     <div className="viewer-hud-slot">{hudRight}</div>
                 </div>
             )}

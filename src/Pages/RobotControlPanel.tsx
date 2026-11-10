@@ -64,6 +64,7 @@ import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
 import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
 import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
 import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { useServoPower } from "../hooks/useServoPower";
 import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
 import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
@@ -222,6 +223,7 @@ export const RobotControlPanel: React.FC = () => {
     const isSendingRef = useRef(false);
     const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isTakingControl, setIsTakingControl] = useState(false);
+    const servoPower = useServoPower(isConnected);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -477,6 +479,7 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
+    const { start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
     useEffect(() => () => cancelPendingTakeControlRef.current(), []);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
@@ -485,6 +488,8 @@ export const RobotControlPanel: React.FC = () => {
         cancelPendingTakeControlRef.current();
         setIsTakingControl(shouldControl);
         if (shouldControl) {
+            // Only for the timeout message: the button follows isTakingControl.
+            startControlRequest();
             cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
                 ...joint,
                 currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
@@ -808,6 +813,11 @@ export const RobotControlPanel: React.FC = () => {
                     />
                 )
                 : null}
+            hudCenter={servoPower === 'off' && (
+                <div className="chamfer-box no-servo-power" role="alert">
+                    NO SERVO POWER: connect the power supply
+                </div>
+            )}
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}
@@ -904,8 +914,8 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
+        <JointMoveContext.Provider value={jointMoveStore}>
         <MotorOverheatContext.Provider value={motorOverheat}>
-        <JointPreviewContext.Provider value={jointPreviewStore}>
             <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
@@ -1163,7 +1173,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
         </MotorOverheatContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

@@ -62,7 +62,47 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
     const needsAdapterChoice = status.link === 'ambiguous' || status.link === 'selected_missing';
     const recording = status.phase === 'joints' && joint !== null && status.recording === joint.name;
     const canAccept = recording && !busy && Boolean(status.range);
-    useKeyboardAccept(canAccept, () => void send('accept_joint'));
+
+    const primaryEnabled = (() => {
+        switch (status.phase) {
+            case 'idle':
+                return !busy;
+            case 'mid_pose':
+                return requiredHealthOk(status.health) && !busy;
+            case 'joints':
+                return canAccept;
+            case 'review':
+                return !busy;
+            case 'applied':
+            case 'verify_drive':
+                return !busy;
+            default:
+                return false;
+        }
+    })();
+    const runPrimaryAction = () => {
+        switch (status.phase) {
+            case 'idle':
+                void send('start');
+                break;
+            case 'mid_pose':
+                void send('capture_mid');
+                break;
+            case 'joints':
+                void send('accept_joint');
+                break;
+            case 'review':
+                void send('apply');
+                break;
+            case 'applied':
+            case 'verify_drive':
+                void (onlyFinish ? finishAndOpenControl() : activateAndReload());
+                break;
+            default:
+                break;
+        }
+    };
+    useKeyboardAccept(primaryEnabled, runPrimaryAction);
 
     const cancelButton = <Button disabled={busy} onClick={() => void send('cancel')}>Cancel</Button>;
 

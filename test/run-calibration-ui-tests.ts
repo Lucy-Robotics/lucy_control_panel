@@ -227,6 +227,20 @@ try {
         health: [{ id: 'servos', required: true, ok: true, label: 'Servos' }],
     });
     check('Mid-pose phase asks to pose the arm', midPoseMarkup.includes('Put the arm in this pose'));
+    check(
+        'Mid-pose phase hides the checklist already shown on the idle phase',
+        !midPoseMarkup.includes('calibration-health'),
+    );
+
+    const midPoseUnhealthyMarkup = renderWizard({
+        ...model.EMPTY_STATUS,
+        phase: 'mid_pose',
+        health: [{ id: 'torque', required: true, ok: false, label: 'Torque on' }],
+    });
+    check(
+        'Mid-pose phase shows the checklist again when a required check fails',
+        midPoseUnhealthyMarkup.includes('Torque on'),
+    );
 
     const jointsMarkup = renderWizard({
         ...model.EMPTY_STATUS,

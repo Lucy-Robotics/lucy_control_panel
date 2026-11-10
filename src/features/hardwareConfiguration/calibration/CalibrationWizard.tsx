@@ -223,7 +223,9 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                                     message="The arm is unpowered and can drop"
                                     description="Support it, and hold it in the middle of each joint's travel, like the 3D view."
                                 />
-                                <CalibrationHealthChecks health={status.health} />
+                                {!requiredHealthOk(status.health) && (
+                                    <CalibrationHealthChecks health={status.health} />
+                                )}
                             </div>
                             <CalibrationRobotPreview robot={robot} loading={robotLoading} />
                         </div>

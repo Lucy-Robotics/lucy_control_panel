@@ -13,11 +13,69 @@ globalThis.localStorage ??= { getItem: () => null, setItem: () => {} } as unknow
 import assert from 'node:assert/strict';
 import ROSLIB from 'roslib';
 import * as THREE from 'three';
+import { URDFJoint, URDFLink, URDFVisual } from 'urdf-loader/src/URDFClasses.js';
 import { createEffortHeatMap } from '../src/Utils/effortHeatMap.ts';
 import { applyStyle } from '../src/Utils/robotMaterialStyle.ts';
 import { getMaterialState, originalMaterialOf } from '../src/Utils/robotMaterialState.ts';
 
+function jointWithChild(childOffset: THREE.Vector3 | null): { joint: URDFJoint; base: THREE.Group } {
+    const base = new THREE.Group();
+    const joint = new URDFJoint();
+    joint.jointType = 'revolute';
+    joint.axis = new THREE.Vector3(0, 0, 1);
+    joint.limit.lower = -Math.PI;
+    joint.limit.upper = Math.PI;
+    joint.position.set(1, 0, 0);
+    base.add(joint);
+    if (childOffset) {
+        const link = new URDFLink();
+        const visual = new URDFVisual();
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1));
+        mesh.position.copy(childOffset);
+        visual.add(mesh);
+        link.add(visual);
+        joint.add(link);
+    }
+    base.updateMatrixWorld(true);
+    return { joint, base };
+}
+
 {
+    const { jointRingRadius, jointZeroBasis, placeAtJoint } = await import('../src/Utils/jointFrame.utils.ts');
+
+    const { joint } = jointWithChild(new THREE.Vector3(0.5, 0, 0));
+    assert.ok(Math.abs(jointRingRadius(joint) - 0.4 * 0.42) < 1e-6, 'the ring scales with the child link size');
+    assert.equal(jointRingRadius(jointWithChild(null).joint), 0.11, 'a joint without a child link gets the smallest ring');
+
+    assert.ok(joint.setJointValue(Math.PI / 2), 'the test joint turns');
+    joint.updateMatrixWorld(true);
+    const gauge = new THREE.Object3D();
+    placeAtJoint(gauge, joint, jointZeroBasis(joint));
+    const zeroDirection = new THREE.Vector3(1, 0, 0).applyQuaternion(gauge.quaternion);
+    const childDirection = new THREE.Box3().setFromObject(joint.children[0]).getCenter(new THREE.Vector3())
+        .sub(joint.getWorldPosition(new THREE.Vector3())).normalize();
+    assert.ok(gauge.position.distanceTo(new THREE.Vector3(1, 0, 0)) < 1e-6, 'the gauge sits on the joint');
+    assert.ok(zeroDirection.distanceTo(childDirection) < 1e-6, 'the gauge zero points at the child link');
+
+    const zeroOf = (axis: THREE.Vector3, child?: THREE.Object3D) => {
+        const lone = new URDFJoint();
+        lone.axis = axis;
+        if (child) lone.add(child);
+        return new THREE.Vector3(1, 0, 0).applyQuaternion(jointZeroBasis(lone));
+    };
+    assert.ok(zeroOf(new THREE.Vector3(0, 0, 1)).distanceTo(new THREE.Vector3(1, 0, 0)) < 1e-6, 'a joint without a child link starts its gauge on X');
+    assert.ok(zeroOf(new THREE.Vector3(1, 0, 0)).distanceTo(new THREE.Vector3(0, 1, 0)) < 1e-6, 'a joint turning around X starts its gauge on Y');
+    assert.ok(zeroOf(new THREE.Vector3(0, 0, 1), new THREE.Object3D()).distanceTo(new THREE.Vector3(1, 0, 0)) < 1e-6, 'children that are not links are ignored');
+
+    const orphan = new URDFJoint();
+    const untouched = new THREE.Object3D();
+    placeAtJoint(untouched, orphan, new THREE.Quaternion());
+    assert.equal(untouched.position.lengthSq(), 0, 'a joint outside the robot places nothing');
+    const resting = jointWithChild(new THREE.Vector3(0.5, 0, 0)).joint;
+    const restingGauge = new THREE.Object3D();
+    placeAtJoint(restingGauge, resting, new THREE.Quaternion());
+    assert.ok(restingGauge.position.distanceTo(new THREE.Vector3(1, 0, 0)) < 1e-6, 'a joint that never moved still places its gauge');
+
     const { RosBridgeService } = await import('../src/Services/ros/ros.service.ts');
     const { subscribeToJointInterfaces } = await import('../src/Services/ros/handlers/DynamicJointState.handler.ts');
     const calls: { op: string }[] = [];

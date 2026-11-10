@@ -536,7 +536,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
     const [showHeatMap, setShowHeatMap] = useState(true);
-    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showHeatMap);
+    const [showArrows, setShowArrows] = useState(false);
+    const showEffort = showHeatMap || showArrows;
+    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const heatMap = useMemo(createEffortHeatMap, []);
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
@@ -761,7 +763,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && showHeatMap && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} />}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={showArrows} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -891,6 +893,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
                 <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
+                <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
 
                 <button
                     onClick={handleResetCamera}

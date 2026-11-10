@@ -17,11 +17,10 @@ import { JointMoveContext } from '../hooks/useJointMove';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
-    getLinkBoundingBox,
-    isURDFLink,
     urdfNameOf,
     wrapAngle,
 } from '../Utils/robotModel.utils';
+import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
 const RENDER_ORDER = 1000;
 const FADE_IN_S = 0.12;
@@ -35,29 +34,6 @@ function overlayMaterial(opacity: number) {
         toneMapped: false,
         side: THREE.DoubleSide,
     });
-}
-
-function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
-    const axis = joint.axis.clone().normalize();
-
-    let ref: THREE.Vector3 | null = null;
-    for (const child of joint.children) {
-        if (!isURDFLink(child)) continue;
-        joint.updateWorldMatrix(true, true);
-        const worldCenter = getLinkBoundingBox(child).getCenter(new THREE.Vector3());
-        const local = joint.worldToLocal(worldCenter);
-        local.addScaledVector(axis, -local.dot(axis));
-        if (local.lengthSq() > 1e-8) {
-            ref = local.applyAxisAngle(axis, getJointAngle(joint)).normalize();
-        }
-        break;
-    }
-    if (!ref) {
-        const seed = Math.abs(axis.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
-        ref = seed.addScaledVector(axis, -seed.dot(axis)).normalize();
-    }
-    const v = new THREE.Vector3().crossVectors(axis, ref).normalize();
-    return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ref, v, axis));
 }
 
 function ringPlaneOf(group: THREE.Object3D, out: THREE.Plane): THREE.Plane {
@@ -97,21 +73,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     const jointName = joint ? urdfNameOf(joint) : '';
 
-    const radius = useMemo(() => {
-        if (!joint) return 0.16;
-        let maxDim = 0.2;
-        for (const child of joint.children) {
-            if (isURDFLink(child)) {
-                const box = getLinkBoundingBox(child);
-                const size = box.getSize(new THREE.Vector3());
-                const d = Math.max(size.x, size.y, size.z);
-                if (d > 0.02) maxDim = Math.max(maxDim, d);
-            }
-        }
-        return THREE.MathUtils.clamp(maxDim * 0.42, 0.11, 0.32);
-    }, [joint]);
+    const radius = useMemo(() => (joint ? jointRingRadius(joint) : 0.16), [joint]);
 
-    const zeroBasis = useMemo(() => (joint ? computeZeroBasis(joint) : new THREE.Quaternion()), [joint]);
+    const zeroBasis = useMemo(() => (joint ? jointZeroBasis(joint) : new THREE.Quaternion()), [joint]);
 
     const limits = useMemo(() => {
         if (!joint || joint.jointType !== 'revolute') return null;
@@ -384,7 +348,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const badgeValueRef = useRef<HTMLSpanElement>(null);
 
     const tmp = useMemo(() => ({
-        parentQuat: new THREE.Quaternion(),
         pos: new THREE.Vector3(),
     }), []);
 
@@ -394,16 +357,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const dragging = isDraggingRef.current;
         const hovered = isHoveredRef.current;
 
-        if (!dragging && joint.parent) {
-            joint.updateWorldMatrix(true, false);
-            joint.getWorldPosition(tmp.pos);
-            const origQuaternion = (joint as URDFJoint & { origQuaternion?: THREE.Quaternion | null }).origQuaternion;
-            joint.parent.getWorldQuaternion(tmp.parentQuat)
-                .multiply(origQuaternion ?? joint.quaternion)
-                .multiply(zeroBasis);
-            group.position.copy(tmp.pos);
-            group.quaternion.copy(tmp.parentQuat);
-        }
+        if (!dragging) placeAtJoint(group, joint, zeroBasis);
         badgeAnchorRef.current?.position.copy(group.position).add(tmp.pos.set(0, radius * 1.3, 0));
 
         fadeRef.current = Math.min(1, fadeRef.current + delta / FADE_IN_S);

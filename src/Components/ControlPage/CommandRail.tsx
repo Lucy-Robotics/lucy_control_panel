@@ -7,7 +7,6 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { LoadingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 export const COMMAND_RAIL_WIDTH = 74;
 
@@ -36,12 +35,6 @@ const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: h
 
 interface CommandRailProps {
     groups: RailGroup[];
-    arm: {
-        isOn: boolean;
-        isPending?: boolean;
-        onToggle: () => void;
-        hint: string;
-    };
     orientation: 'vertical' | 'horizontal';
     className?: string;
     style?: React.CSSProperties;
@@ -95,31 +88,12 @@ export const CommandRail = React.forwardRef<HTMLDivElement, CommandRailProps>(
                 className={`command-rail ${className}`.trim()}
                 style={style}
             >
-                <div className="rail-group">
-                    <span className="rail-code" aria-hidden>CONTROL</span>
-                    <Tooltip placement={placement} title={canHover ? arm.hint : undefined}>
-                        <span className="rail-slot">
-                            <button
-                                type="button"
-                                className={`rail-btn rail-arm${arm.isOn ? ' is-on' : ''}`}
-                                aria-label="Control Robot"
-                                aria-pressed={arm.isOn}
-                                aria-busy={arm.isPending}
-                                onClick={arm.onToggle}
-                            >
-                                <span className="rail-icon"><ThunderboltOutlined /></span>
-                                <span className="rail-caption">ROBOT</span>
-                                <span className="rail-arm-state">{arm.isPending ? <LoadingOutlined aria-label="Turning ON" /> : arm.isOn ? 'ON' : 'OFF'}</span>
-                            </button>
-                        </span>
-                    </Tooltip>
-                </div>
-
-                {groups.map((group) => (
+                {groups.map((group, index) => (
                     <React.Fragment key={group.key}>
-                        <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
-                        <div className="rail-group" role="group" aria-label={group.code}>
-                            <span className="rail-code" aria-hidden>{group.code}</span>
+                        {index > 0 && (
+                            <span className={`rail-divider${group.pinEnd ? ' rail-divider-end' : ''}`} aria-hidden />
+                        )}
+                        <div className="rail-group" role="group" aria-label={group.label}>
                             {group.items.map(renderItem)}
                         </div>
                     </React.Fragment>

@@ -5,7 +5,6 @@
 
 import { robotLabel } from '../../Utils/robotPackages.ts';
 
-/** Who currently drives the robot, as seen from this client. */
 export type RobotController = 'none' | 'self' | 'other';
 
 /** Switching restarts Lucy, so nobody may be controlling the robot. The backend must refuse too. */

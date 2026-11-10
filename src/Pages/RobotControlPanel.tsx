@@ -92,6 +92,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
+const TAKE_CONTROL_TIMEOUT_MS = 3000;
 
 const withJointValue = (joints: JointControlState[], name: string, value: number): JointControlState[] =>
     joints.map((joint) => (joint.name === name ? { ...joint, currentValue: value, targetValue: value } : joint));
@@ -192,6 +193,7 @@ export const RobotControlPanel: React.FC = () => {
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
     const isSendingRef = useRef(false);
     const cancelPendingTakeControlRef = useRef<() => void>(() => { });
+    const [isTakingControl, setIsTakingControl] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -351,8 +353,17 @@ export const RobotControlPanel: React.FC = () => {
                 setShowControlTakenModal(true);
             }
             setActiveControllerId(controllerId);
+            setIsTakingControl(false);
         });
     }, []);
+
+    useEffect(() => ControlModeHandler.getInstance().onControlRefused(() => setIsTakingControl(false)), []);
+
+    useEffect(() => {
+        if (!isTakingControl) return;
+        const timer = setTimeout(() => setIsTakingControl(false), TAKE_CONTROL_TIMEOUT_MS);
+        return () => clearTimeout(timer);
+    }, [isTakingControl]);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -421,6 +432,7 @@ export const RobotControlPanel: React.FC = () => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
         cancelPendingTakeControlRef.current();
+        setIsTakingControl(shouldControl);
         if (shouldControl) {
             cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
                 ...joint,
@@ -710,6 +722,7 @@ export const RobotControlPanel: React.FC = () => {
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}
+                    isLoading={isTakingControl}
                     onToggle={() => handleControlRobotToggle(!isSending)}
                     hint={`Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`}
                 />

@@ -20,7 +20,7 @@ function readMapping(row: Record<string, unknown>): JointMapping {
 }
 
 function boardIdToCategory(boardId: string): string {
-    const tail = boardId.replace(/^rp2040_/, '');
+    const tail = boardId.replace(/^(rp2040|linux)_/, '');
     return tail.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

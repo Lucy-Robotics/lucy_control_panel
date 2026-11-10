@@ -31,7 +31,7 @@ const STS3215_NM_PER_AMP = 2.94 / 2.7;
 const fixed = (value: number | undefined, digits: number) => (value === undefined ? '-' : value.toFixed(digits));
 
 export const JointEffortDebug: React.FC<{ isConnected: boolean }> = ({ isConnected }) => {
-    const { loads, currents, efforts, temperatures } = useJointReadings(isConnected);
+    const { loads, currents, efforts, temperatures, voltages } = useJointReadings(isConnected);
     const medianTemperatures = useContext(MotorOverheatContext)?.temperatures;
     return (
         <div className="chamfer-box viewer-overlay-box" style={BOX}>
@@ -45,6 +45,7 @@ export const JointEffortDebug: React.FC<{ isConnected: boolean }> = ({ isConnect
                         <th style={HEAD}>I×Kt N·m</th>
                         <th style={HEAD}>TEMP °C</th>
                         <th style={HEAD}>3S MEDIAN °C</th>
+                        <th style={HEAD}>SUPPLY V</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,6 +58,7 @@ export const JointEffortDebug: React.FC<{ isConnected: boolean }> = ({ isConnect
                             <td style={CELL}>{fixed(currents.has(name) ? currents.get(name)! * STS3215_NM_PER_AMP : undefined, 3)}</td>
                             <td style={CELL}>{fixed(temperatures.get(name), 0)}</td>
                             <td style={CELL}>{fixed(medianTemperatures?.get(name), 0)}</td>
+                            <td style={CELL}>{fixed(voltages.get(name), 1)}</td>
                         </tr>
                     ))}
                 </tbody>

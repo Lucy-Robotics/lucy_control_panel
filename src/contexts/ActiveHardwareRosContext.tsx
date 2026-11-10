@@ -16,6 +16,7 @@ import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { HardwareConfigHandler } from '../Services/ros/handlers/HardwareConfig.handler';
 import { Diagnostics } from '../Services/diagnostics.service';
 import { parseHardwareConfigYaml } from '../Utils/hardwareConfigYaml';
+import { parseMotorSpecs, type MotorSpecs } from '../Utils/motorSpecs';
 import { controllerJointConfigsFromHardwareYaml } from '../Utils/hardwareControllersFromYaml.ts';
 
 export type ActiveHardwareFetchOk = {
@@ -31,6 +32,8 @@ interface ActiveHardwareRosContextValue {
     serverRobotPackage: string;
     /** Parsed active.yaml / pipeline active preset — system truth after successful fetch; cleared when disconnected. */
     activeHardwareDoc: Record<string, unknown> | null;
+    /** Specs of the motors the active config uses, keyed by motor ref (GetConfig.motors_yaml). */
+    motorSpecs: MotorSpecs;
     activeHardwareConfigName: string;
     /** Last preset recorded after pipeline flash (GetConfig.flashed_config_name); cleared when disconnected. */
     serverFlashedConfigName: string;
@@ -55,6 +58,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
     const { isConnected } = useRosConnection();
     const [activeHardwareDoc, setActiveHardwareDoc] = useState<Record<string, unknown> | null>(null);
     const [activeHardwareConfigName, setActiveHardwareConfigName] = useState('');
+    const [motorSpecs, setMotorSpecs] = useState<MotorSpecs>({});
     const [serverFlashedConfigName, setServerFlashedConfigName] = useState('');
     const [serverFlashedAt, setServerFlashedAt] = useState('');
     const [controllerConfigsFromActive, setControllerConfigsFromActive] = useState<
@@ -106,6 +110,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
                 `${ctrls.reduce((n, c) => n + c.joints.length, 0)} joints`,
             );
             setActiveHardwareDoc(doc);
+            setMotorSpecs(parseMotorSpecs(res.motors_yaml));
             setActiveHardwareConfigName(res.config_name || '');
             setServerFlashedConfigName((res.flashed_config_name || '').trim());
             setServerFlashedAt((res.flashed_at || '').trim());
@@ -144,6 +149,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
         (): ActiveHardwareRosContextValue => ({
             serverRobotPackage,
             activeHardwareDoc,
+            motorSpecs,
             activeHardwareConfigName,
             serverFlashedConfigName,
             serverFlashedAt,
@@ -158,6 +164,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
         [
             serverRobotPackage,
             activeHardwareDoc,
+            motorSpecs,
             activeHardwareConfigName,
             serverFlashedConfigName,
             serverFlashedAt,

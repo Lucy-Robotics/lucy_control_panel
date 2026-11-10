@@ -53,6 +53,7 @@ import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
 import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
 import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
 import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { useServoPower } from "../hooks/useServoPower";
 import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
@@ -192,6 +193,7 @@ export const RobotControlPanel: React.FC = () => {
     const isSendingRef = useRef(false);
     const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isTakingControl, setIsTakingControl] = useState(false);
+    const servoPower = useServoPower(isConnected);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -696,6 +698,11 @@ export const RobotControlPanel: React.FC = () => {
                     />
                 )
                 : null}
+            hudCenter={servoPower === 'off' && (
+                <div className="chamfer-box no-servo-power" role="alert">
+                    NO SERVO POWER: connect the power supply
+                </div>
+            )}
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}

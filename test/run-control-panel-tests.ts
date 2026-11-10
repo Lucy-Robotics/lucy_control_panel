@@ -15,6 +15,7 @@ const actuator = (id: string, joint: string, pin: number) => `
     virtual_pin: ${pin}
     physical_pin: ${pin + 1}
     servo_type: '300'
+    motor: sts3215/12v_345
     offset: 3.14159
     direction: 1
     scale: 1
@@ -50,7 +51,10 @@ fakeRos.callOnConnection = (call: FakeCall) => {
     if (call.op === 'call_service' && call.service === '/config/get') {
         queueMicrotask(() => fakeRos.emit(call.id!, {
             result: true,
-            values: { success: true, message: '', config_yaml: SO101_YAML, config_name: 'default', robot_package: 'so_arm101_urdf' },
+            values: {
+                success: true, message: '', config_yaml: SO101_YAML, config_name: 'default', robot_package: 'so_arm101_urdf',
+                motors_yaml: 'sts3215/12v_345:\n  min_volts: 6.0\n',
+            },
         }));
     }
 };
@@ -123,6 +127,21 @@ try {
     assert.equal(toggle().getAttribute('aria-busy'), 'true', 'a new attempt loads again');
     assert.ok(await waitFor(() => toggle().getAttribute('aria-busy') === 'false'), 'a refused request stops the loading');
     assert.equal(toggle().getAttribute('aria-pressed'), 'false', 'a refused request leaves control off');
+
+    const banner = () => page.container.querySelector('.no-servo-power');
+    assert.equal(banner(), null, 'no power banner without voltage readings');
+    const supply = (pitchVolts: number) => act(async () => fakeRos.emit('/dynamic_joint_states', {
+        joint_names: ['Rotation', 'Pitch'],
+        interface_values: [
+            { interface_names: ['voltage'], values: [12.2] },
+            { interface_names: ['voltage'], values: [pitchVolts] },
+        ],
+    }));
+    await supply(0);
+    assert.ok(await waitFor(() => banner() !== null), 'a servo without power shows the banner');
+    assert.match(banner()!.textContent ?? '', /connect the power supply/, 'the banner says what to do');
+    await supply(12.1);
+    assert.ok(await waitFor(() => banner() === null), 'the banner goes once every servo is powered');
 } finally {
     Date.now = realNow;
     await page.unmount();

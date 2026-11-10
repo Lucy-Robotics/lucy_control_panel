@@ -44,8 +44,9 @@ const ConfigurationTabs = () => {
     return (
         <Tabs
             className={tab === 'calibrate' ? 'lucy-config-tabs lucy-config-tabs--fill' : 'lucy-config-tabs'}
-            // The viewport under the header, now the nav's only home since it moved there.
-            style={{ height: `calc(100dvh - ${headerHeight}px - ${screenPadding}px)` }}
+            // The viewport under the header, minus the page's own top and bottom margin
+            // (same `screenPadding * 2` the control page subtracts for the same reason).
+            style={{ height: `calc(100dvh - ${headerHeight}px - ${screenPadding * 2}px)` }}
             activeKey={tab}
             onChange={setTab}
             destroyInactiveTabPane

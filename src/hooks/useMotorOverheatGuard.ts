@@ -15,6 +15,7 @@ import {
     torqueCommands,
 } from '../Utils/motorOverheat.utils';
 import { useThrottledJointReadings } from './useThrottledJointReadings';
+import { useOverheatMock, withOverheatMock } from '../Services/overheatMock';
 
 const TEMPERATURE_HZ = 2;
 
@@ -30,7 +31,9 @@ export function useMotorOverheatGuard(
     holdsControl: boolean,
     controllers: ControllerJointConfig[] | null,
 ): MotorOverheat {
-    const temperatures = useThrottledJointReadings(subscribeToJointTemperatures, isConnected, TEMPERATURE_HZ);
+    const realTemperatures = useThrottledJointReadings(subscribeToJointTemperatures, isConnected, TEMPERATURE_HZ);
+    const mockTemperatures = useOverheatMock();
+    const temperatures = useMemo(() => withOverheatMock(realTemperatures, mockTemperatures), [realTemperatures, mockTemperatures]);
     const [state, setState] = useState(NO_OVERHEAT);
     const wasCuttingRef = useRef(false);
 

@@ -60,6 +60,9 @@ import {
 
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
+import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
+import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
 import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
 import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
@@ -213,6 +216,9 @@ export const RobotControlPanel: React.FC = () => {
         () => ControlModeHandler.getInstance().currentControllerId
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
+    const trippedJointsRef = useRef(motorOverheat.trippedJoints);
+    trippedJointsRef.current = motorOverheat.trippedJoints;
     const isSendingRef = useRef(false);
     const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isTakingControl, setIsTakingControl] = useState(false);
@@ -446,6 +452,7 @@ export const RobotControlPanel: React.FC = () => {
             setJoints((prev) => withJointsEncoderFeedback(prev, actualPositionsRef.current, {
                 nobodyControls: ControlModeHandler.getInstance().currentControllerId === '',
                 holdsControl: isSendingRef.current,
+                tripped: trippedJointsRef.current,
             }));
         }, 100);
         return () => clearInterval(interval);
@@ -897,7 +904,9 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointMoveContext.Provider value={jointMoveStore}>
+        <MotorOverheatContext.Provider value={motorOverheat}>
+        <JointPreviewContext.Provider value={jointPreviewStore}>
+            <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
@@ -1154,6 +1163,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointMoveContext.Provider>
+        </JointPreviewContext.Provider>
+        </MotorOverheatContext.Provider>
     );
 };

@@ -58,13 +58,22 @@ function encoderNoiseKeepsTheSameJoint() {
     assert.equal(withEncoderFeedback(steady, 1.0001, NOBODY), steady);
 }
 
+function aTrippedJointFollowsTheEncoderWhileIHoldControl() {
+    const joints = [joint({ name: 'elbow' }), joint({ name: 'wrist' })];
+    const actuals = new Map([['elbow', 0.4], ['wrist', 0.4]]);
+    const [elbow, wrist] = withJointsEncoderFeedback(joints, actuals, { ...ME, tripped: new Set(['elbow']) });
+    assert.equal(elbow.targetValue, 0.4, 'a joint without torque must not jump back to its old target');
+    assert.equal(wrist.targetValue, 1, 'a joint with torque keeps my target');
+}
+
 function unchangedJointsKeepTheSameList() {
     const joints = [joint()];
-    assert.equal(withJointsEncoderFeedback(joints, new Map([['elbow', 1]]), ME), joints);
-    assert.equal(withJointsEncoderFeedback(joints, new Map(), NOBODY), joints);
+    assert.equal(withJointsEncoderFeedback(joints, new Map([['elbow', 1]]), { ...ME, tripped: new Set() }), joints);
+    assert.equal(withJointsEncoderFeedback(joints, new Map(), { ...NOBODY, tripped: new Set() }), joints);
 }
 
 const checks = [
+    aTrippedJointFollowsTheEncoderWhileIHoldControl,
     unchangedJointsKeepTheSameList,
     sliderFollowsTheEncoderWhenNobodyControls,
     sliderKeepsItsTargetWhileThisPanelControls,

@@ -5,7 +5,7 @@
 
 import ROSLIB from 'roslib';
 import type { DynamicJointState } from '../../../Utils/dynamicJointState.utils.ts';
-import { temperaturesByJoint } from '../../../Utils/jointTemperature.utils.ts';
+import { createTemperatureMedian, temperaturesByJoint } from '../../../Utils/jointTemperature.utils.ts';
 import { RosBridgeService } from '../ros.service.ts';
 
 type JointReadings = Map<string, number>;
@@ -26,5 +26,7 @@ function subscribeToDynamicJointStates(
   return () => topic.unsubscribe();
 }
 
-export const subscribeToJointTemperatures = (callback: (readings: JointReadings) => void) =>
-  subscribeToDynamicJointStates(temperaturesByJoint, callback);
+export const subscribeToJointTemperatures = (callback: (readings: JointReadings) => void) => {
+  const median = createTemperatureMedian();
+  return subscribeToDynamicJointStates((state) => median(temperaturesByJoint(state), Date.now()), callback);
+};

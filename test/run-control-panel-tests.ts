@@ -71,6 +71,23 @@ const lastCommand = () => {
 const encoderAt = (rotation: number, pitch: number) => act(async () => {
     fakeRos.emit('/joint_states', { name: ['Rotation', 'Pitch'], position: [rotation, pitch] });
 });
+let clockOffsetMs = 0;
+const realNow = Date.now;
+Date.now = () => realNow() + clockOffsetMs;
+const temperaturesFor = async (seconds: number, pitch: number) => {
+    for (let elapsed = 0; elapsed <= seconds; elapsed += 1.5) {
+        fakeRos.emit('/dynamic_joint_states', {
+            joint_names: ['Rotation', 'Pitch'],
+            interface_values: [
+                { interface_names: ['temperature'], values: [30] },
+                { interface_names: ['temperature'], values: [pitch] },
+            ],
+        });
+        clockOffsetMs += 1500;
+        await act(() => wait(550));
+    }
+};
+
 const page = await render(React.createElement(MemoryRouter, null,
     React.createElement(PaginatedCategoriesProvider, null,
         React.createElement(ActiveHardwareRosProvider, null, React.createElement(RobotControlPanel)))));
@@ -90,6 +107,16 @@ try {
     await act(async () => fakeRos.emit('/lucy/active_client', { data: ControlModeHandler.getInstance().clientId }));
     assert.equal(toggle().getAttribute('aria-busy'), 'false', 'the toggle stops loading once control arrives');
 
+    await temperaturesFor(3, 55);
+    const torque = () => published('/so_arm_torque_enable_controller/commands').at(-1)?.data;
+    assert.ok(await waitFor(() => JSON.stringify(torque()) === '[1,0,1]'), 'an overheated Pitch loses torque');
+    assert.match(page.container.textContent ?? '', /MOTOR OVERHEATING: TORQUE OFF/, 'the panel warns about the overheat');
+
+    await encoderAt(0.5, -0.4);
+    assert.ok(await waitFor(() => Math.abs(lastCommand().Pitch - -0.4) < 1e-6), 'the limp Pitch is commanded where it fell, so torque comes back without a jump');
+    const command = lastCommand();
+    assert.ok(Math.abs(command.Rotation - 0.1) < 1e-6, 'a joint with torque keeps its target');
+
     await act(async () => fakeRos.emit('/lucy/active_client', { data: '' }));
     controlReply = { success: false, message: 'servos are not powered' };
     await act(async () => toggle().click());
@@ -97,6 +124,7 @@ try {
     assert.ok(await waitFor(() => toggle().getAttribute('aria-busy') === 'false'), 'a refused request stops the loading');
     assert.equal(toggle().getAttribute('aria-pressed'), 'false', 'a refused request leaves control off');
 } finally {
+    Date.now = realNow;
     await page.unmount();
 }
 

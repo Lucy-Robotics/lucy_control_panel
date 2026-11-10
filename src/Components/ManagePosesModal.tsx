@@ -53,7 +53,7 @@ import {
 import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
 import { CustomTitle } from './CustomTitle';
-import { CONTROL_OFF_HINT, ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
+import { CONTROL_OFF_HINT, ReadOnlyHint, ReadOnlyTag } from './ControlPage/ReadOnlyHint.tsx';
 import { SERVO_POSE_HINT } from '../Constants/poses.ts';
 import { isJointAnglePose } from '../Utils/poseUnits.ts';
 
@@ -443,7 +443,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                 onClose={() => setVisible(false)}
                 initialPosition={{ x: 120, y: 100 }}
                 initialSize={{ w: 720, h: 500 }}
-                header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                header={<><SettingOutlined style={{ color: UI_ACCENT_GREEN }} /><ReadOnlyTag reason={readOnlyReason} /></>}
                 footer={<Button onClick={() => setVisible(false)}>CLOSE</Button>}
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>

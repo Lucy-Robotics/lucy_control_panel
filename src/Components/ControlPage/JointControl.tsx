@@ -286,21 +286,27 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 {joint.displayName ?? joint.name}
               </Text>
             </span>
-            <span
-              style={{
-                color: UI_TEXT_SECONDARY_MUTED,
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {joint.inverted ? 'inverted · ' : ''}{joint.type}
-            </span>
+            {joint.inverted && (
+              <span
+                style={{
+                  color: UI_TEXT_SECONDARY_MUTED,
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                inverted
+              </span>
+            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
+            <div
+              style={{ position: 'relative', containerType: 'inline-size' }}
+              onMouseMove={handleTrackMouseMove}
+              onMouseLeave={handleTrackMouseLeave}
+            >
               <ReadOnlyHint reason={readOnlyReason} block>
                 <Slider
                   min={minDisplay}
@@ -323,12 +329,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               {restBarPercent !== undefined && (
                 <TrackMarker
                   percent={restBarPercent}
-                  top={-6}
-                  color={UI_ACCENT_GREEN}
+                  top={SLIDER_RAIL_CENTER_PX}
+                  onRail
+                  open={restMarkerHovered}
+                  color={UI_TEXT_SECONDARY_MUTED}
                   label="Default"
                   valueText={formatMarkerValue(joint.restValue!)}
                   description="Rest position of this joint: where the reset button sends it back to."
-                  placement="top"
                 />
               )}
               {actualBarPercent !== undefined && (
@@ -339,11 +346,11 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                   label="Actual"
                   valueText={formatMarkerValue(joint.actualValue!)}
                   description="Real position reported by the simulator: it may lag behind the value you command."
-                  placement="bottom"
                 />
               )}
             </div>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ReadOnlyHint reason={readOnlyReason}>
               <InputNumber
                 min={minDisplay}
@@ -379,23 +386,25 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 />
               </ReadOnlyHint>
             )}
-          </div>
+            </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: joint.inverted ? 'row-reverse' : 'row',
-              justifyContent: 'space-between',
-              fontSize: '10px',
-              color: UI_TEXT_SECONDARY_MUTED,
-            }}
-          >
-            <Text type="secondary" style={{ fontSize: '10px' }}>
-              Min: {minDisplay}{showDegrees ? '°' : 'rad'}
-            </Text>
-            <Text type="secondary" style={{ fontSize: '10px' }}>
-              Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
-            </Text>
+            <div
+              style={{
+                gridColumn: 1,
+                display: 'flex',
+                flexDirection: joint.inverted ? 'row-reverse' : 'row',
+                justifyContent: 'space-between',
+                fontSize: '10px',
+                color: UI_TEXT_SECONDARY_MUTED,
+              }}
+            >
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                {minDisplay}{showDegrees ? '°' : 'rad'}
+              </Text>
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                {maxDisplay}{showDegrees ? '°' : 'rad'}
+              </Text>
+            </div>
           </div>
         </Space>
       </Card>

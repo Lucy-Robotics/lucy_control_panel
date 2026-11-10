@@ -181,7 +181,7 @@ export function readableError(raw: string): string {
 
 const ERROR_HINTS: Record<string, string> = {
     span_too_small: 'Sweep the joint through its whole range, or accept it anyway.',
-    control_active: 'Turn Control Robot off, in every open panel.',
+    control_active: 'Release Control, in every open panel.',
 };
 
 export function errorHint(code: string): string {

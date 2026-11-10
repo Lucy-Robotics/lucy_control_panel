@@ -12,8 +12,8 @@ const FIX_HINTS: Record<string, string> = {
     adapter: 'Plug in the arm\'s USB adapter. If several are connected, choose one below.',
     serial: 'This adapter has no usable serial number, so the arm can\'t be identified.',
     servos: 'Check the arm\'s power supply and the servo cables.',
-    torque: 'Turn Control Robot off.',
-    control_lock: 'Turn Control Robot off, in every open panel.',
+    torque: 'Release Control.',
+    control_lock: 'Release Control, in every open panel.',
     temperature: 'Let the servos cool down before continuing.',
     load: 'Something may be stuck or pushing on the arm.',
 };

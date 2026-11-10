@@ -123,7 +123,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
         ctx.save();
         ctx.clearRect(0, 0, videoWidth, videoHeight);
-        ctx.drawImage(results.image, 0, 0, videoWidth, videoHeight);
 
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
@@ -242,7 +241,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     position: "absolute",
                     inset: 0,
                     textAlign: "center",
-                    zIndex: -1,
+                    zIndex: 0,
                     width: width ?? "100%",
                     height: height ?? "100%",
                     objectFit: "contain",
@@ -255,7 +254,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     position: "absolute",
                     inset: 0,
                     textAlign: "center",
-                    zIndex: 0,
+                    zIndex: 1,
                     width: width ?? "100%",
                     height: height ?? "100%",
                     objectFit: "contain",

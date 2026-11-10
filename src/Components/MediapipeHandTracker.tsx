@@ -11,6 +11,7 @@ import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_
 import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
 import { clawOpenness, fingerFlex, thumbFlex, type FingerPoints } from "../Utils/handFlex";
 import { oneEuroFilter, type OneEuroFilter } from "../Utils/oneEuroFilter";
+import { handOverlayStyle, handSizePx } from "../Utils/handOverlay";
 
 const UPDATE_HZ_S = 5;
 
@@ -121,19 +122,16 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const ctx = canvasRef.current.getContext("2d");
         if (!ctx) return;
 
+        const now = Date.now();
         ctx.save();
         ctx.clearRect(0, 0, videoWidth, videoHeight);
 
-        if (results.multiHandLandmarks) {
-            for (const landmarks of results.multiHandLandmarks) {
-                drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                    color: "#00FF00",
-                    lineWidth: 4,
-                });
-                drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
-            }
-        }
-        const now = Date.now();
+        results.multiHandLandmarks?.forEach((landmarks, handIndex) => {
+            const size = smoothed(`size:${handIndex}`, handSizePx(landmarks, videoWidth, videoHeight), now);
+            const { lineWidth, radius } = handOverlayStyle(size);
+            drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: "#00FF00", lineWidth });
+            drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: lineWidth / 2, radius });
+        });
         const sendDue = now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S;
         if (sendDue) lastProcessTimeRef.current = now;
         processHands(results.multiHandWorldLandmarks, results.multiHandedness, now, sendDue);

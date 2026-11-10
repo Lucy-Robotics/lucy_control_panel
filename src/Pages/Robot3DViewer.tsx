@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -25,11 +25,17 @@ import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
 import { useGhostOpacity } from '../hooks/useGhostOpacity';
 import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
 import { useTargetPose } from '../hooks/useTargetPose';
+import { JointEffortGauges } from '../Components/JointEffortGauges';
+import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
+import { JointEffortDebug } from '../Components/JointEffortDebug';
+import { overheatMock } from '../Services/overheatMock';
+import { JointReadingsLine } from '../Components/JointReadingsLine';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
+import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import {
     findJointForLink,
     getActuatedJointNames,
@@ -50,6 +56,9 @@ import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
+import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
+import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
+import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -210,12 +219,16 @@ const CollapsibleOverlay: React.FC<{
     );
 };
 
+const BADGE_ROW: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' };
+
 const InfoBadge: React.FC<{
     label: string;
     partName: string;
     jointName?: string;
     onUnfocus?: () => void;
-}> = ({ label, partName, jointName, onUnfocus }) => (
+    children?: React.ReactNode;
+    details?: React.ReactNode;
+}> = ({ label, partName, jointName, onUnfocus, children, details }) => (
     <div
         className="chamfer-box viewer-overlay-box"
         style={{
@@ -227,14 +240,16 @@ const InfoBadge: React.FC<{
             fontFamily: 'monospace',
             fontSize: 11,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            gap: 10,
+            gap: 4,
             zIndex: 10,
             pointerEvents: 'none',
             // chamfer-box draws its border from this variable
             '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
+        <div style={BADGE_ROW}>
         <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
         <span style={{ color: FOCUS_COLOR, fontWeight: 'bold' }}>{partName}</span>
         {jointName && (
@@ -243,6 +258,7 @@ const InfoBadge: React.FC<{
                 <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{jointName}</span>
             </>
         )}
+        {children}
         {onUnfocus && (
             <button
                 onClick={onUnfocus}
@@ -263,6 +279,8 @@ const InfoBadge: React.FC<{
                 UNFOCUS
             </button>
         )}
+        </div>
+        {details && <div style={BADGE_ROW}>{details}</div>}
     </div>
 );
 
@@ -493,6 +511,7 @@ export interface Robot3DViewerProps {
     isHandsOn?: boolean;
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
+    hudCenter?: React.ReactNode;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -500,6 +519,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     joints,
     hudLeft,
     hudRight,
+    hudCenter,
     onJointValueChange,
     teleopTarget = null,
     isHandsOn = false,
@@ -516,6 +536,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const isTeleopGhostVisible = useTeleopGhostVisible();
     const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
     const isEndEffectorVisible = useEndEffectorVisible();
+    const motorOverheat = useContext(MotorOverheatContext);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -534,6 +555,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
+    const [showHeatMap, setShowHeatMap] = useState(true);
+    const [showArrows, setShowArrows] = useState(false);
+    const [debugMode, setDebugMode] = useState(false);
+    const showEffort = showHeatMap || showArrows;
+    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
+    const heatMap = useMemo(createEffortHeatMap, []);
+    useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
     const [settingsRef, settingsHeight] = useMeasuredHeight<HTMLDivElement>(isFullyCollapsed);
@@ -694,9 +722,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
-            {(hudLeft || hudRight) && (
+            {(hudLeft || hudRight || hudCenter) && (
                 <div className="viewer-hud">
                     <div className="viewer-hud-slot">{hudLeft}</div>
+                    <div className="viewer-hud-slot">{hudCenter}</div>
                     <div className="viewer-hud-slot">{hudRight}</div>
                 </div>
             )}
@@ -737,7 +766,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onPartClick={handlePartClick}
                         onPartDoubleClick={handlePartDoubleClick}
                         onPartHover={setHoveredPartName}
+                        hoveredPartName={hoveredPartName}
+                        partsClickable={effectiveControlOn}
                         actuatedJointNames={actuatedJointNames}
+                        overheatedJointNames={motorOverheat?.trippedJoints}
+                        heatMaterial={showHeatMap ? heatMap.material : undefined}
+                        motorTemperatures={showHeatMap ? motorOverheat?.temperatures : undefined}
                     />
                 )}
 
@@ -752,6 +786,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         colors={themeColors}
                     />
                 )}
+
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={showArrows} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -793,6 +829,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
             </Canvas>
 
+            {debugMode && <JointEffortDebug isConnected={isConnected} />}
+
             {/* Controls hint — bottom-left */}
             <CollapsibleOverlay title="CONTROLS (HELP)" style={{ userSelect: 'none' }}>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
@@ -804,13 +842,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (
-                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)} />
+                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)}>
+                    <JointTemperatureReadout jointName={urdfNameOf(hoveredJoint)} />
+                </InfoBadge>
             ) : selectedPartName && (
                 <InfoBadge
                     label="FOLLOWING:"
                     partName={selectedPartName}
                     jointName={focusedJoint ? urdfNameOf(focusedJoint) : undefined}
                     onUnfocus={() => setSelectedPartName(null)}
+                    details={focusedJoint && <JointReadingsLine jointName={urdfNameOf(focusedJoint)} isConnected={isConnected} />}
                 />
             )}
 
@@ -877,6 +918,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
+                <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
+                <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
+                <SwitchRow label="DEBUG" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
 
                 <button
                     onClick={handleResetCamera}

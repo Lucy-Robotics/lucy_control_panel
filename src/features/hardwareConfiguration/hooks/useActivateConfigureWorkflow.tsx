@@ -9,6 +9,7 @@ import type { ConfigurePipelineFeedbackNormalized } from '../../../Constants/har
 import { HardwareConfigHandler } from '../../../Services/ros/handlers/HardwareConfig.handler.ts';
 import { startConfigurePipeline } from '../../../Services/ros/handlers/ConfigurePipeline.handler.ts';
 import { parseHardwareConfigYaml } from '../../../Utils/hardwareConfigYaml.ts';
+import { pipelineSkipDetail, stepMarkers } from '../pipelineSkip.ts';
 import type {
     WorkflowStepId,
     WorkflowStepSlice,
@@ -403,6 +404,7 @@ export function useActivateConfigureWorkflow({
                 let sawBuild = false;
                 let sawFlash = false;
                 let sawReload = false;
+                const { markDone, markSkipped } = stepMarkers(patchStep);
                 const wet = startConfigurePipeline(
                     {
                         robot_package: rp,
@@ -423,7 +425,7 @@ export function useActivateConfigureWorkflow({
                                 sawReload = true;
                                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                                 if (!simulationOnly) {
-                                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                                    markDone('build');
                                     if (buildOnly) {
                                         patchStep('flash', {
                                             status: 'skipped',
@@ -431,7 +433,7 @@ export function useActivateConfigureWorkflow({
                                             detail: 'Skipped (build only)',
                                         });
                                     } else {
-                                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                                        markDone('flash');
                                     }
                                 }
                                 patchStep('reload', {
@@ -443,7 +445,12 @@ export function useActivateConfigureWorkflow({
                             } else if (phase === 'flash') {
                                 sawFlash = true;
                                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
-                                patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                                markDone('build');
+                                const flashSkip = pipelineSkipDetail(f.detail);
+                                if (flashSkip) {
+                                    markSkipped('flash', flashSkip);
+                                    return;
+                                }
                                 patchStep('flash', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
@@ -453,6 +460,11 @@ export function useActivateConfigureWorkflow({
                             } else if (phase === 'build') {
                                 sawBuild = true;
                                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
+                                const buildSkip = pipelineSkipDetail(f.detail);
+                                if (buildSkip) {
+                                    markSkipped('build', buildSkip);
+                                    return;
+                                }
                                 patchStep('build', {
                                     status: 'running',
                                     fraction: fractionForBuildPhase(f),
@@ -500,7 +512,7 @@ export function useActivateConfigureWorkflow({
 
                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                 if (!simulationOnly) {
-                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                    markDone('build');
                     if (buildOnly) {
                         patchStep('flash', {
                             status: 'skipped',
@@ -508,7 +520,7 @@ export function useActivateConfigureWorkflow({
                             detail: 'Skipped (build only)',
                         });
                     } else {
-                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                        markDone('flash');
                     }
                 }
                 patchStep('reload', { status: 'done', fraction: 1, detail: 'OK' });

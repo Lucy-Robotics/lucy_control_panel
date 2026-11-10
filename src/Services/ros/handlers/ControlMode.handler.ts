@@ -4,7 +4,6 @@
  */
 
 import ROSLIB from 'roslib';
-import { message as antdMessage } from 'antd';
 import { RosBridgeService } from '../ros.service.ts';
 
 const HEARTBEAT_TOPIC = '/lucy/client_heartbeat';
@@ -17,6 +16,7 @@ const HEARTBEAT_PERIOD_MS = 1000;
 const CLIENT_ID = `cp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
 type ControllerChangedCallback = (activeClientId: string) => void;
+type ControlRefusedCallback = (reason: string) => void;
 
 /**
  * Presence + "who has control" across every client (web, CLI, etc.) via the
@@ -31,6 +31,7 @@ export class ControlModeHandler {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private unsubscribeStatus: (() => void) | null = null;
   private controllerChangedCallbacks: Set<ControllerChangedCallback> = new Set();
+  private controlRefusedCallbacks: Set<ControlRefusedCallback> = new Set();
   private _activeClientId: string = '';
 
   private readonly sayGoodbye = () => {
@@ -145,6 +146,11 @@ export class ControlModeHandler {
     return () => this.controllerChangedCallbacks.delete(cb);
   }
 
+  onControlRefused(cb: ControlRefusedCallback): () => void {
+    this.controlRefusedCallbacks.add(cb);
+    return () => this.controlRefusedCallbacks.delete(cb);
+  }
+
   private callControl(acquire: boolean) {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) return;
@@ -159,7 +165,7 @@ export class ControlModeHandler {
       (response: unknown) => {
         const { success, message: reason } = response as { success?: boolean; message?: string };
         if (acquire && success === false) {
-          antdMessage.warning(`Control Robot was refused: ${reason ?? 'unknown reason'}`);
+          this.controlRefusedCallbacks.forEach((cb) => cb(reason ?? 'unknown reason'));
         }
       },
       () => { },

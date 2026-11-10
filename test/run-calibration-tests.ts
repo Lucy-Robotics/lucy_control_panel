@@ -235,13 +235,10 @@ try {
     calibMod.CalibrationHandler.sendTrajectory('/lucy/joint_trajectory', [], [], 2.5);
     check('CalibrationHandler.sendTrajectory is a no-op with no joint names', publishedCalls.length === 0);
 
-    console.log('\n[SECTION 3] ControlMode.handler.ts (Control Robot refusal toast)');
+    console.log('\n[SECTION 3] ControlMode.handler.ts (Control Robot refusal)');
     console.log('----------------------------------------------------------------');
 
-    const warnings: string[] = [];
-    const antd = await server.ssrLoadModule('antd');
-    const originalWarning = antd.message.warning;
-    antd.message.warning = (msg: string) => warnings.push(msg);
+    const refusals: string[] = [];
 
     onCall = (call) => {
         if (call.op === 'call_service') {
@@ -249,11 +246,12 @@ try {
         }
     };
     const handler = controlModeMod.ControlModeHandler.getInstance();
+    const stopListening = handler.onControlRefused((reason: string) => refusals.push(reason));
     (handler as unknown as { callControl(acquire: boolean): void }).callControl(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    check('ControlModeHandler warns when acquiring control is refused', warnings.some((w) => w.includes('control_active')));
+    check('ControlModeHandler reports the reason when acquiring control is refused', refusals.join() === 'control_active');
 
-    warnings.length = 0;
+    refusals.length = 0;
     onCall = (call) => {
         if (call.op === 'call_service') {
             queueMicrotask(() => fakeRos.emit(call.id, { result: true, values: { success: true, message: '' } }));
@@ -261,9 +259,8 @@ try {
     };
     (handler as unknown as { callControl(acquire: boolean): void }).callControl(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    check('ControlModeHandler stays quiet when acquiring control succeeds', warnings.length === 0);
-
-    antd.message.warning = originalWarning;
+    check('ControlModeHandler stays quiet when acquiring control succeeds', refusals.length === 0);
+    stopListening();
 } finally {
     await server?.close();
 }

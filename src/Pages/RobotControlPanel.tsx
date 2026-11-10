@@ -60,6 +60,12 @@ import {
 
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
+import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
+import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
+import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { useServoPower } from "../hooks/useServoPower";
+import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
 import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
@@ -105,6 +111,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
+const TAKE_CONTROL_TIMEOUT_MS = 3000;
 
 const withJointValue = (joints: JointControlState[], name: string, value: number): JointControlState[] =>
     joints.map((joint) => (joint.name === name ? { ...joint, currentValue: value, targetValue: value } : joint));
@@ -210,7 +217,13 @@ export const RobotControlPanel: React.FC = () => {
         () => ControlModeHandler.getInstance().currentControllerId
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
+    const trippedJointsRef = useRef(motorOverheat.trippedJoints);
+    trippedJointsRef.current = motorOverheat.trippedJoints;
     const isSendingRef = useRef(false);
+    const cancelPendingTakeControlRef = useRef<() => void>(() => { });
+    const [isTakingControl, setIsTakingControl] = useState(false);
+    const servoPower = useServoPower(isConnected);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -392,8 +405,17 @@ export const RobotControlPanel: React.FC = () => {
                 setShowControlTakenModal(true);
             }
             setActiveControllerId(controllerId);
+            setIsTakingControl(false);
         });
     }, []);
+
+    useEffect(() => ControlModeHandler.getInstance().onControlRefused(() => setIsTakingControl(false)), []);
+
+    useEffect(() => {
+        if (!isTakingControl) return;
+        const timer = setTimeout(() => setIsTakingControl(false), TAKE_CONTROL_TIMEOUT_MS);
+        return () => clearTimeout(timer);
+    }, [isTakingControl]);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -413,39 +435,27 @@ export const RobotControlPanel: React.FC = () => {
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
+        const actualPositions = actualPositionsRef.current;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
             for (const { name, value } of positions) {
                 const mapping = actuatorMappingByJointRef.current.get(name);
-                actualPositionsRef.current.set(
+                actualPositions.set(
                     name,
                     mapping ? jointRadToServoRad(value, mapping) : value,
                 );
             }
         });
-        return () => { unsubscribe(); actualPositionsRef.current.clear(); };
+        return () => { unsubscribe(); actualPositions.clear(); };
     }, [isConnected, joints.length]);
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
-            setJoints((prev) => {
-                let changed = false;
-                const notSending = !isSendingRef.current;
-                const next = prev.map((j) => {
-                    const actual = actualPositionsRef.current.get(j.name);
-                    if (actual === undefined) return j;
-                    const isFirstFeedback = j.actualValue === undefined;
-                    const actualChanged = isFirstFeedback || Math.abs(actual - j.actualValue!) >= 0.0005;
-                    if (!actualChanged) return j;
-                    changed = true;
-                    return {
-                        ...j,
-                        actualValue: actual,
-                        ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
-                    };
-                });
-                return changed ? next : prev;
-            });
+            setJoints((prev) => withJointsEncoderFeedback(prev, actualPositionsRef.current, {
+                nobodyControls: ControlModeHandler.getInstance().currentControllerId === '',
+                holdsControl: isSendingRef.current,
+                tripped: trippedJointsRef.current,
+            }));
         }, 100);
         return () => clearInterval(interval);
     }, [isConnected, joints.length]);
@@ -469,14 +479,21 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
-    const { isPending: isControlPending, start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    const { start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    useEffect(() => () => cancelPendingTakeControlRef.current(), []);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
+        cancelPendingTakeControlRef.current();
+        setIsTakingControl(shouldControl);
         if (shouldControl) {
+            // Only for the timeout message: the button follows isTakingControl.
             startControlRequest();
-            ControlModeHandler.getInstance().takeControl();
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
+                ...joint,
+                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
+            })));
         } else {
             cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();
@@ -796,10 +813,15 @@ export const RobotControlPanel: React.FC = () => {
                     />
                 )
                 : null}
+            hudCenter={servoPower === 'off' && (
+                <div className="chamfer-box no-servo-power" role="alert">
+                    NO SERVO POWER: connect the power supply
+                </div>
+            )}
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}
-                    isPending={isControlPending && !isSending}
+                    isLoading={isTakingControl}
                     onToggle={() => handleControlRobotToggle(!isSending)}
                     hint={`Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`}
                 />
@@ -893,6 +915,8 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <JointMoveContext.Provider value={jointMoveStore}>
+        <MotorOverheatContext.Provider value={motorOverheat}>
+            <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
@@ -1149,6 +1173,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
+        </MotorOverheatContext.Provider>
         </JointMoveContext.Provider>
     );
 };

@@ -1618,6 +1618,17 @@ h6 {
   pointer-events: auto;
 }
 
+.no-servo-power {
+  --frame: var(--color-status-error);
+  --fill: color-mix(in srgb, var(--color-status-error) 14%, var(--color-surface-1));
+  padding: 8px 14px;
+  color: var(--color-status-error);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
 .control-toggle,
 .robot-menu-btn {
   --chamfer: 6px;
@@ -1671,6 +1682,10 @@ h6 {
 
 .control-toggle-icon {
   font-size: 22px;
+}
+
+.control-toggle:disabled {
+  cursor: wait;
 }
 
 .control-toggle-label {

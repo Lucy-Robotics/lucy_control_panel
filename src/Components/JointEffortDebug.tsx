@@ -8,6 +8,7 @@ import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import { UI_TEXT_PRIMARY_ON_DARK, UI_TEXT_SECONDARY_MUTED } from '../Constants/uiTheme.ts';
 import { useJointReadings } from '../hooks/useJointReadings';
 import { OverheatMockControls } from './OverheatMockControls';
+import { ColourLegends } from './ColourLegends';
 
 const BOX: React.CSSProperties = {
     position: 'absolute',
@@ -32,11 +33,9 @@ const fixed = (value: number | undefined, digits: number) => (value === undefine
 export const JointEffortDebug: React.FC<{ isConnected: boolean }> = ({ isConnected }) => {
     const { loads, currents, efforts, temperatures } = useJointReadings(isConnected);
     const medianTemperatures = useContext(MotorOverheatContext)?.temperatures;
-    if (loads.size === 0) return null;
-
     return (
         <div className="chamfer-box viewer-overlay-box" style={BOX}>
-            <table>
+            {loads.size > 0 && <table>
                 <thead>
                     <tr>
                         <th style={{ ...HEAD, textAlign: 'left' }}>JOINT</th>
@@ -61,8 +60,9 @@ export const JointEffortDebug: React.FC<{ isConnected: boolean }> = ({ isConnect
                         </tr>
                     ))}
                 </tbody>
-            </table>
+            </table>}
             <OverheatMockControls />
+            <ColourLegends />
         </div>
     );
 };

@@ -52,7 +52,7 @@ export const AppHeader: React.FC = () => {
         };
 
         checkAutoConnect();
-        timer = setInterval(checkAutoConnect, 5000);
+        timer = setInterval(checkAutoConnect, 1000);
 
         const handleAutoConnectChange = () => {
             if (isAutoConnectEnabled()) {

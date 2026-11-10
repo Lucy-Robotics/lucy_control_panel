@@ -53,10 +53,8 @@ import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
-    UI_ACCENT_GREEN_HEX,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
-    TEXT_PRIMARY,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -81,8 +79,7 @@ const getInitialUnselectedOpacity = (): number => {
 
 const OVERLAY_MARGIN_PX = 10;
 const SETTINGS_BOX_WIDTH = 165;
-/** Lifts the view cube clear of the page navbar, which overlaps the docked view. */
-const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
+const VIEW_CUBE_GAP_PX = 6;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -147,10 +144,11 @@ const SwitchRow: React.FC<{
     </div>
 );
 
-/**
- * Overlay panel that starts collapsed to its title and expands on click.
- * Collapsed, the whole box is the toggle; expanded, its full-width header is.
- */
+/** Matches the `.collapsible-body` transition in index.css. */
+const COLLAPSE_DURATION_MS = 250;
+
+const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
+
 const CollapsibleOverlay: React.FC<{
     title: string;
     style?: React.CSSProperties;
@@ -233,7 +231,7 @@ const InfoBadge: React.FC<{
             gap: 10,
             zIndex: 10,
             pointerEvents: 'none',
-            // chamfer-box draws its frame from this variable
+            // chamfer-box draws its border from this variable
             '--frame': FOCUS_COLOR,
         } as React.CSSProperties}
     >
@@ -280,7 +278,7 @@ const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
                     position: 'absolute',
                     top: 0,
                     bottom: 0,
-                    background: 'var(--color-highlight)',
+                    background: 'var(--color-highlight-fill, var(--color-highlight))',
                     ...(indeterminate
                         ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
                         : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
@@ -487,15 +485,12 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
-    /** Rendered in the page dock (under the navbar) rather than a floating window. */
-    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
     phoneOrientation?: Quat | null;
     isHandsOn?: boolean;
-    /** Controls pinned to the top-left / top-right corners of the view. */
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
 }
@@ -716,7 +711,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN_HEX} />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color={themeColors.accent} />
 
                 {showGrid && (
                     <Grid
@@ -725,7 +720,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         cellThickness={0}
                         sectionSize={2}
                         sectionThickness={1}
-                        sectionColor={TEXT_PRIMARY}
+                        sectionColor={themeColors.text}
                         fadeDistance={20}
                         fadeStrength={1}
                     />

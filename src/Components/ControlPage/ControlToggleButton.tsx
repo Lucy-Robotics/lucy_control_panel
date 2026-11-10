@@ -11,23 +11,24 @@ export const HUD_TOOLTIP_DELAY_S = 0.3;
 
 interface ControlToggleButtonProps {
     isOn: boolean;
-    isPending?: boolean;
+    isLoading?: boolean;
     onToggle: () => void;
     hint: string;
 }
 
-export const ControlToggleButton = ({ isOn, isPending, onToggle, hint }: ControlToggleButtonProps) => (
+export const ControlToggleButton = ({ isOn, isLoading = false, onToggle, hint }: ControlToggleButtonProps) => (
     <Tooltip placement="bottomRight" title={hint} mouseEnterDelay={HUD_TOOLTIP_DELAY_S}>
         <button
             type="button"
             className={`chamfer-box control-toggle${isOn ? ' is-on' : ''}`}
             aria-label="Control Robot"
             aria-pressed={isOn}
-            aria-busy={isPending}
+            aria-busy={isLoading}
+            disabled={isLoading}
             onClick={onToggle}
         >
-            {isPending
-                ? <LoadingOutlined className="control-toggle-icon" aria-label="Turning ON" />
+            {isLoading
+                ? <LoadingOutlined className="control-toggle-icon" />
                 : <JoystickOutlined className="control-toggle-icon" />}
             <span className="control-toggle-label">
                 <span className={isOn ? undefined : 'is-current'}>TAKE CONTROL</span>

@@ -66,6 +66,15 @@ const seededBeforeStop = seeds.length;
 await wait(120);
 assert.equal(seeds.length, seededBeforeStop, 'stopping ends the seeding');
 
+const refuse = () => (control as unknown as { controlRefusedCallbacks: Set<(reason: string) => void> })
+    .controlRefusedCallbacks.forEach((cb) => cb('servos are not powered'));
+takeControlFromCurrentPose(() => [pitch]);
+await wait(350);
+refuse();
+const seededBeforeRefusal = seeds.length;
+await wait(120);
+assert.equal(seeds.length, seededBeforeRefusal, 'a refused request ends the seeding');
+
 
 console.log('take control tests passed');
 process.exit(0);

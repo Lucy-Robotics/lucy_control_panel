@@ -10,7 +10,7 @@ import { JointStateHandler } from './handlers/JointState.handler.ts';
 const SEED_DURATION_MS = 100;
 const SEED_MARGIN_MS = 200;
 const SEED_INTERVAL_MS = 50;
-const SEED_GIVE_UP_MS = 5000;
+const SEED_GIVE_UP_MS = 3000;
 
 export function takeControlFromCurrentPose(encoderPose: () => JointControlState[]): () => void {
   const control = ControlModeHandler.getInstance();
@@ -26,13 +26,15 @@ export function takeControlFromCurrentPose(encoderPose: () => JointControlState[
     if (control.currentControllerId === '') control.takeControl();
   }, SEED_DURATION_MS + SEED_MARGIN_MS);
   const giveUp = setTimeout(() => stop(), SEED_GIVE_UP_MS);
-  const unsubscribe = control.onControllerChanged(() => stop());
+  const unsubscribeChanged = control.onControllerChanged(() => stop());
+  const unsubscribeRefused = control.onControlRefused(() => stop());
 
   function stop() {
     clearInterval(seeding);
     clearTimeout(request);
     clearTimeout(giveUp);
-    unsubscribe();
+    unsubscribeChanged();
+    unsubscribeRefused();
   }
   return stop;
 }

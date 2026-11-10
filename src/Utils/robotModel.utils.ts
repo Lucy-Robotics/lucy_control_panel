@@ -20,7 +20,7 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
     return 'isURDFJoint' in obj && Boolean((obj as { isURDFJoint?: boolean }).isURDFJoint);
 }
 
-export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
+export const TARGET_REACHED_TOLERANCE_RAD = 0.06;
 
 /** Pointer travel (px) past which a press counts as a drag rather than a click. */
 export const CLICK_DRAG_THRESHOLD_PX = 4;

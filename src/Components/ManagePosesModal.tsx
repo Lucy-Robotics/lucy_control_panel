@@ -442,7 +442,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <section>
-                        <CustomTitle title="SAVE POSE" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle prefix="" title="SAVE POSE" level={4} style={{ marginBottom: 12 }} />
                         <Space.Compact style={{ width: '100%' }}>
                             <Input
                                 value={poseName}
@@ -469,7 +469,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <CustomTitle title="LOAD POSE" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle prefix="" title="LOAD POSE" level={4} style={{ marginBottom: 12 }} />
                         {poses.length === 0 ? <Empty description="No saved poses yet" /> : (
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                                 <Input.Search
@@ -538,7 +538,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
 
                     <section>
-                        <CustomTitle title="ANIMATIONS" level={4} style={{ marginBottom: 12 }} />
+                        <CustomTitle prefix="" title="ANIMATIONS" level={4} style={{ marginBottom: 12 }} />
                         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                             <Tooltip
                                 placement="bottomLeft"

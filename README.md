@@ -1,6 +1,13 @@
 # Lucy Control Panel
 <!-- Advanced web-based control interface for InMoov humanoid robots with real-time 3D visualization -->
 
+[![CI: dev](https://github.com/Lucy-Robotics/lucy_control_panel/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/Lucy-Robotics/lucy_control_panel/actions/workflows/ci.yml?query=branch%3Adev)
+[![CI: master](https://github.com/Lucy-Robotics/lucy_control_panel/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Lucy-Robotics/lucy_control_panel/actions/workflows/ci.yml?query=branch%3Amaster)
+[![codecov](https://codecov.io/gh/Lucy-Robotics/lucy_control_panel/branch/master/graph/badge.svg)](https://codecov.io/gh/Lucy-Robotics/lucy_control_panel)
+[![release](https://img.shields.io/github/v/release/Lucy-Robotics/lucy_control_panel)](https://github.com/Lucy-Robotics/lucy_control_panel/releases)
+[![license](https://img.shields.io/github/license/Lucy-Robotics/lucy_control_panel)](LICENSE)
+[![Discord](https://img.shields.io/discord/1272611839775084564?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.com/invite/g4KNZ3eeBd)
+
 The default interface shipped with [Lucy](https://github.com/Lucy-Robotics/lucy_ws/).
 
 ---

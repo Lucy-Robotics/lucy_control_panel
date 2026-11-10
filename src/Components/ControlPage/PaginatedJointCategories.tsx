@@ -45,8 +45,6 @@ const PaginatedJointCategories = ({
     const isMobile = !screens.md;
     const tabRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
     const tabListRef = useRef<HTMLDivElement>(null);
-    const stripRef = useRef<HTMLDivElement>(null);
-    const [navInset, setNavInset] = useState(0);
 
     const validCategories = useMemo<string[]>(
         () => categoryOrder.filter(
@@ -87,32 +85,6 @@ const PaginatedJointCategories = ({
         return () => observer.disconnect();
     }, [categoryPage, pageCount]);
 
-    useEffect(() => {
-        const strip = stripRef.current;
-        const container = strip?.parentElement;
-        if (isMobile || !strip || !container) {
-            setNavInset(0);
-            return;
-        }
-        const measure = () => {
-            const nav = document.querySelector('.lucy-navigation-bar');
-            if (!nav) return setNavInset(0);
-            const navRect = nav.getBoundingClientRect();
-            const stripRect = strip.getBoundingClientRect();
-            const containerRight = container.getBoundingClientRect().right;
-            const overlapsVertically = stripRect.bottom > navRect.top && stripRect.top < navRect.bottom;
-            setNavInset(overlapsVertically ? Math.max(0, containerRight - navRect.left + 12) : 0);
-        };
-        measure();
-        const observer = new ResizeObserver(measure);
-        observer.observe(container);
-        window.addEventListener('resize', measure);
-        return () => {
-            observer.disconnect();
-            window.removeEventListener('resize', measure);
-        };
-    }, [isMobile, pageCount]);
-
     const goToPage = (page: number) => setCategoryPage(Math.min(Math.max(page, 1), pageCount));
 
     const handleTabsKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -123,9 +95,9 @@ const PaginatedJointCategories = ({
         tabRefs.current.get(next)?.focus();
     };
 
-    const stripStyle: React.CSSProperties = isMobile
+    const stripStyle: React.CSSProperties | undefined = isMobile
         ? { position: 'sticky', bottom: 'calc(var(--mobile-nav-height, 0px) + 8px)', zIndex: 3 }
-        : { marginRight: navInset };
+        : undefined;
 
     return (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -157,7 +129,7 @@ const PaginatedJointCategories = ({
             </div>
 
             {pageCount > 1 && (
-                <div ref={stripRef} className="category-strip" style={stripStyle}>
+                <div className="category-strip" style={stripStyle}>
                     <button
                         type="button"
                         className="rail-btn"

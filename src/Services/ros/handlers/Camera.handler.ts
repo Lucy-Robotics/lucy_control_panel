@@ -139,7 +139,8 @@ export class CameraHandler {
             throttle_rate: 0,
         });
 
-        this.imageTopic.subscribe((message: any) => {
+        this.imageTopic.subscribe((rawMessage: ROSLIB.Message) => {
+            const message = rawMessage as unknown as { data?: string };
             const now = Date.now();
             this.updateFpsMetrics(now);
 

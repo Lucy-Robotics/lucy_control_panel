@@ -12,11 +12,13 @@ import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
 
 const SIZE = 90;
 const CUBE_HALF_PX = SIZE / 2;
-const CUBE_MARGIN_PX = SIZE;
+const EDGE_GAP_PX = 10;
 const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
+const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.hypot(1, INNER, INNER);
+const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
 const HOVER_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
 const HOVER_REFRESH_ANGLE = 1e-3;
 
@@ -39,13 +41,14 @@ interface FaceLabel {
 
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
+// Faces use the robot's URDF axes (Z-up), not Three.js ones.
 const FACE_LABELS: FaceLabel[] = [
-    { text: 'FRONT', normal: v(1, 0, 0), right: v(0, 0, -1), up: v(0, 1, 0) },
-    { text: 'BACK', normal: v(-1, 0, 0), right: v(0, 0, 1), up: v(0, 1, 0) },
-    { text: 'RIGHT', normal: v(0, 0, 1), right: v(1, 0, 0), up: v(0, 1, 0) },
-    { text: 'LEFT', normal: v(0, 0, -1), right: v(-1, 0, 0), up: v(0, 1, 0) },
-    { text: 'TOP', normal: v(0, 1, 0), right: v(0, 0, -1), up: v(-1, 0, 0) },
-    { text: 'BOTTOM', normal: v(0, -1, 0), right: v(0, 0, -1), up: v(1, 0, 0) },
+    { text: '+X', normal: v(1, 0, 0), right: v(0, 0, -1), up: v(0, 1, 0) },
+    { text: '−X', normal: v(-1, 0, 0), right: v(0, 0, 1), up: v(0, 1, 0) },
+    { text: '−Y', normal: v(0, 0, 1), right: v(1, 0, 0), up: v(0, 1, 0) },
+    { text: '+Y', normal: v(0, 0, -1), right: v(-1, 0, 0), up: v(0, 1, 0) },
+    { text: '+Z', normal: v(0, 1, 0), right: v(0, 0, -1), up: v(-1, 0, 0) },
+    { text: '−Z', normal: v(0, -1, 0), right: v(0, 0, -1), up: v(1, 0, 0) },
 ];
 
 const point = (coords: Record<Axis, number>) => v(coords[0], coords[1], coords[2]);
@@ -123,7 +126,7 @@ function labelTexture(text: string, color: string): THREE.CanvasTexture {
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${text.length > 5 ? 22 : 26}px monospace`;
+    ctx.font = 'bold 40px monospace';
     ctx.fillText(text, LABEL_TEXTURE_PX / 2, LABEL_TEXTURE_PX / 2);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -136,10 +139,11 @@ interface ViewCubeSceneProps {
     mainCamera: THREE.Camera;
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    bottomOffset: number;
+    centerRight: number;
+    bottomInset: number;
 }
 
-const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView, bottomOffset }) => {
+const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSelectView, centerRight, bottomInset }) => {
     const size = useThree(s => s.size);
     const gl = useThree(s => s.gl);
     const events = useThree(s => s.events);
@@ -164,14 +168,19 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
         mats.hover.color.set(colors.accent);
     }, [mats, colors]);
 
+    const labelColor = useMemo(
+        () => `#${new THREE.Color(colors.surface).lerp(new THREE.Color(colors.text), 0.24).getHexString()}`,
+        [colors.surface, colors.text],
+    );
+
     const labels = useMemo(() => FACE_LABELS.map(label => {
-        const texture = labelTexture(label.text, colors.active);
+        const texture = labelTexture(label.text, labelColor);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(
             new THREE.Matrix4().makeBasis(label.right, label.up, label.normal),
         );
         const position = label.normal.clone().multiplyScalar(1 + LABEL_OFFSET);
         return { text: label.text, texture, quaternion, position };
-    }), [colors.active]);
+    }), [labelColor]);
     useEffect(() => () => labels.forEach(l => l.texture.dispose()), [labels]);
 
     const labelGeometry = useMemo(() => new THREE.PlaneGeometry(2 * INNER, 2 * INNER), []);
@@ -190,9 +199,9 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     }, [gl]);
 
     const cubeCenter = useMemo(() => new THREE.Vector2(
-        size.width / 2 - CUBE_MARGIN_PX,
-        -size.height / 2 + CUBE_MARGIN_PX + bottomOffset,
-    ), [size, bottomOffset]);
+        size.width / 2 - centerRight,
+        -size.height / 2 + bottomInset + CUBE_RADIUS_PX,
+    ), [size, centerRight, bottomInset]);
 
     useFrame(() => {
         const cube = cubeRef.current;
@@ -269,14 +278,26 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 export interface ViewCubeProps {
     colors: ThemeColors3D;
     onSelectView: (direction: THREE.Vector3) => void;
-    bottomOffset?: number;
+    centerRight?: number;
+    bottomInset?: number;
 }
 
-export const ViewCube: React.FC<ViewCubeProps> = ({ colors, onSelectView, bottomOffset = 0 }) => {
+export const ViewCube: React.FC<ViewCubeProps> = ({
+    colors,
+    onSelectView,
+    centerRight = CUBE_MARGIN_PX,
+    bottomInset = EDGE_GAP_PX,
+}) => {
     const mainCamera = useThree(s => s.camera);
     return (
         <Hud renderPriority={1}>
-            <ViewCubeScene mainCamera={mainCamera} colors={colors} onSelectView={onSelectView} bottomOffset={bottomOffset} />
+            <ViewCubeScene
+                mainCamera={mainCamera}
+                colors={colors}
+                onSelectView={onSelectView}
+                centerRight={centerRight}
+                bottomInset={bottomInset}
+            />
         </Hud>
     );
 };

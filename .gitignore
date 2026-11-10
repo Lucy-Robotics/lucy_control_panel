@@ -38,3 +38,6 @@ dist-ssr
 package-lock.json
 
 todo.md
+
+# c8 coverage output
+coverage/

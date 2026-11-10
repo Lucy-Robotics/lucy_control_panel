@@ -18,7 +18,7 @@ How the built-in themes were checked for readability (contrast) and for colour-v
 
 Red–green deficiency together affects about **8 % of men and 0.4 % of women** of Northern-European descent (Birch 2012). In a team of robot operators, someone affected is likely.
 
-The control panel signals robot state with colour: header LEDs, ON/OFF switches, joint markers and the 3D viewer. The default theme is phosphor green `#00FF41` for OK, red `#FF4343` for errors and amber `#FFAA00` for warnings, which is close to the worst case for deutans. Simulated deuteranopia puts **OK vs warning at ΔE00 5.7**, a difference you can see side by side but can't reliably name on its own:
+The control panel signals robot state with colour: header status badge, ON/OFF switches, joint markers and the 3D viewer. The default theme is phosphor green `#00FF41` for OK, red `#FF4343` for errors and amber `#FFAA00` for warnings, which is close to the worst case for deutans. Simulated deuteranopia puts **OK vs warning at ΔE00 5.7**, a difference you can see side by side but can't reliably name on its own:
 
 | Default theme status pair | ΔE00 normal | protanopia | deuteranopia | tritanopia |
 | :--- | :---: | :---: | :---: | :---: |
@@ -39,7 +39,7 @@ Each colour is converted from sRGB to linear RGB and multiplied by the **Machado
 Achromatopsia is simulated by replacing each colour with its relative luminance Y (Rec. 709 weights), so only lightness remains.
 
 ### 2.2 Measuring difference: CIEDE2000
-The simulated colours are converted to CIELAB (D65) and compared with **CIEDE2000** (CIE 2001), implemented after **Sharma, Wu & Dalal (2005)**. Under ideal viewing ΔE00 ≈ 1 is about one just-noticeable difference. **Szafir (2018)** showed that the difference needed to tell colours apart grows sharply as marks get smaller. Our status marks are small: 8 px LEDs, 11 px labels and thin switch fills. "Noticeable when side by side" is also much weaker than "identifiable on its own", which is what an operator glancing at an LED needs.
+The simulated colours are converted to CIELAB (D65) and compared with **CIEDE2000** (CIE 2001), implemented after **Sharma, Wu & Dalal (2005)**. Under ideal viewing ΔE00 ≈ 1 is about one just-noticeable difference. **Szafir (2018)** showed that the difference needed to tell colours apart grows sharply as marks get smaller. Our status marks are small: 11 px labels and thin switch fills. "Noticeable when side by side" is also much weaker than "identifiable on its own", which is what an operator glancing at a status mark needs.
 
 ### 2.3 Thresholds
 
@@ -229,8 +229,8 @@ The first strict pass reached full WCAG compliance with dark-slate frames everyw
 | :--- | :---: | :--- |
 | `--color-accent-2` / `-soft` | `#2F5D84` / 10 % | Second accent: links, hover on buttons, tabs, nav, rail, toggles. Green stays "active / selected". |
 | `--color-active-fill` | green 10 % | Background of the active tab |
-| `--color-highlight-fill` / `-fill-hover`, `--color-error-fill`, `--color-warning-fill` | `#00FF41` / `#00E03A`, `#FF4343`, `#FFAA00` | Vivid fills: primary buttons, active nav, the ROBOT ON button, ON/OFF toggles, tab ink bar, sliders, switches, title bars and header LEDs. Text on them is black `#141414` (13.5 : 1 on green, 10.3 : 1 on hover green, 5.4 : 1 on red). Text-coloured green stays the dark `#006C2E`, because neon green as text on white is only 1.4 : 1 |
-| `--color-status-tint` | `10%` | Tinted fill of header status boxes (via `--status-color`), alerts and the robot arm button |
+| `--color-highlight-fill` / `-fill-hover`, `--color-error-fill`, `--color-warning-fill` | `#00FF41` / `#00E03A`, `#FF4343`, `#FFAA00` | Vivid fills: primary buttons, active nav, the RELEASE CONTROL button, ON/OFF toggles, tab ink bar, sliders, switches, title bars and the remote-control border. Text on them is black `#141414` (13.5 : 1 on green, 10.3 : 1 on hover green, 5.4 : 1 on red). Text-coloured green stays the dark `#006C2E`, because neon green as text on white is only 1.4 : 1 |
+| `--color-status-tint` | `10%` | Tinted fill of header status boxes (via `--status-color`) and alerts |
 
 - **Navy instead of grey or brown.** Frames, secondary text and muted text come from the Lucy gray-blue `#2B3E50`, saturated so they read as colour rather than grey: frames `#6D8DB0`, text `#2B3E50` / `#4B617A`. Canvas grid dots, shadows, off-state switch tracks (Ant Design `Switch`) and the disabled-switch fill use the same navy family.
 - **Ant Design colours tuned for pure white.** On light themes, `themeService` sets `data-tone="light"` on `<html>`. Preset `Tag` colours (green, orange, red, blue) are then remapped to the status tones; they were 1.7–3.6 : 1 on parchment. Ant Design's description, tertiary and placeholder text use `--color-text-muted`; their translucent black was 1.8–3.3 : 1. A live audit of every visible text node against its rendered background, including chamfered pseudo-element fills, found no text under 4.5 : 1 on the control, sensors and configuration pages. The audit was first checked against deliberately injected failures.
@@ -280,10 +280,9 @@ No palette makes four states identifiable by colour alone for every viewer: achr
 | Element | Non-colour cue | Status |
 | :--- | :--- | :--- |
 | ON/OFF toggles (`ToggleSwitch`, `StreamSwitch`) | Visible `ON` / `OFF` text and `aria-label` | ✓ |
-| Header ROS bridge status, desktop | Text `CONNECTED` / `CONNECTING` / `DISCONNECTED` | ✓ |
-| Header "connecting" | LED pulse animation | ✓ |
-| Header controller status | Text `CONTROLLED` / `UNCONTROLLED` | ✓ |
-| Header ROS bridge status, **mobile** | Only the client count is shown; the state is colour-only (the tooltip needs hover) | ✗ follow-up |
+| Header ROS bridge status | Badge shown only while connected, with a person icon and the client count | ✓ |
+| Disconnected / connecting state | Text in the page body (`LucyLoader`, `RosConnectionAlert`) | ✓ |
+| Another client controls the robot | Border around the whole screen (no text explains it) | ~ partial |
 | Header "multiple clients" warning | Colour change plus the count | ~ partial |
 
 ---
@@ -295,7 +294,6 @@ No palette makes four states identifiable by colour alone for every viewer: achr
 - **The default brand theme** fails 4.5 : 1 for `--color-text-secondary` (3.21 : 1 worst case) and `--color-text-muted` (2.33 : 1), and its `text-on-error` reaches only 3.04 : 1. The suite reports these as advisories, not failures, so the brand palette isn't changed here.
 - **Light CVD presets** don't exist yet. A user who needs both a light theme and a CVD-safe palette has no preset.
 - **The header logo** (`public/logo.png`) is a fixed mint-green raster. WCAG exempts logotypes from contrast rules, but on Lucy Light it is about 1.4 : 1, and in Monochrome it is the only non-grey element. Rendering it as a CSS mask filled with `var(--color-highlight)` would make it follow the theme. This is a brand decision, so it isn't changed here.
-- **Mobile header status** should show a short text or icon, for example `✓` / `…` / `✕`, next to the count.
 
 ---
 

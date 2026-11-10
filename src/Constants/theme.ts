@@ -121,7 +121,6 @@ export interface ThemeBaseColors {
 export function deriveSurfaceTokens({ main, secondary, highlight, text }: ThemeBaseColors): Record<string, string> {
     const light = isLightColor(main);
     const dir = light ? -1 : 1;
-    // Light canvases show small steps clearly, and shallower tiers leave room for brighter accents at 4.5:1.
     const [step1, step2, step3] = light ? [2, 4, 7] : [3, 6, 10];
     const surface1 = shade(main, dir * step1);
     const surface2 = shade(main, dir * step2);
@@ -132,17 +131,13 @@ export function deriveSurfaceTokens({ main, secondary, highlight, text }: ThemeB
         '--color-surface-3': shade(main, dir * step3),
         '--color-main-surface': surface1,
         '--color-main-elevated': surface2,
-        // Deepest layer: darker than a dark canvas; a light canvas is already the lightest tone (no pure white).
         '--color-main-deep': light ? main : shade(main, -4),
 
-        // Container frames stay soft; controls use --color-line-strong (WCAG 1.4.11). A light canvas
-        // washes out a thin tint, so it gets a denser one.
         '--color-line': alpha(secondary, light ? 0.5 : 0.45),
         '--color-line-strong': secondary,
         '--color-secondary-subtle': alpha(secondary, 0.4),
         '--color-secondary-hover': shade(secondary, dir * 15),
 
-        // Hover tone moves away from the canvas: lighter on dark themes, darker on light ones.
         '--color-highlight-light': shade(highlight, light ? -8 : 15),
         '--color-highlight-dark': shade(highlight, -15),
         '--color-highlight-soft': alpha(highlight, 0.1),

@@ -14,7 +14,6 @@ import { useJointPreview } from '../../hooks/useJointPreview.ts';
 import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
   UI_ACCENT_BLUE,
-  UI_ACCENT_GREEN,
   UI_BORDER_SOFT,
   UI_COLOR_TRANSPARENT,
   UI_TEXT_PRIMARY_ON_DARK,
@@ -40,14 +39,16 @@ interface TrackMarkerProps {
   description: string;
   /** Side the tooltip opens on, so it never covers the slider it sits next to. */
   placement: 'top' | 'bottom';
+  onRail?: boolean;
 }
 
 const MARKER_HIT_SIZE = 12;
+const SLIDER_RAIL_CENTER_PX = 6;
 const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
-const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, placement }: TrackMarkerProps) => (
+const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, placement, onRail = false }: TrackMarkerProps) => (
   <Tooltip
     placement={placement}
     title={
@@ -78,7 +79,14 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
       }}
     >
       <div
-        style={{
+        style={onRail ? {
+          width: 2,
+          height: 14,
+          backgroundColor: color,
+          borderRadius: 1,
+          boxShadow: '0 0 0 1px var(--color-main)',
+          pointerEvents: 'none',
+        } : {
           width: 4,
           height: 4,
           backgroundColor: color,
@@ -296,25 +304,12 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       styles={{ body: { padding: 12 } }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.displayName ?? joint.name}
-          </Text>
-          <span
-            style={{
-              color: UI_TEXT_SECONDARY_MUTED,
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-          >
-            {joint.type}
-          </span>
-        </div>
+        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
+          {joint.displayName ?? joint.name}
+        </Text>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative', containerType: 'inline-size' }}>
             <ReadOnlyHint reason={readOnlyReason} block>
               <Slider
                 min={minDisplay}
@@ -334,8 +329,9 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             {restBarPercent !== undefined && (
               <TrackMarker
                 percent={restBarPercent}
-                top={-6}
-                color={UI_ACCENT_GREEN}
+                top={SLIDER_RAIL_CENTER_PX}
+                onRail
+                color={UI_TEXT_SECONDARY_MUTED}
                 label="Default"
                 valueText={formatMarkerValue(joint.restValue!)}
                 description="Rest position of this joint: where the reset button sends it back to."
@@ -355,6 +351,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             )}
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ReadOnlyHint reason={readOnlyReason}>
             <InputNumber
               min={minDisplay}
@@ -390,15 +387,16 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               />
             </ReadOnlyHint>
           )}
-        </div>
+          </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Min: {minDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            Max: {maxDisplay}{showDegrees ? '°' : 'rad'}
-          </Text>
+          <div style={{ gridColumn: 1, display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              {minDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              {maxDisplay}{showDegrees ? '°' : 'rad'}
+            </Text>
+          </div>
         </div>
       </Space>
     </Card>

@@ -16,6 +16,7 @@ import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { ViewCube } from '../Components/ViewCube';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
@@ -71,8 +72,9 @@ const getInitialUnselectedOpacity = (): number => {
     return 0.25;
 };
 
+const OVERLAY_MARGIN_PX = 10;
 const SETTINGS_BOX_WIDTH = 165;
-const DOCKED_VIEW_CUBE_OFFSET_PX = 50;
+const VIEW_CUBE_GAP_PX = 6;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
     'L-drag · rotate',
@@ -117,12 +119,13 @@ const CENTERED_FILL: React.CSSProperties = {
 /** Shared chrome for the floating overlay panels (each adds its own position). */
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
-    left: 10,
+    bottom: OVERLAY_MARGIN_PX,
+    left: OVERLAY_MARGIN_PX,
     fontFamily: 'monospace',
     fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column-reverse',
 };
 
 const SWITCH_ROW: React.CSSProperties = {
@@ -140,18 +143,38 @@ const SwitchRow: React.FC<{
     </div>
 );
 
+/** Matches the `.collapsible-body` transition in index.css. */
+const COLLAPSE_DURATION_MS = 250;
+
+const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
+
 const CollapsibleOverlay: React.FC<{
     title: string;
-    style: React.CSSProperties;
+    style?: React.CSSProperties;
     gap?: number;
+    boxRef?: React.Ref<HTMLDivElement>;
     children: React.ReactNode;
-}> = ({ title, style, gap = 4, children }) => {
+}> = ({ title, style, gap = 4, boxRef, children }) => {
     const [expanded, setExpanded] = useState(false);
-    const toggle = () => setExpanded(prev => !prev);
+    const [narrow, setNarrow] = useState(true);
+    const narrowTimerRef = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(narrowTimerRef.current), []);
+
+    const toggle = () => {
+        window.clearTimeout(narrowTimerRef.current);
+        if (expanded) {
+            setExpanded(false);
+            narrowTimerRef.current = window.setTimeout(() => setNarrow(true), COLLAPSE_DURATION_MS);
+        } else {
+            setNarrow(false);
+            setExpanded(true);
+        }
+    };
 
     return (
         <div
-            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}`}
+            ref={boxRef}
+            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}${narrow ? ' narrow' : ''}`}
             style={{ ...OVERLAY_BOX, ...style }}
             onClick={expanded ? undefined : toggle}
         >
@@ -172,7 +195,9 @@ const CollapsibleOverlay: React.FC<{
                 }}
                 title={expanded ? `Collapse ${title.toLowerCase()}` : `Expand ${title.toLowerCase()}`}
             >
-                <span className="collapsible-chevron">▸</span>
+                <span className="collapsible-chevron" aria-hidden>
+                    <svg viewBox="0 0 10 10"><path d="M1.5 0L10 5L1.5 10Z" fill="currentColor" /></svg>
+                </span>
                 <span className="collapsible-title">{title}</span>
             </div>
             <div className="collapsible-body">
@@ -458,16 +483,18 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
 };
 
 export interface Robot3DViewerProps {
-    docked?: boolean;
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    hudLeft?: React.ReactNode;
+    hudRight?: React.ReactNode;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
-    docked = false,
     isControlOn: isControlOnProp,
     joints,
+    hudLeft,
+    hudRight,
     onJointValueChange,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
@@ -502,6 +529,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
     const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
+    const [settingsRef, settingsHeight] = useMeasuredHeight<HTMLDivElement>(isFullyCollapsed);
 
     const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
         setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction, instant }));
@@ -706,6 +734,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
+            {(hudLeft || hudRight) && (
+                <div className="viewer-hud">
+                    <div className="viewer-hud-slot">{hudLeft}</div>
+                    <div className="viewer-hud-slot">{hudRight}</div>
+                </div>
+            )}
             <Canvas
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
                 onPointerMissed={handlePointerMissed}
@@ -793,17 +827,18 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <ProjectionSync controlsRef={controlsRef} />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
-                {!isMobile && (
+                {!isMobile && settingsHeight > 0 && (
                     <ViewCube
                         colors={themeColors}
                         onSelectView={handleSelectView}
-                        bottomOffset={docked ? DOCKED_VIEW_CUBE_OFFSET_PX : 0}
+                        centerRight={OVERLAY_MARGIN_PX + SETTINGS_BOX_WIDTH / 2}
+                        bottomInset={OVERLAY_MARGIN_PX + settingsHeight + VIEW_CUBE_GAP_PX}
                     />
                 )}
             </Canvas>
 
-            {/* Controls hint — top-left */}
-            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ top: 10, userSelect: 'none' }}>
+            {/* Controls hint — bottom-left */}
+            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ userSelect: 'none' }}>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
@@ -823,11 +858,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
             )}
 
-            {/* Settings */}
+            {/* Settings — bottom-right, under the view cube */}
             <CollapsibleOverlay
-                title="SETTINGS"
-                style={{ top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH }}
+                title="VIEW SETTINGS"
+                style={{ left: 'auto', right: OVERLAY_MARGIN_PX, width: SETTINGS_BOX_WIDTH }}
                 gap={6}
+                boxRef={settingsRef}
             >
                 {/* Part selector & transparency of unselected parts */}
                 {availableParts.length > 0 && (

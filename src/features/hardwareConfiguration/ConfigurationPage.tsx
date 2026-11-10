@@ -9,10 +9,12 @@ import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/i
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
+import { RosConnectionAlert } from '../../Components/RosConnectionAlert.tsx';
 import { CustomTitle } from '../../Components/CustomTitle.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../../contexts/HeaderHeightContext.ts';
+import { useRosConnection } from '../../hooks/useRosConnection.hook.ts';
 import './configuration.switch.css';
 import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWorkflowModal.tsx';
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
@@ -22,6 +24,7 @@ const { useBreakpoint } = Grid;
 
 const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
+    const { isConnecting } = useRosConnection();
     const editorLocked = hw.editorLocked;
     // The page header is `position: sticky; top: 0`, so the actuator table header has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
@@ -155,14 +158,24 @@ const ConfigurationPage = () => {
                 </Space>
             </div>
 
+            <RosConnectionAlert message="Connect to the ROS bridge to load, save or activate a robot configuration." />
+
             {!hw.yamlDoc ? (
                 <LucyLoader
-                    label={hw.loading ? 'LOADING ROBOT CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    label={
+                        hw.loading
+                            ? 'LOADING ROBOT CONFIGURATION'
+                            : isConnecting
+                              ? 'CONNECTING TO ROS BRIDGE'
+                              : 'WAITING FOR ROS BRIDGE'
+                    }
                     connectButton={!hw.loading}
                     detail={
                         hw.loading
                             ? 'Fetching the active hardware preset and joint catalog.'
-                            : 'Use Quick Connect in the header — the configuration loads automatically once linked.'
+                            : isConnecting
+                              ? 'The configuration loads automatically once linked.'
+                              : 'Use Quick Connect in the header — the configuration loads automatically once linked.'
                     }
                 />
             ) : null}

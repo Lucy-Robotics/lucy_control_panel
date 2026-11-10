@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { useControlRequest } from '../hooks/useControlRequest';
 import { storageService } from '../Services/storage.service';
@@ -208,7 +208,7 @@ export const RobotControlPanel: React.FC = () => {
     const slidersProductionModeRef = useRef(productionMode);
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -219,6 +219,9 @@ export const RobotControlPanel: React.FC = () => {
         () => ControlModeHandler.getInstance().currentControllerId
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
+    const trippedJointsRef = useRef(motorOverheat.trippedJoints);
+    trippedJointsRef.current = motorOverheat.trippedJoints;
     const isSendingRef = useRef(false);
     const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isTakingControl, setIsTakingControl] = useState(false);
@@ -404,6 +407,7 @@ export const RobotControlPanel: React.FC = () => {
                 setShowControlTakenModal(true);
             }
             setActiveControllerId(controllerId);
+            setIsTakingControl(false);
         });
     }, []);
 
@@ -477,7 +481,8 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
-    const { isPending: isControlPending, start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    const { start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    useEffect(() => () => cancelPendingTakeControlRef.current(), []);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
@@ -485,8 +490,12 @@ export const RobotControlPanel: React.FC = () => {
         cancelPendingTakeControlRef.current();
         setIsTakingControl(shouldControl);
         if (shouldControl) {
+            // Only for the timeout message: the button follows isTakingControl.
             startControlRequest();
-            ControlModeHandler.getInstance().takeControl();
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
+                ...joint,
+                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
+            })));
         } else {
             cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();
@@ -813,13 +822,13 @@ export const RobotControlPanel: React.FC = () => {
                 : null}
             hudCenter={servoPower === 'off' && (
                 <div className="chamfer-box no-servo-power" role="alert">
-                    No power supply
+                    NO SERVO POWER: connect the power supply
                 </div>
             )}
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}
-                    isPending={isControlPending && !isSending}
+                    isLoading={isTakingControl}
                     onToggle={() => handleControlRobotToggle(!isSending)}
                     hint={`Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`}
                 />
@@ -867,7 +876,8 @@ export const RobotControlPanel: React.FC = () => {
                     icon: <PoseOutlined />,
                     label: 'Manage poses & animations',
                     caption: 'POSES',
-                    onClick: () => setIsManagePosesVisible(true),
+                    onClick: () => setIsManagePosesVisible(v => !v),
+                    active: isManagePosesVisible,
                 },
             ],
         },
@@ -913,6 +923,8 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <JointMoveContext.Provider value={jointMoveStore}>
+        <MotorOverheatContext.Provider value={motorOverheat}>
+            <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
@@ -1169,6 +1181,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
+        </MotorOverheatContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

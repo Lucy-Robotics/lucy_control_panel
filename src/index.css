@@ -1601,13 +1601,13 @@ h6 {
 /* ─── Viewer HUD ──────────────────────────────────────────────────────────── */
 .viewer-hud {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+  top: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 10;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   pointer-events: none;
 }

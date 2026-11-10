@@ -15,6 +15,8 @@ import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
+import { JointEffortDebug } from '../Components/JointEffortDebug';
+import { overheatMock } from '../Services/overheatMock';
 import { JointReadingsLine } from '../Components/JointReadingsLine';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -523,6 +525,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const [wireframe, setWireframe] = useState(false);
     const [showHeatMap, setShowHeatMap] = useState(true);
     const [showArrows, setShowArrows] = useState(false);
+    const [debugMode, setDebugMode] = useState(false);
     const showEffort = showHeatMap || showArrows;
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const heatMap = useMemo(createEffortHeatMap, []);
@@ -840,6 +843,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
             </Canvas>
 
+            {debugMode && <JointEffortDebug isConnected={isConnected} />}
+
             {/* Controls hint — bottom-left */}
             <CollapsibleOverlay title="CONTROLS (HELP)" style={{ userSelect: 'none' }}>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
@@ -924,6 +929,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
                 <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
                 <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
+                <SwitchRow label="DEBUG" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
 
                 <button
                     onClick={handleResetCamera}

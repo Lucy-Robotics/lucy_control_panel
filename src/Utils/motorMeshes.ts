@@ -9,7 +9,7 @@ const MOTOR_MESH_FILE = /sts3215/i;
 
 type UrdfChild = THREE.Object3D & { isURDFVisual?: boolean; urdfNode?: Pick<Element, 'querySelector'> | null };
 
-function isMotorVisual(child: UrdfChild): boolean {
+export function isMotorVisual(child: UrdfChild): boolean {
     const file = child.urdfNode?.querySelector('mesh')?.getAttribute('filename') ?? '';
     return Boolean(child.isURDFVisual) && MOTOR_MESH_FILE.test(file);
 }

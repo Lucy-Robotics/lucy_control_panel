@@ -12,6 +12,7 @@ import {
     WarningOutlined,
 } from '@ant-design/icons';
 import { Alert, Button, Card, Checkbox, Divider, Progress, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { useEffect, useRef } from 'react';
 import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
 import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
@@ -73,6 +74,8 @@ export interface ActivateConfigureWorkflowModalProps {
     workflowRunning: boolean;
     workflowSteps: WorkflowStepSlice[];
     workflowOverallPercent: number;
+    /** Append-only pipeline feedback lines (copyable in the modal). */
+    workflowLogLines: string[];
     /** True once the most recent run finished successfully (and no new run started). */
     workflowLastRunSucceeded: boolean;
     /**
@@ -124,6 +127,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         workflowRunning,
         workflowSteps,
         workflowOverallPercent,
+        workflowLogLines,
         workflowLastRunSucceeded,
         workflowLastRunDiff,
         gazeboRunning,
@@ -138,6 +142,13 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
 
     const awaitingEnableConfirm = Boolean(pendingEnableConfirm && pendingEnableConfirm.length > 0);
     const busy = workflowRunning || runPreparing;
+    const logPreRef = useRef<HTMLPreElement | null>(null);
+
+    useEffect(() => {
+        const el = logPreRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
+    }, [workflowLogLines]);
 
     // A pipeline run always rebuilds the model the running Gazebo loaded, so if
     // Gazebo is up after a successful run it must be restarted regardless of diff.
@@ -407,6 +418,46 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                                 </Card>
                             ))}
                     </div>
+                </div>
+
+                <div>
+                    <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                            LOG
+                        </Text>
+                        <Button
+                            size="small"
+                            disabled={workflowLogLines.length === 0}
+                            onClick={() => {
+                                void navigator.clipboard.writeText(workflowLogLines.join('\n'));
+                            }}
+                        >
+                            COPY
+                        </Button>
+                    </Space>
+                    <pre
+                        ref={logPreRef}
+                        style={{
+                            margin: 0,
+                            maxHeight: 180,
+                            overflow: 'auto',
+                            padding: 10,
+                            fontSize: 11,
+                            lineHeight: 1.35,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            userSelect: 'text',
+                            cursor: 'text',
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                            background: 'rgba(0,0,0,0.35)',
+                            border: `1px solid ${UI_BORDER_MUTED}`,
+                            borderRadius: 6,
+                        }}
+                    >
+                        {workflowLogLines.length > 0
+                            ? workflowLogLines.join('\n')
+                            : 'Pipeline step output will appear here…'}
+                    </pre>
                 </div>
 
                 {showGazeboRestartPrompt ? (

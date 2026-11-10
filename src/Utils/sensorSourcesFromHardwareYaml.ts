@@ -25,7 +25,8 @@ export function formatSensorDisplayName(sensorId: string): string {
 
 /**
  * Pressure sensor entries from hardware YAML `sensors` + `boards[].topic_sensors`.
- * Array index matches firmware / mock_sensor ordering: sensors on a board sorted by `virtual_pin`.
+ * Array index matches firmware / mock_sensor ordering: board list order
+ * (same as derived virtual_pin 0..N-1).
  */
 export function sensorSourcesFromHardwareYaml(doc: Record<string, unknown>): SensorSource[] {
     const boards = doc.boards;
@@ -59,10 +60,7 @@ export function sensorSourcesFromHardwareYaml(doc: Record<string, unknown>): Sen
         const topic = rosTopic(String(board.topic_sensors ?? ''));
         if (!topic) continue;
 
-        entries.sort(
-            (a, b) => Number(a.virtual_pin ?? 0) - Number(b.virtual_pin ?? 0),
-        );
-
+        // Preserve YAML list order on this board (matches assign_virtual_pins).
         entries.forEach((entry, arrayIndex) => {
             const id = String(entry.id).trim();
             out.push({

@@ -44,7 +44,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
     return (
         <Card
-            className="joint-category-card"
+            className={`joint-category-card${joints.some((j) => j.unreachable) ? ' joint-unreachable' : ''}`}
             style={{
                 height: '100%',
                 display: 'flex',
@@ -65,6 +65,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             <div
                 style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: 12,
@@ -72,7 +74,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     zIndex: 2,
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                     <CustomTitle
                         prefix=""
                         title={category.toUpperCase()}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -13,14 +13,14 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../Utils/actuatorJointMapping';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
+import { JointMoveContext } from '../hooks/useJointMove';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
-    getLinkBoundingBox,
-    isURDFLink,
     urdfNameOf,
     wrapAngle,
 } from '../Utils/robotModel.utils';
+import { jointRingRadius, jointZeroBasis, placeAtJoint } from '../Utils/jointFrame.utils';
 
 const RENDER_ORDER = 1000;
 const FADE_IN_S = 0.12;
@@ -36,29 +36,6 @@ function overlayMaterial(opacity: number) {
     });
 }
 
-function computeZeroBasis(joint: URDFJoint): THREE.Quaternion {
-    const axis = joint.axis.clone().normalize();
-
-    let ref: THREE.Vector3 | null = null;
-    for (const child of joint.children) {
-        if (!isURDFLink(child)) continue;
-        joint.updateWorldMatrix(true, true);
-        const worldCenter = getLinkBoundingBox(child).getCenter(new THREE.Vector3());
-        const local = joint.worldToLocal(worldCenter);
-        local.addScaledVector(axis, -local.dot(axis));
-        if (local.lengthSq() > 1e-8) {
-            ref = local.applyAxisAngle(axis, getJointAngle(joint)).normalize();
-        }
-        break;
-    }
-    if (!ref) {
-        const seed = Math.abs(axis.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
-        ref = seed.addScaledVector(axis, -seed.dot(axis)).normalize();
-    }
-    const v = new THREE.Vector3().crossVectors(axis, ref).normalize();
-    return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ref, v, axis));
-}
-
 function ringPlaneOf(group: THREE.Object3D, out: THREE.Plane): THREE.Plane {
     const worldAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
     return out.setFromNormalAndCoplanarPoint(worldAxis, group.getWorldPosition(new THREE.Vector3()));
@@ -69,11 +46,6 @@ export interface JointRotationGizmoProps {
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    onValuePreview?: (name: string, value: number | null) => void;
-    onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
-    /** A drag on `name` was aborted without committing (joint switched, control disabled). */
-    onTargetCancel?: (name: string) => void;
-    getPendingTarget?: (name: string) => number | undefined;
     onDraggingChange?: (isDragging: boolean) => void;
     onHoverChange?: (isHovered: boolean) => void;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
@@ -85,16 +57,13 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     isControlOn,
     joints,
     onJointValueChange,
-    onValuePreview,
-    onTargetChange,
-    onTargetCancel,
-    getPendingTarget,
     onDraggingChange,
     onHoverChange,
     controlsRef,
     colors,
 }) => {
     const { gl } = useThree();
+    const jointMove = useContext(JointMoveContext);
     const groupRef = useRef<THREE.Group>(null);
     const isDraggingRef = useRef<boolean>(false);
     const isHoveredRef = useRef<boolean>(false);
@@ -104,21 +73,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
     const jointName = joint ? urdfNameOf(joint) : '';
 
-    const radius = useMemo(() => {
-        if (!joint) return 0.16;
-        let maxDim = 0.2;
-        for (const child of joint.children) {
-            if (isURDFLink(child)) {
-                const box = getLinkBoundingBox(child);
-                const size = box.getSize(new THREE.Vector3());
-                const d = Math.max(size.x, size.y, size.z);
-                if (d > 0.02) maxDim = Math.max(maxDim, d);
-            }
-        }
-        return THREE.MathUtils.clamp(maxDim * 0.42, 0.11, 0.32);
-    }, [joint]);
+    const radius = useMemo(() => (joint ? jointRingRadius(joint) : 0.16), [joint]);
 
-    const zeroBasis = useMemo(() => (joint ? computeZeroBasis(joint) : new THREE.Quaternion()), [joint]);
+    const zeroBasis = useMemo(() => (joint ? jointZeroBasis(joint) : new THREE.Quaternion()), [joint]);
 
     const limits = useMemo(() => {
         if (!joint || joint.jointType !== 'revolute') return null;
@@ -133,6 +90,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const jointState = joints?.find(j => j.name === jointName);
         return jointState ? clampServoRad(servoRad, jointState.minValue, jointState.maxValue) : servoRad;
     }, [joints, jointName]);
+
+    const commandedValue = useCallback(() => joints?.find(j => j.name === jointName)?.currentValue, [joints, jointName]);
 
     const mats = useMemo(() => ({
         ring: overlayMaterial(0.55),
@@ -187,8 +146,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const pointerAngleRef = useRef<number>(0);
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
     const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
-    // Joint the current drag started on: `joint` can change mid-drag, and every
-    // emission of that drag must stay attributed to the same ghost entry.
+    // Joint the current drag started on: `joint` can change mid-drag.
     const dragJointNameRef = useRef<string>('');
     // A press on the ring only becomes a drag past CLICK_DRAG_THRESHOLD_PX, so
     // plain clicks reach the parts behind the ring.
@@ -205,8 +163,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
         lastEmittedValueRef.current = null;
-        if (emitted) onValuePreview?.(emitted.name, null);
-    }, [onValuePreview]);
+        if (emitted) jointMove?.release();
+    }, [jointMove]);
 
     useEffect(() => clearEmittedValue, [clearEmittedValue]);
 
@@ -227,7 +185,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
-        onTargetChange?.(dragJointNameRef.current, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
         if (lastEmittedValueRef.current) {
             const { name, value } = lastEmittedValueRef.current;
             onJointValueChange?.(name, value);
@@ -236,7 +193,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         onDraggingChange?.(false);
         if (!pointerInsideRef.current) setHovered(false);
-    }, [controlsRef, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
+    }, [controlsRef, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
 
     useEffect(() => {
         if (pressRef.current && (!joint || !isControlOn || pressRef.current.jointName !== jointName)) {
@@ -251,13 +208,12 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             if (controlsRef.current) {
                 controlsRef.current.enabled = true;
             }
-            onTargetCancel?.(dragJointNameRef.current);
             onDraggingChange?.(false);
         }
         if (joint && isControlOn) return;
         pointerInsideRef.current = false;
         setHovered(false);
-    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onTargetCancel, onDraggingChange, setHovered, cancelPress]);
+    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onDraggingChange, setHovered, cancelPress]);
 
     useEffect(() => {
         const handleGlobalPointerUp = () => {
@@ -267,11 +223,16 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                 cancelPress();
             }
         };
+        const releaseIfHidden = () => { if (document.hidden) handleGlobalPointerUp(); };
         window.addEventListener('pointerup', handleGlobalPointerUp);
         window.addEventListener('pointercancel', handleGlobalPointerUp);
+        window.addEventListener('blur', handleGlobalPointerUp);
+        document.addEventListener('visibilitychange', releaseIfHidden);
         return () => {
             window.removeEventListener('pointerup', handleGlobalPointerUp);
             window.removeEventListener('pointercancel', handleGlobalPointerUp);
+            window.removeEventListener('blur', handleGlobalPointerUp);
+            document.removeEventListener('visibilitychange', releaseIfHidden);
         };
     }, [finishDrag, cancelPress]);
 
@@ -281,7 +242,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         setIsDragging(true);
         onDraggingChange?.(true);
 
-        const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
+        const start = getJointAngle(joint);
         startTargetRadRef.current = start;
         currentTargetRadRef.current = start;
         accumulatedAngleRef.current = 0;
@@ -289,7 +250,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         pointerAngleRef.current = grabAngle;
         lastEmittedValueRef.current = null;
         dragJointNameRef.current = jointName;
-        onTargetChange?.(jointName, start, true);
     };
 
     const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -351,10 +311,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
         currentTargetRadRef.current = targetRad;
         const name = dragJointNameRef.current;
-        onTargetChange?.(name, targetRad, true);
         const value = toSliderValue(targetRad);
         lastEmittedValueRef.current = { name, value };
-        onValuePreview?.(name, value);
+        jointMove?.move(name, value);
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
@@ -394,7 +353,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const badgeValueRef = useRef<HTMLSpanElement>(null);
 
     const tmp = useMemo(() => ({
-        parentQuat: new THREE.Quaternion(),
         pos: new THREE.Vector3(),
     }), []);
 
@@ -404,22 +362,13 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const dragging = isDraggingRef.current;
         const hovered = isHoveredRef.current;
 
-        if (!dragging && joint.parent) {
-            joint.updateWorldMatrix(true, false);
-            joint.getWorldPosition(tmp.pos);
-            const origQuaternion = (joint as URDFJoint & { origQuaternion?: THREE.Quaternion | null }).origQuaternion;
-            joint.parent.getWorldQuaternion(tmp.parentQuat)
-                .multiply(origQuaternion ?? joint.quaternion)
-                .multiply(zeroBasis);
-            group.position.copy(tmp.pos);
-            group.quaternion.copy(tmp.parentQuat);
-        }
+        if (!dragging) placeAtJoint(group, joint, zeroBasis);
         badgeAnchorRef.current?.position.copy(group.position).add(tmp.pos.set(0, radius * 1.3, 0));
 
         fadeRef.current = Math.min(1, fadeRef.current + delta / FADE_IN_S);
         const fade = fadeRef.current;
-        mats.ring.color.set(dragging ? colors.active : colors.accent);
-        mats.knob.color.set(colors.active);
+        mats.ring.color.set(dragging ? colors.ghost : colors.accent);
+        mats.knob.color.set(dragging ? colors.ghost : colors.active);
         mats.ring.opacity = (dragging ? 1 : hovered ? 0.9 : 0.55) * fade;
         mats.knob.opacity = fade;
 
@@ -428,11 +377,10 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             knobRef.current.position.set(Math.cos(pointerAngleRef.current) * radius, Math.sin(pointerAngleRef.current) * radius, 0);
         }
 
-        const actual = getJointAngle(joint);
-        const pending = dragging ? undefined : getPendingTarget?.(jointName);
-
         if (badgeValueRef.current) {
-            const shown = toSliderValue(dragging ? currentTargetRadRef.current : (pending ?? actual));
+            const shown = dragging
+                ? toSliderValue(currentTargetRadRef.current)
+                : (commandedValue() ?? toSliderValue(getJointAngle(joint)));
             const text = `${THREE.MathUtils.radToDeg(shown).toFixed(1)}°`;
             if (badgeValueRef.current.textContent !== text) badgeValueRef.current.textContent = text;
         }
@@ -469,7 +417,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                             style={{
                                 fontFamily: 'monospace',
                                 fontSize: 11,
-                                color: isDragging ? colors.active : colors.accent,
+                                color: isDragging ? colors.ghost : colors.accent,
                                 textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
                                 whiteSpace: 'nowrap',
                             }}

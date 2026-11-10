@@ -17,90 +17,29 @@
  *   rotated Rx(-π/2) — exactly what robot_viewer does with its world object.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     findParentLink,
-    resolveActuatedLinkName,
     urdfNameOf,
     wrapAngle,
     type ActuatedJointNames,
 } from '../Utils/robotModel.utils';
+import { motorMeshesOf } from '../Utils/motorMeshes';
+import { robotPartNames } from '../Utils/robotParts';
+import { useMotorTemperatureMaterials } from '../hooks/useMotorTemperatureMaterials';
+import { useHoverGlow } from '../hooks/useHoverGlow';
+import { useRobotHover } from '../hooks/useRobotHover';
+import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
+import { getMaterialState, robotMaterialStates } from '../Utils/robotMaterialState';
 
-interface RobotMaterialState {
-    originals: Map<THREE.Mesh, THREE.Material | THREE.Material[]>;
-    displays: Map<THREE.Mesh, THREE.Material[]>;
-}
-
-const robotMaterialStates = new WeakMap<URDFRobot, RobotMaterialState>();
-
-function getMaterialState(robot: URDFRobot): RobotMaterialState {
-    let state = robotMaterialStates.get(robot);
-    if (!state) {
-        state = { originals: new Map(), displays: new Map() };
-        robotMaterialStates.set(robot, state);
-    }
-    return state;
-}
 
 const ANGLE_SMOOTHING_RATE = 12;
 const ANGLE_SNAP_EPSILON = 1e-4;
-const SELECTED_EMISSIVE_INTENSITY = 0.25;
-const NO_EMISSIVE = new THREE.Color(0x000000);
-const UNSELECTED_COLOR = new THREE.Color(0xffffff);
-
-type PartStyle = 'normal' | 'selected' | 'unselected';
-
-function hasEmissive(m: THREE.Material): m is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
-    return m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial;
-}
-
-function hasColor(m: THREE.Material): m is THREE.Material & { color: THREE.Color } {
-    return (m as { color?: unknown }).color instanceof THREE.Color;
-}
-
-function applyStyle(
-    display: THREE.Material,
-    orig: THREE.Material,
-    style: PartStyle,
-    wireframe: boolean,
-    focus: THREE.Color,
-    unselectedOpacity: number,
-) {
-    if ('wireframe' in display) {
-        (display as THREE.MeshStandardMaterial).wireframe = wireframe;
-    }
-
-    if (hasColor(display) && hasColor(orig)) {
-        display.color.copy(style === 'selected' ? focus
-            : style === 'unselected' ? UNSELECTED_COLOR
-            : orig.color);
-    }
-
-    if (hasEmissive(display) && hasEmissive(orig)) {
-        if (style === 'selected') {
-            display.emissive.copy(focus);
-            display.emissiveIntensity = SELECTED_EMISSIVE_INTENSITY;
-        } else if (style === 'unselected') {
-            display.emissive.copy(NO_EMISSIVE);
-            display.emissiveIntensity = 0;
-        } else {
-            display.emissive.copy(orig.emissive);
-            display.emissiveIntensity = orig.emissiveIntensity;
-        }
-    }
-
-    const opacity = style === 'unselected' ? unselectedOpacity : orig.opacity;
-    const transparent = style === 'unselected' ? unselectedOpacity < 1 : orig.transparent;
-    if (display.transparent !== transparent) {
-        display.transparent = transparent;
-        display.needsUpdate = true;
-    }
-    display.opacity = opacity;
-}
+const NO_JOINTS: ReadonlySet<string> = new Set();
 
 export interface RobotFKModelProps {
     robot: URDFRobot;
@@ -113,6 +52,11 @@ export interface RobotFKModelProps {
     onPartDoubleClick?: (partName: string) => void;
     onPartHover?: (partName: string | null) => void;
     actuatedJointNames?: ActuatedJointNames;
+    overheatedJointNames?: ReadonlySet<string>;
+    heatMaterial?: THREE.Material;
+    motorTemperatures?: ReadonlyMap<string, number>;
+    hoveredPartName?: string | null;
+    partsClickable?: boolean;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -126,9 +70,16 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     onPartDoubleClick,
     onPartHover,
     actuatedJointNames,
+    overheatedJointNames = NO_JOINTS,
+    heatMaterial,
+    motorTemperatures,
+    hoveredPartName = null,
+    partsClickable = true,
 }) => {
     const { gl } = useThree();
     const displayedAnglesRef = useRef<Map<string, number>>(new Map());
+    const motorMaterialByMesh = useMotorTemperatureMaterials(robot, heatMaterial ? motorTemperatures : undefined, wireframe);
+    const partNameOf = useMemo(() => robotPartNames(robot, actuatedJointNames), [robot, actuatedJointNames]);
 
     useEffect(() => {
         for (const joint of Object.values(robot.joints)) {
@@ -150,6 +101,12 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         const { originals, displays } = getMaterialState(robot);
         const focus = new THREE.Color(focusColor);
         const isAnySelected = selectedPartName !== null;
+        const hasOverheat = overheatedJointNames.size > 0;
+        const overheatedMeshes = new Set([...overheatedJointNames].flatMap((name) => {
+            const joint = robot.joints[name];
+            return joint ? [...motorMeshesOf(joint)] : [];
+        }));
+        if (heatMaterial && 'wireframe' in heatMaterial) heatMaterial.wireframe = wireframe;
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
@@ -160,17 +117,20 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             }
             const origMat = originals.get(mesh)!;
 
-            if (!isAnySelected && !wireframe) {
+            if (!isAnySelected && !wireframe && !hasOverheat && !heatMaterial) {
                 mesh.material = origMat;
                 return;
             }
 
-            const link = isAnySelected ? findParentLink(mesh, robot) : null;
-            const isSelected = link !== null && (
-                urdfNameOf(link) === selectedPartName
-                || resolveActuatedLinkName(link, robot, actuatedJointNames) === selectedPartName
-            );
-            const style: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
+            const part = isAnySelected ? partNameOf(mesh) : null;
+            const link = isAnySelected && part === null ? findParentLink(mesh, robot) : null;
+            const isSelected = isAnySelected && (part ?? (link && urdfNameOf(link))) === selectedPartName;
+            const selectionStyle: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
+            const style: PartStyle = !hasOverheat ? selectionStyle : overheatedMeshes.has(mesh) ? 'overheated' : 'unselected';
+            if (heatMaterial && style === 'normal') {
+                mesh.material = motorMaterialByMesh.get(mesh) ?? heatMaterial;
+                return;
+            }
 
             let slots = displays.get(mesh);
             if (!slots) {
@@ -186,7 +146,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 ? origMat.map(restyle)
                 : restyle(origMat, 0);
         });
-    }, [robot, wireframe, selectedPartName, actuatedJointNames, focusColor, unselectedOpacity]);
+    }, [robot, wireframe, selectedPartName, partNameOf, overheatedJointNames, heatMaterial, focusColor, unselectedOpacity, motorMaterialByMesh]);
 
     useFrame((_state, delta) => {
         if (jointAngles.size === 0) return;
@@ -217,10 +177,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         }
     });
 
-    const partNameOf = (object: THREE.Object3D): string | null => {
-        const link = findParentLink(object, robot);
-        return link ? resolveActuatedLinkName(link, robot, actuatedJointNames) : null;
-    };
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
         // Ring drags end past the threshold; plain clicks on the ring pass through
@@ -238,19 +194,8 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         if (name) onPartDoubleClick?.(name);
     };
 
-    const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
-        if (e.intersections.some(i => i.object.userData?.isGizmoHit)) return;
-        e.stopPropagation();
-        gl.domElement.style.cursor = 'pointer';
-        if (!onPartHover) return;
-        const name = partNameOf(e.object);
-        if (name) onPartHover(name);
-    };
-
-    const handlePointerOut = () => {
-        gl.domElement.style.cursor = 'auto';
-        onPartHover?.(null);
-    };
+    const { handlePointerMove, handlePointerOut, gizmoUnderPointer } = useRobotHover(gl.domElement, robot, partNameOf, onPartHover, partsClickable);
+    useHoverGlow(robot, hoveredPartName, partNameOf, focusColor, gizmoUnderPointer);
 
     // urdf-loader emits geometry in URDF/ROS Z-up space.
     // Rx(-π/2) converts to Three.js Y-up — matching robot_viewer's world rotation.
@@ -260,7 +205,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 object={robot}
                 onClick={handleClick}
                 onDoubleClick={handleDoubleClick}
-                onPointerOver={handlePointerOver}
+                onPointerMove={handlePointerMove}
                 onPointerOut={handlePointerOut}
             />
         </group>

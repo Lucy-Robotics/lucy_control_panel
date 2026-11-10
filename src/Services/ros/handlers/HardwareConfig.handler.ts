@@ -75,6 +75,7 @@ function normalizeGetConfig(raw: any): GetConfigResponse {
         flashed_config_name:
             typeof raw?.flashed_config_name === 'string' ? raw.flashed_config_name : '',
         flashed_at: typeof raw?.flashed_at === 'string' ? raw.flashed_at : '',
+        motors_yaml: typeof raw?.motors_yaml === 'string' ? raw.motors_yaml : '',
     };
 }
 

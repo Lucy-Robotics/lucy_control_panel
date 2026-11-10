@@ -20,7 +20,7 @@ export function isURDFJoint(obj: THREE.Object3D): obj is URDFJoint {
     return 'isURDFJoint' in obj && Boolean((obj as { isURDFJoint?: boolean }).isURDFJoint);
 }
 
-export const TARGET_REACHED_TOLERANCE_RAD = 0.035;
+export const TARGET_REACHED_TOLERANCE_RAD = 0.06;
 
 /** Pointer travel (px) past which a press counts as a drag rather than a click. */
 export const CLICK_DRAG_THRESHOLD_PX = 4;
@@ -34,11 +34,6 @@ export function wrapAngle(angle: number): number {
 
 export function getJointAngle(joint: URDFJoint): number {
     return joint.angle ?? joint.jointValue?.[0] ?? 0;
-}
-
-export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
-    const diff = target - actual;
-    return joint.jointType === 'continuous' ? wrapAngle(diff) : diff;
 }
 
 export function urdfNameOf(obj: URDFLink | URDFJoint): string {

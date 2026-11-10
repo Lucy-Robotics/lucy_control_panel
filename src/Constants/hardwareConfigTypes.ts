@@ -22,6 +22,8 @@ export interface GetConfigResponse {
     flashed_config_name: string;
     /** ISO-8601 UTC from server; empty if none. */
     flashed_at: string;
+    /** Specs of the motors the config's actuators use, keyed by motor ref; absent on older servers. */
+    motors_yaml?: string;
 }
 
 export interface SaveConfigResponse {

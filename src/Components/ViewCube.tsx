@@ -10,16 +10,17 @@ import * as THREE from 'three';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
 
-const SIZE = 90;
-const CUBE_HALF_PX = SIZE / 2;
+const HIT_HALF_PX = 45;
+const HIT_CHAMFER = 0.28;
+const CUBE_HALF_PX = 30;
+const CHAMFER = 0.4;
 const EDGE_GAP_PX = 10;
-const CHAMFER = 0.28;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
 const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.hypot(1, INNER, INNER);
 const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
-const HOVER_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
+const HOVER_RADIUS_PX = HIT_HALF_PX * Math.sqrt(3);
 const HOVER_REFRESH_ANGLE = 1e-3;
 
 type Axis = 0 | 1 | 2;
@@ -68,7 +69,8 @@ function polygonGeometry(vertices: THREE.Vector3[], outward: THREE.Vector3): THR
     return geometry;
 }
 
-function buildViewCubePieces(): CubePiece[] {
+function buildViewCubePieces(chamfer: number): CubePiece[] {
+    const inner = 1 - chamfer;
     const pieces: CubePiece[] = [];
     const axes: Axis[] = [0, 1, 2];
     const signs: Sign[] = [1, -1];
@@ -78,7 +80,7 @@ function buildViewCubePieces(): CubePiece[] {
         for (const s of signs) {
             const [j, k] = others(i);
             const corners: [number, number][] = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
-            const verts = corners.map(([a, b]) => point({ [i]: s, [j]: a * INNER, [k]: b * INNER } as Record<Axis, number>));
+            const verts = corners.map(([a, b]) => point({ [i]: s, [j]: a * inner, [k]: b * inner } as Record<Axis, number>));
             const direction = point({ [i]: s, [j]: 0, [k]: 0 } as Record<Axis, number>);
             pieces.push({ key: `face-${i}${s}`, kind: 'face', geometry: polygonGeometry(verts, direction), direction });
         }
@@ -91,10 +93,10 @@ function buildViewCubePieces(): CubePiece[] {
                 const at = (onI: number, onJ: number, onK: number) =>
                     point({ [i]: onI, [j]: onJ, [k]: onK } as Record<Axis, number>);
                 const verts = [
-                    at(si, sj * INNER, -INNER),
-                    at(si, sj * INNER, INNER),
-                    at(si * INNER, sj, INNER),
-                    at(si * INNER, sj, -INNER),
+                    at(si, sj * inner, -inner),
+                    at(si, sj * inner, inner),
+                    at(si * inner, sj, inner),
+                    at(si * inner, sj, -inner),
                 ];
                 const direction = at(si, sj, 0).normalize();
                 pieces.push({ key: `edge-${i}${si}-${j}${sj}`, kind: 'edge', geometry: polygonGeometry(verts, direction), direction });
@@ -106,9 +108,9 @@ function buildViewCubePieces(): CubePiece[] {
         for (const sy of signs) {
             for (const sz of signs) {
                 const verts = [
-                    v(sx, sy * INNER, sz * INNER),
-                    v(sx * INNER, sy, sz * INNER),
-                    v(sx * INNER, sy * INNER, sz),
+                    v(sx, sy * inner, sz * inner),
+                    v(sx * inner, sy, sz * inner),
+                    v(sx * inner, sy * inner, sz),
                 ];
                 const direction = v(sx, sy, sz).normalize();
                 pieces.push({ key: `corner-${sx}${sy}${sz}`, kind: 'corner', geometry: polygonGeometry(verts, direction), direction });
@@ -126,7 +128,7 @@ function labelTexture(text: string, color: string): THREE.CanvasTexture {
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 40px monospace';
+    ctx.font = 'bold 46px monospace';
     ctx.fillText(text, LABEL_TEXTURE_PX / 2, LABEL_TEXTURE_PX / 2);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -149,24 +151,32 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     const events = useThree(s => s.events);
     const pointer = useThree(s => s.pointer);
     const cubeRef = useRef<THREE.Group>(null);
+    const hitRef = useRef<THREE.Group>(null);
     const pointerInsideRef = useRef(false);
     const lastRefreshQuat = useMemo(() => new THREE.Quaternion(), []);
     const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
-    const pieces = useMemo(buildViewCubePieces, []);
-    useEffect(() => () => pieces.forEach(p => p.geometry.dispose()), [pieces]);
+    const pieces = useMemo(() => buildViewCubePieces(CHAMFER), []);
+    const hitPieces = useMemo(() => buildViewCubePieces(HIT_CHAMFER), []);
+    useEffect(() => () => [...pieces, ...hitPieces].forEach(p => p.geometry.dispose()), [pieces, hitPieces]);
 
     const mats = useMemo(() => ({
         face: new THREE.MeshBasicMaterial({ toneMapped: false }),
         chamfer: new THREE.MeshBasicMaterial({ toneMapped: false }),
         hover: new THREE.MeshBasicMaterial({ toneMapped: false }),
+        hit: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
     }), []);
     useEffect(() => () => Object.values(mats).forEach(m => m.dispose()), [mats]);
     useEffect(() => {
         mats.face.color.set(colors.surface);
-        mats.chamfer.color.set(colors.border);
+        mats.chamfer.color.set(colors.border).lerp(new THREE.Color(colors.surface), 0.45);
         mats.hover.color.set(colors.accent);
     }, [mats, colors]);
+
+    const edgeColor = useMemo(
+        () => `#${new THREE.Color(colors.border).lerp(new THREE.Color(colors.text), 0.25).getHexString()}`,
+        [colors.border, colors.text],
+    );
 
     const labelColor = useMemo(
         () => `#${new THREE.Color(colors.surface).lerp(new THREE.Color(colors.text), 0.24).getHexString()}`,
@@ -205,8 +215,10 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 
     useFrame(() => {
         const cube = cubeRef.current;
-        if (!cube) return;
+        const hit = hitRef.current;
+        if (!cube || !hit) return;
         cube.quaternion.copy(mainCamera.quaternion).invert();
+        hit.quaternion.copy(cube.quaternion);
 
         if (lastRefreshQuat.angleTo(cube.quaternion) < HOVER_REFRESH_ANGLE) return;
         lastRefreshQuat.copy(cube.quaternion);
@@ -243,19 +255,29 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
         <>
             <OrthographicCamera makeDefault position={[0, 0, 200]} />
             <group position={[cubeCenter.x, cubeCenter.y, 0]}>
+                <group ref={hitRef} scale={HIT_HALF_PX}>
+                    {hitPieces.map(piece => (
+                        <mesh
+                            key={piece.key}
+                            geometry={piece.geometry}
+                            material={mats.hit}
+                            onPointerOver={e => handleOver(e, piece.key)}
+                            onPointerOut={() => handleOut(piece.key)}
+                            onPointerDown={stop}
+                            onClick={e => handleClick(e, piece.direction)}
+                            onDoubleClick={stop}
+                        />
+                    ))}
+                </group>
                 <group ref={cubeRef} scale={CUBE_HALF_PX}>
                     {pieces.map(piece => (
                         <mesh
                             key={piece.key}
                             geometry={piece.geometry}
                             material={hoveredKey === piece.key ? mats.hover : piece.kind === 'face' ? mats.face : mats.chamfer}
-                            onPointerOver={e => handleOver(e, piece.key)}
-                            onPointerOut={() => handleOut(piece.key)}
-                            onPointerDown={stop}
-                            onClick={e => handleClick(e, piece.direction)}
-                            onDoubleClick={stop}
+                            raycast={noRaycast}
                         >
-                            <Edges color={colors.border} raycast={noRaycast} />
+                            <Edges color={edgeColor} raycast={noRaycast} />
                         </mesh>
                     ))}
                     {labels.map(label => (

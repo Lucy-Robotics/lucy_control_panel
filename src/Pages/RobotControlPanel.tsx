@@ -21,8 +21,9 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
+import { useControlRequest } from '../hooks/useControlRequest';
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
@@ -30,7 +31,18 @@ import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { useRobotSelection } from '../hooks/useRobotSelection.ts';
+import { useStackStatus } from '../hooks/useStackStatus.ts';
+import { useEndEffector } from '../hooks/useEndEffector.ts';
+import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
+import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { useJogTeleop } from '../hooks/useJogTeleop.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import type { JointPositions } from '../Utils/jointStateMessage.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
+import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -46,10 +58,16 @@ import {
     DEFAULT_JOINT_SLIDER_VALUE_RAD,
 } from '../Constants/hardwareConfigDefaults';
 
-import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { MotorOverheatAlert } from "../Components/MotorOverheatAlert";
+import { MotorOverheatContext } from "../contexts/MotorOverheatContext";
+import { useMotorOverheatGuard } from "../hooks/useMotorOverheatGuard";
+import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { useServoPower } from "../hooks/useServoPower";
+import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
+import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
@@ -73,12 +91,19 @@ import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
+import { switchBlockedReason } from '../Components/ControlPage/robotSwitchRules.ts';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
+import { JogPad } from '../Components/ControlPage/JogPad.tsx';
+import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
+import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -86,6 +111,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
+const TAKE_CONTROL_TIMEOUT_MS = 3000;
 
 const withJointValue = (joints: JointControlState[], name: string, value: number): JointControlState[] =>
     joints.map((joint) => (joint.name === name ? { ...joint, currentValue: value, targetValue: value } : joint));
@@ -157,19 +183,30 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
+    const stackStatus = useStackStatus(isConnected);
+    const endEffector = useEndEffector(isConnected);
+    const hasMotionSensors = useDeviceMotionAvailable();
+    const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
+    const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
+    useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
 
     const {
         controllerConfigsFromActive,
+        productionMode,
         activeHardwareLoading,
         activeHardwareError,
         refetchActiveHardware,
         serverRobotPackage,
     } = useActiveHardwareRos();
 
+    useSyncDisabledJoints(isConnected);
+    const hardwareWarnings = useHardwareWarnings(isConnected);
+    const unreachableBoards = useUnreachableBoards(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
+    const slidersProductionModeRef = useRef(productionMode);
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -180,7 +217,13 @@ export const RobotControlPanel: React.FC = () => {
         () => ControlModeHandler.getInstance().currentControllerId
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
+    const motorOverheat = useMotorOverheatGuard(isConnected, isSending, controllerConfigsFromActive);
+    const trippedJointsRef = useRef(motorOverheat.trippedJoints);
+    trippedJointsRef.current = motorOverheat.trippedJoints;
     const isSendingRef = useRef(false);
+    const cancelPendingTakeControlRef = useRef<() => void>(() => { });
+    const [isTakingControl, setIsTakingControl] = useState(false);
+    const servoPower = useServoPower(isConnected);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -240,10 +283,13 @@ export const RobotControlPanel: React.FC = () => {
                 let minValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.min;
                 let maxValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.max;
                 let restValue: number | undefined;
+                let inverted = false;
                 if (lim) {
                     minValue = lim.minRad;
                     maxValue = lim.maxRad;
                     restValue = lim.defaultRad;
+                    // Joint angles (production mode) carry an identity mapping, so never inverted there.
+                    inverted = lim.mapping.direction * lim.mapping.scale < 0;
                 }
                 joints.push({
                     name,
@@ -254,6 +300,8 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    board: c.boardId,
+                    inverted,
                     ...(restValue !== undefined && { restValue }),
                 });
             }
@@ -299,17 +347,33 @@ export const RobotControlPanel: React.FC = () => {
                 mapByJoint.set(name, lim?.mapping ?? DEFAULT_ACTUATOR_MAPPING);
             }
         }
+        // Switching between servo and joint sliders: carry each value over through both mappings
+        // so the servo stays where it is (keeping the raw number would move it, e.g. 170 deg -> 2.97 rad).
+        const prevMapByJoint = actuatorMappingByJointRef.current;
+        const modeSwitched = slidersProductionModeRef.current !== productionMode;
+        slidersProductionModeRef.current = productionMode;
+        const carry = (name: string, value: number) =>
+            modeSwitched
+                ? jointRadToServoRad(
+                    servoRadToJointRad(value, prevMapByJoint.get(name) ?? DEFAULT_ACTUATOR_MAPPING),
+                    mapByJoint.get(name) ?? DEFAULT_ACTUATOR_MAPPING,
+                )
+                : value;
         actuatorMappingByJointRef.current = mapByJoint;
-        setJoints((prev) => {
-            const byName = new Map(prev.map((j) => [j.name, j]));
-            const next = buildJointsFromControllerConfig(ctrls);
-            return next.map((j) => {
-                const existing = byName.get(j.name);
-                return existing
-                    ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue }
-                    : j;
-            });
+        if (modeSwitched) actualPositionsRef.current.clear();
+        const byName = new Map(jointsRef.current.map((j) => [j.name, j]));
+        const nextJoints = buildJointsFromControllerConfig(ctrls).map((j) => {
+            const existing = byName.get(j.name);
+            return existing
+                ? {
+                    ...j,
+                    currentValue: carry(j.name, existing.currentValue),
+                    targetValue: carry(j.name, existing.targetValue),
+                }
+                : j;
         });
+        jointsRef.current = nextJoints;
+        setJoints(nextJoints);
         setCategoryOrder((prevOrder) => {
             const nextCats = [...new Set(ctrls.map((c) => c.defaultCategory))];
             const preserved = prevOrder.filter((c) => nextCats.includes(c));
@@ -321,6 +385,7 @@ export const RobotControlPanel: React.FC = () => {
         activeHardwareLoading,
         activeHardwareError,
         controllerConfigsFromActive,
+        productionMode,
         buildJointsFromControllerConfig,
     ]);
 
@@ -340,8 +405,17 @@ export const RobotControlPanel: React.FC = () => {
                 setShowControlTakenModal(true);
             }
             setActiveControllerId(controllerId);
+            setIsTakingControl(false);
         });
     }, []);
+
+    useEffect(() => ControlModeHandler.getInstance().onControlRefused(() => setIsTakingControl(false)), []);
+
+    useEffect(() => {
+        if (!isTakingControl) return;
+        const timer = setTimeout(() => setIsTakingControl(false), TAKE_CONTROL_TIMEOUT_MS);
+        return () => clearTimeout(timer);
+    }, [isTakingControl]);
 
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
@@ -361,39 +435,27 @@ export const RobotControlPanel: React.FC = () => {
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
+        const actualPositions = actualPositionsRef.current;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
             for (const { name, value } of positions) {
                 const mapping = actuatorMappingByJointRef.current.get(name);
-                actualPositionsRef.current.set(
+                actualPositions.set(
                     name,
                     mapping ? jointRadToServoRad(value, mapping) : value,
                 );
             }
         });
-        return () => { unsubscribe(); actualPositionsRef.current.clear(); };
+        return () => { unsubscribe(); actualPositions.clear(); };
     }, [isConnected, joints.length]);
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
-            setJoints((prev) => {
-                let changed = false;
-                const notSending = !isSendingRef.current;
-                const next = prev.map((j) => {
-                    const actual = actualPositionsRef.current.get(j.name);
-                    if (actual === undefined) return j;
-                    const isFirstFeedback = j.actualValue === undefined;
-                    const actualChanged = isFirstFeedback || Math.abs(actual - j.actualValue!) >= 0.0005;
-                    if (!actualChanged) return j;
-                    changed = true;
-                    return {
-                        ...j,
-                        actualValue: actual,
-                        ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
-                    };
-                });
-                return changed ? next : prev;
-            });
+            setJoints((prev) => withJointsEncoderFeedback(prev, actualPositionsRef.current, {
+                nobodyControls: ControlModeHandler.getInstance().currentControllerId === '',
+                holdsControl: isSendingRef.current,
+                tripped: trippedJointsRef.current,
+            }));
         }, 100);
         return () => clearInterval(interval);
     }, [isConnected, joints.length]);
@@ -417,15 +479,26 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
+    const { start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    useEffect(() => () => cancelPendingTakeControlRef.current(), []);
+
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
+        cancelPendingTakeControlRef.current();
+        setIsTakingControl(shouldControl);
         if (shouldControl) {
-            ControlModeHandler.getInstance().takeControl();
+            // Only for the timeout message: the button follows isTakingControl.
+            startControlRequest();
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
+                ...joint,
+                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
+            })));
         } else {
+            cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();
         }
-    }, []);
+    }, [startControlRequest, cancelControlRequest]);
 
     const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
         const handler = ControlModeHandler.getInstance();
@@ -520,19 +593,33 @@ export const RobotControlPanel: React.FC = () => {
             if (!categories[key]) {
                 categories[key] = [];
             }
-            categories[key].push(joint);
+            const reason = joint.board && unreachableBoards[joint.board];
+            categories[key].push(reason ? { ...joint, unreachable: `${joint.board} ${reason}` } : joint);
         });
         return categories;
-    }, [joints]);
+    }, [joints, unreachableBoards]);
+
+    const poseJoints = useMemo(
+        () => joints.map((joint) => ({
+            ...joint,
+            currentValue: servoRadToJointRad(
+                joint.currentValue,
+                actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING,
+            ),
+        })),
+        [joints],
+    );
 
     const handleLoadPose = useCallback(
         (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
             setJoints((prevJoints) =>
-                prevJoints.map((joint) => ({
-                    ...joint,
-                    currentValue: poseJoints[joint.name] ?? joint.currentValue,
-                    targetValue: poseJoints[joint.name] ?? joint.targetValue,
-                }))
+                prevJoints.map((joint) => {
+                    const jointRad = poseJoints[joint.name];
+                    if (jointRad === undefined) return joint;
+                    const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                    const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+                    return { ...joint, currentValue: value, targetValue: value };
+                })
             );
 
             if (categoryOrder) {
@@ -609,6 +696,40 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    const handleIkSolution = useCallback((positions: JointPositions) => {
+        if (!isSendingRef.current) return;
+        const next = jointsRef.current.map((joint) => {
+            const jointRad = positions[joint.name];
+            if (jointRad === undefined) return joint;
+            const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+            const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+            return { ...joint, currentValue: value, targetValue: value };
+        });
+        jointsRef.current = next;
+        setJoints(next);
+        JointStateHandler.getInstance().publishJointStates(next);
+    }, []);
+
+    const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const jogTeleop = useJogTeleop(isSending && endEffector !== null && !phoneTeleop.isOn, endEffector, handleIkSolution);
+    const teleopTarget = phoneTeleop.target ?? jogTeleop.target;
+    usePublishTargetPose(jointMoveStore, joints, isSending);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
+
+    if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
+        return (
+            <StackProgress
+                target={switchingTo}
+                robot={robots?.active ?? null}
+                status={stackStatus}
+                isConnected={isConnected}
+                timedOut={switchTimedOut}
+                connectButton={!isConnected && !isConnecting}
+                onDismiss={dismissSwitch}
+            />
+        );
+    }
+
     if (isConnected && loading) {
         return (
             <>
@@ -668,22 +789,39 @@ export const RobotControlPanel: React.FC = () => {
 
     const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
 
+    const robotSwitchBlocked = switchBlockedReason(
+        activeControllerId === '' ? 'none' : isSending ? 'self' : 'other',
+        switchingTo,
+    );
+
     const viewer = (
         <Robot3DViewer
             isControlOn={isSending}
             joints={joints}
             onJointValueChange={handleGizmoJointCommit}
+            teleopTarget={teleopTarget}
+            phoneOrientation={phoneOrientation}
+            isHandsOn={isWebcamActive}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton
                         robotPackage={serverRobotPackage}
-                        controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
+                        robots={robots}
+                        switchingTo={switchingTo}
+                        blockedReason={robotSwitchBlocked}
+                        onSelect={setRobotToConfirm}
                     />
                 )
                 : null}
+            hudCenter={servoPower === 'off' && (
+                <div className="chamfer-box no-servo-power" role="alert">
+                    NO SERVO POWER: connect the power supply
+                </div>
+            )}
             hudRight={(
                 <ControlToggleButton
                     isOn={isSending}
+                    isLoading={isTakingControl}
                     onToggle={() => handleControlRobotToggle(!isSending)}
                     hint={`Control Robot: ${isSending ? 'ON' : 'OFF'}. If another connected client turns Control Robot ON, yours will be automatically turned OFF`}
                 />
@@ -731,7 +869,8 @@ export const RobotControlPanel: React.FC = () => {
                     icon: <PoseOutlined />,
                     label: 'Manage poses & animations',
                     caption: 'POSES',
-                    onClick: () => setIsManagePosesVisible(true),
+                    onClick: () => setIsManagePosesVisible(v => !v),
+                    active: isManagePosesVisible,
                 },
             ],
         },
@@ -747,6 +886,20 @@ export const RobotControlPanel: React.FC = () => {
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
                 },
+                phoneTeleopRailItem({
+                    isOn: phoneTeleop.isOn,
+                    onToggle: phoneTeleop.toggle,
+                    isSending,
+                    hasMotionSensors,
+                    hasEndEffector: endEffector !== null,
+                }),
+                jogTeleopRailItem({
+                    isOn: jogTeleop.isOn,
+                    onToggle: jogTeleop.toggle,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    isPhoneTeleopOn: phoneTeleop.isOn,
+                }),
                 {
                     key: 'stream',
                     icon: <VideoCameraOutlined />,
@@ -762,14 +915,16 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <JointPreviewContext.Provider value={jointPreviewStore}>
+        <JointMoveContext.Provider value={jointMoveStore}>
+        <MotorOverheatContext.Provider value={motorOverheat}>
+            <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
             />
 
             <ManagePosesModal
-                joints={joints}
+                joints={poseJoints}
                 controlEnabled={isSending}
                 onLoadPose={handleLoadPose}
                 onPlayAnimation={handlePlayAnimation}
@@ -780,18 +935,7 @@ export const RobotControlPanel: React.FC = () => {
                 showTrigger={false}
             />
 
-            {!isConnected ? (
-                <LucyLoader
-                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
-                    connectButton={!isConnecting}
-                    detail={
-                        isConnecting
-                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use Quick Connect in the header to start the link.'
-                    }
-                    showSpinner={isConnecting}
-                />
-            ) : (
+            {(
                 <div
                     style={{
                         position: 'relative',
@@ -815,6 +959,10 @@ export const RobotControlPanel: React.FC = () => {
                             className="command-rail-bottom"
                         />
                     )}
+
+                    {hardwareWarnings.map((warning) => (
+                        <Alert key={warning} type="warning" showIcon message={warning} style={{ marginBottom: 8 }} />
+                    ))}
 
                     {isMobile && isWebcamActive && (
                         <div
@@ -844,6 +992,7 @@ export const RobotControlPanel: React.FC = () => {
                                         WEBCAM
                                     </span>
                                     <ReadOnlyTag reason={readOnlyReason} />
+                                    <TeleopGhostSwitch />
                                 </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
@@ -928,7 +1077,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
-                    header={<ReadOnlyTag reason={readOnlyReason} />}
+                    header={<><ReadOnlyTag reason={readOnlyReason} /><TeleopGhostSwitch /></>}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}
@@ -957,6 +1106,26 @@ export const RobotControlPanel: React.FC = () => {
                     retakeCountRef.current += 1;
                     setShowControlTakenModal(false);
                     applyControlToggle(true);
+                }}
+            />
+
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
+
+            {jogTeleop.isOn && (
+                <JogPad
+                    onPress={jogTeleop.press}
+                    onRelease={jogTeleop.release}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
+
+            <RobotSwitchConfirmModal
+                robotPackage={robotToConfirm}
+                onCancel={() => setRobotToConfirm(null)}
+                onConfirm={(robotPackage) => {
+                    setRobotToConfirm(null);
+                    if (robotSwitchBlocked) return;
+                    selectRobot(robotPackage);
                 }}
             />
 
@@ -1005,6 +1174,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
+        </MotorOverheatContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

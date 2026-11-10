@@ -9,7 +9,7 @@
     "quickbuild": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types test/run-security-tests.ts && node --experimental-strip-types test/run-theme-accessibility-tests.ts && node --experimental-strip-types test/run-calibration-tests.ts && node --experimental-strip-types --test test/rosBridgeProbe.test.ts",
+    "test": "node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-security-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-theme-accessibility-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-calibration-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-urdf-calibration-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-production-mode-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types --test test/phoneMotion.test.ts test/phoneOrientation.test.ts test/ghostLinks.test.ts test/ghostOpacity.test.ts test/jogTeleop.test.ts test/oneEuroFilter.test.ts test/handFlex.test.ts test/handOverlay.test.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types --test test/rosBridgeProbe.test.ts test/stackStatus.test.ts test/robotSwitchRules.test.ts test/awaitControl.test.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-joint-temperature-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-motor-overheat-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-joint-feedback-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-pipeline-skip-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-dynamic-joint-states-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-take-control-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-overheat-ros-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-overheat-react-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-control-panel-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-linux-board-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-activate-workflow-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-joint-effort-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-motor-meshes-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-motor-temperature-color-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-3d-view-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-3d-view-react-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-3d-scene-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-effort-arrow-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-hover-react-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-overheat-mock-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-debug-panel-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-colour-legends-tests.ts && node --import ./test/ts-loader-register.mjs --experimental-strip-types test/run-servo-power-tests.ts",
     "coverage": "c8 --reporter=lcov --reporter=text yarn test"
   },
   "dependencies": {
@@ -40,7 +40,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@react-three/test-renderer": "9.1.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/jsdom": "21.1.7",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
@@ -52,6 +54,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "jsdom": "26.1.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "6.4.5"

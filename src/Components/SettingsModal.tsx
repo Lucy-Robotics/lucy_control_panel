@@ -30,6 +30,7 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
+import { setEndEffectorVisible, useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
 import {
     GETTING_STARTED_COMPLETED_KEY,
     REDO_GETTING_STARTED_EVENT,
@@ -39,6 +40,7 @@ import { PipelineDiagnostics } from './PipelineDiagnostics';
 import { refreshAllPipelines } from '../Services/pipelineProbes';
 import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
 
+import { isProductionModeEnabled, PRODUCTION_MODE_EVENT, PRODUCTION_MODE_KEY } from '../Utils/productionMode';
 const { Text } = Typography;
 
 interface SettingsModalProps {
@@ -74,6 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const {
         activeHardwareConfigName,
         controllerConfigsFromActive,
+        servoControlAvailable,
     } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
@@ -83,6 +86,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [showDegrees, setShowDegrees] = useState(
         isShowDegreesEnabled
     );
+    const [productionMode, setProductionMode] = useState(
+        isProductionModeEnabled
+    );
+    const isEndEffectorVisible = useEndEffectorVisible();
     const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
     const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
 
@@ -109,6 +116,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         );
         window.dispatchEvent(new Event('showDegreesChanged'));
     }, [showDegrees]);
+
+    useEffect(() => {
+        localStorage.setItem(
+            PRODUCTION_MODE_KEY,
+            String(productionMode)
+        );
+        window.dispatchEvent(new Event(PRODUCTION_MODE_EVENT));
+    }, [productionMode]);
 
     const handleConnectionChange = () => {
         if (isConnected) {
@@ -235,6 +250,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             title="Angle units"
                             textOn="DEGREES"
                             textOff="RADIANS"
+                            width={180}
+                            isOffRed={false}
+                            centerTitle={false}
+                        />
+
+                        <span title={servoControlAvailable ? undefined : 'No robot or simulator behind ros2_control: no servo to drive'}>
+                            <ToggleSwitch
+                                isOn={productionMode || !servoControlAvailable}
+                                onToggle={setProductionMode}
+                                title="Sliders (production mode)"
+                                textOn="URDF JOINTS"
+                                textOff="SERVO"
+                                width={180}
+                                isOffRed={false}
+                                centerTitle={false}
+                                disabled={!servoControlAvailable}
+                            />
+                        </span>
+
+                        <ToggleSwitch
+                            isOn={isEndEffectorVisible}
+                            onToggle={setEndEffectorVisible}
+                            title="FK end effector"
+                            textOn="SHOW"
+                            textOff="HIDE"
                             width={180}
                             isOffRed={false}
                             centerTitle={false}

@@ -498,6 +498,9 @@ export interface Robot3DViewerProps {
     onJointValueChange?: (name: string, value: number) => void;
     teleopTarget?: Vec3 | null;
     phoneOrientation?: Quat | null;
+    isHandsOn?: boolean;
+    hudLeft?: React.ReactNode;
+    hudRight?: React.ReactNode;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({

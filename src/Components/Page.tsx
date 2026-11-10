@@ -14,8 +14,8 @@ import {
 } from '../Constants/theme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import { DockProvider } from '../contexts/DockContext.tsx';
 import { CustomTitle, TitleNote } from './CustomTitle.tsx';
+import { Navigation } from './Navigation.tsx';
 
 const { Header, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -129,8 +129,9 @@ export const Page: React.FC<PageProps> = ({
                   />
                 </div>
               )}
+              <Navigation />
               <div style={{
-                flex: 1,
+                gridColumn: 3,
                 minWidth: 0,
                 display: 'flex',
                 justifyContent: isMobile ? 'space-between' : 'flex-end',

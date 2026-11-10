@@ -60,6 +60,8 @@ import {
 
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurrentPose";
+import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
 import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
@@ -211,6 +213,7 @@ export const RobotControlPanel: React.FC = () => {
     );
     const isSending = activeControllerId === ControlModeHandler.getInstance().clientId;
     const isSendingRef = useRef(false);
+    const cancelPendingTakeControlRef = useRef<() => void>(() => { });
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -413,39 +416,26 @@ export const RobotControlPanel: React.FC = () => {
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
+        const actualPositions = actualPositionsRef.current;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
             for (const { name, value } of positions) {
                 const mapping = actuatorMappingByJointRef.current.get(name);
-                actualPositionsRef.current.set(
+                actualPositions.set(
                     name,
                     mapping ? jointRadToServoRad(value, mapping) : value,
                 );
             }
         });
-        return () => { unsubscribe(); actualPositionsRef.current.clear(); };
+        return () => { unsubscribe(); actualPositions.clear(); };
     }, [isConnected, joints.length]);
 
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
-            setJoints((prev) => {
-                let changed = false;
-                const notSending = !isSendingRef.current;
-                const next = prev.map((j) => {
-                    const actual = actualPositionsRef.current.get(j.name);
-                    if (actual === undefined) return j;
-                    const isFirstFeedback = j.actualValue === undefined;
-                    const actualChanged = isFirstFeedback || Math.abs(actual - j.actualValue!) >= 0.0005;
-                    if (!actualChanged) return j;
-                    changed = true;
-                    return {
-                        ...j,
-                        actualValue: actual,
-                        ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
-                    };
-                });
-                return changed ? next : prev;
-            });
+            setJoints((prev) => withJointsEncoderFeedback(prev, actualPositionsRef.current, {
+                nobodyControls: ControlModeHandler.getInstance().currentControllerId === '',
+                holdsControl: isSendingRef.current,
+            }));
         }, 100);
         return () => clearInterval(interval);
     }, [isConnected, joints.length]);
@@ -469,14 +459,17 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
-    const { isPending: isControlPending, start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
+    useEffect(() => () => cancelPendingTakeControlRef.current(), []);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setShowControlTakenModal(false);
         setShowConfirmTakeControlModal(false);
+        cancelPendingTakeControlRef.current();
         if (shouldControl) {
-            startControlRequest();
-            ControlModeHandler.getInstance().takeControl();
+            cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
+                ...joint,
+                currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
+            })));
         } else {
             cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();

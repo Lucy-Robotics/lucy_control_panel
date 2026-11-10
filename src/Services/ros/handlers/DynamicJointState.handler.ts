@@ -4,15 +4,16 @@
  */
 
 import ROSLIB from 'roslib';
-import type { DynamicJointState } from '../../../Utils/dynamicJointState.utils.ts';
+import { interfaceValuesByJoint, type DynamicJointState } from '../../../Utils/dynamicJointState.utils.ts';
+import { loadsByJoint } from '../../../Utils/jointEffort.utils.ts';
 import { createTemperatureMedian, temperaturesByJoint } from '../../../Utils/jointTemperature.utils.ts';
 import { RosBridgeService } from '../ros.service.ts';
 
 type JointReadings = Map<string, number>;
 
-function subscribeToDynamicJointStates(
-  read: (state: DynamicJointState) => JointReadings,
-  callback: (readings: JointReadings) => void,
+function subscribeToDynamicJointStates<T>(
+  read: (state: DynamicJointState) => T,
+  callback: (readings: T) => void,
 ): () => void {
   const ros = RosBridgeService.getInstance().rosConnection;
   if (!ros) return () => { };
@@ -30,3 +31,15 @@ export const subscribeToJointTemperatures = (callback: (readings: JointReadings)
   const median = createTemperatureMedian();
   return subscribeToDynamicJointStates((state) => median(temperaturesByJoint(state), Date.now()), callback);
 };
+
+export const subscribeToJointLoads = (callback: (readings: JointReadings) => void) =>
+  subscribeToDynamicJointStates(loadsByJoint, callback);
+
+export const subscribeToJointInterfaces = <K extends string>(interfaces: Record<K, string>) =>
+  (callback: (readings: Record<K, JointReadings>) => void) =>
+    subscribeToDynamicJointStates(
+      (state) => Object.fromEntries(
+        Object.entries<string>(interfaces).map(([key, name]) => [key, interfaceValuesByJoint(state, name)]),
+      ) as Record<K, JointReadings>,
+      callback,
+    );

@@ -39,7 +39,7 @@ const DEMO_FRAME_MS = 40;
  * also the servos' mid tick, so it is the pose the mid-pose step captures. Setting it explicitly
  * matters because the model is shared with the 3D view, which leaves it in the last streamed pose.
  */
-function urdfDefaultPose(robot: URDFRobot | null): Map<string, number> {
+export function urdfDefaultPose(robot: URDFRobot | null): Map<string, number> {
     const pose = new Map<string, number>();
     for (const [name, joint] of Object.entries(robot?.joints ?? {})) {
         if (joint.jointType !== 'fixed') pose.set(name, 0);
@@ -47,7 +47,7 @@ function urdfDefaultPose(robot: URDFRobot | null): Map<string, number> {
     return pose;
 }
 
-function childLinkName(robot: URDFRobot, joint: string): string | null {
+export function childLinkName(robot: URDFRobot, joint: string): string | null {
     const urdfJoint = robot.joints?.[joint];
     const child = urdfJoint?.children?.find((c) => (c as { isURDFLink?: boolean }).isURDFLink);
     return child?.name ?? null;

@@ -5,7 +5,7 @@ const MIN_TEXT_CONTRAST = 4.5;     // WCAG 2.2 SC 1.4.3 (AA, normal text)
 const MIN_NON_TEXT_CONTRAST = 3;   // WCAG 2.2 SC 1.4.11 (UI component boundaries)
 const MIN_STATUS_DE_SIMULATED = 20; // CIEDE2000 between status colours under the target CVD
 const MIN_STATUS_DE_NORMAL = 10;    // CIEDE2000 between status colours for normal vision
-const MIN_GRAY_STEP_L = 14.5;       // CIELAB L* between neighbouring grey levels; the widest even ladder that fits (see docs)
+const MIN_GRAY_STEP_L = 14.5;       // CIELAB L* between neighbouring grey levels
 
 type Rgb = { r: number; g: number; b: number };
 type Rgba = Rgb & { a: number };
@@ -24,8 +24,7 @@ const TEXT_TOKENS = [
     '--color-status-info',
     '--color-accent-2',
 ] as const;
-// Control frames (buttons, inputs, selects, toggles) must reach 3:1 where controls sit: the canvas
-// and panels. Container frames (--color-line: cards, tables, rails) are decorative and only reported.
+// Only control frames must reach 3:1; container frames are reported.
 const CONTROL_LINE_TOKEN = '--color-line-strong';
 const CONTAINER_LINE_TOKEN = '--color-line';
 const CONTROL_SURFACE_COUNT = 2; // --color-bg, --color-surface-1
@@ -43,10 +42,8 @@ const CVD_SIMULATION: Record<string, Simulation> = {
     'cvd-achromatopsia': 'achromatopsia',
 };
 
-// Presets held to the hard rules. The default brand theme is reported as warnings only.
 const STRICT_PRESETS = new Set(['lucy-light', ...Object.keys(CVD_SIMULATION)]);
 
-// ─── Colour maths ────────────────────────────────────────────────────────────
 function parseColor(value: string): Rgba {
     const v = value.trim();
     const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
@@ -65,7 +62,6 @@ function toHex({ r, g, b }: Rgb): string {
     return '#' + [r, g, b].map(c => Math.round(c).toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
-/** Alpha-composites a colour over an opaque backdrop, as the browser does. */
 function composite(fg: Rgba, bg: Rgb): Rgb {
     return {
         r: fg.r * fg.a + bg.r * (1 - fg.a),
@@ -171,7 +167,7 @@ function deltaE2000([L1, a1, b1]: number[], [L2, a2, b2]: number[]): number {
 
 const labOf = (color: Rgb, sim: Simulation) => linearToLab(simulateLinear(color, sim));
 
-// ─── Token resolution (mirrors themeService.applyActiveTheme) ────────────────
+// Mirrors themeService.applyActiveTheme
 function resolveTokens(preset: ThemePreset): Record<string, string> {
     const tokens: Record<string, string> = { ...CSS_VARIABLES_MAP };
     if (preset.id === 'default') return tokens;
@@ -193,7 +189,6 @@ function resolveTokens(preset: ThemePreset): Record<string, string> {
     return tokens;
 }
 
-// ─── Runner ──────────────────────────────────────────────────────────────────
 const reportMode = process.argv.includes('--report');
 let passCount = 0;
 let failCount = 0;
@@ -256,7 +251,7 @@ for (const preset of BUILTIN_THEMES) {
         report.push(`| \`${token}\` (${label}) | \`${tokens[token]}\` | ${ratios.map((r, k) => `${fmt(r)}${enforced && k < CONTROL_SURFACE_COUNT && r < MIN_NON_TEXT_CONTRAST ? ' ✗' : ''}`).join(' | ')} |`);
     }
 
-    // 2b. Coloured text on its own tinted fill (status boxes, alerts, hover and active tints)
+    // 2b. Coloured text on its own tinted fill
     const tintPercent = parseFloat(tokens['--color-status-tint'] ?? '');
     const tinted: [string, (bg: Rgb) => Rgb][] = [];
     if (!Number.isNaN(tintPercent)) {
@@ -271,14 +266,13 @@ for (const preset of BUILTIN_THEMES) {
         tinted.push(['--color-highlight', bg => composite(parseColor(tokens['--color-active-fill']), bg)]);
     }
     for (const [token, fillOver] of tinted) {
-        // Tints sit on the canvas, panels or the status-box base (surface-2), never on hover or header fills.
         const ratios = surfaces.slice(0, 3).map(bg => { const fill = fillOver(bg); return contrastRatio(color(token, fill), fill); });
         const worst = Math.min(...ratios);
         check(strict, worst >= MIN_TEXT_CONTRAST, `${token.padEnd(26)} on its tinted fill min ${fmt(worst)}:1 (>= ${MIN_TEXT_CONTRAST})`);
         report.push(`| \`${token}\` (on its tint) | \`${tokens[token]}\` | ${ratios.map(r => `${fmt(r)}${r < MIN_TEXT_CONTRAST ? ' ✗' : ''}`).join(' | ')} |${' — |'.repeat(surfaces.length - 3)}`);
     }
 
-    // 3. Text placed on filled controls (a preset may give fills their own vivid tone)
+    // 3. Text on filled controls
     const fillOf = (name: string, fallback: string) => (tokens[name] ? name : fallback);
     const onFill: [string, string][] = [
         ['--color-text-on-highlight', fillOf('--color-highlight-fill', '--color-highlight')],
@@ -311,7 +305,6 @@ for (const preset of BUILTIN_THEMES) {
                 const de = deltaE2000(labOf(statusRgb[i], sim), labOf(statusRgb[j], sim));
                 const target = CVD_SIMULATION[preset.id] === sim;
                 const min = sim === 'none' ? MIN_STATUS_DE_NORMAL : MIN_STATUS_DE_SIMULATED;
-                // Greys differ in lightness only; they are judged by the L* ladder below instead.
                 if ((sim === 'none' || target) && !grayscale) {
                     check(strict, de >= min, `${`${names[i]} vs ${names[j]}`.padEnd(18)} ΔE00 ${de.toFixed(1).padStart(5)} under ${sim} (>= ${min})`);
                 }

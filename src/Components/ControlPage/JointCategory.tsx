@@ -74,8 +74,10 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CustomTitle
+                        prefix=""
                         title={category.toUpperCase()}
-                        subtitle={`${joints.length} JOINTS`}
+                        subtitle={`(${joints.length})`}
+                        underlineSubtitle={false}
                         level={4}
                     />
                     <ReadOnlyTag reason={readOnlyReason} />

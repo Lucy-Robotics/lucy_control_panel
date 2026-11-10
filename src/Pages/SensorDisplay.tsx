@@ -5,6 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Alert, Col, Row, Select, Typography } from 'antd';
+import { RosConnectionAlert } from '../Components/RosConnectionAlert';
 import { FloatGraph } from '../Components/Sensors';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
@@ -43,14 +44,7 @@ const SensorDisplay: React.FC = () => {
             }}
         >
 
-            {!isConnected ? (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="Connect to the ROS bridge to stream live sensor data."
-                    style={{ marginBottom: 16 }}
-                />
-            ) : null}
+            <RosConnectionAlert message="Connect to the ROS bridge to stream live sensor data." />
 
             {activeHardwareLoading ? (
                 <Alert

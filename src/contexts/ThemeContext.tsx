@@ -86,7 +86,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const text = colors.text || TEXT_PRIMARY;
 
         const derived = deriveSurfaceTokens({ main, secondary, highlight, text });
-        // Presets may pin tokens the derivation would otherwise produce; read what is actually applied.
+        // Presets may override derived tokens.
         const rootStyle = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement);
         const cssVar = (name: string, fallback: string) => {
             const value = rootStyle?.getPropertyValue(name).trim() ?? '';
@@ -96,7 +96,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const surface1 = hexOr('--color-surface-1', main);
         const surface2 = hexOr('--color-surface-2', main);
         const line = isHexColor(secondary) ? derived['--color-line'] : secondary;
-        // Controls need a 3:1 frame on light canvases (WCAG 1.4.11); dark themes keep the soft line.
+        // WCAG 1.4.11 on light canvases.
         const controlLine = isLightColor(main) ? secondary : line;
         const highlightSoft = isHexColor(highlight) ? derived['--color-highlight-soft'] : 'transparent';
         const textSecondary = cssVar('--color-text-secondary', TEXT_SECONDARY);
@@ -115,7 +115,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 colorSplit: line,
                 colorText: text,
                 colorTextSecondary: textSecondary,
-                // AntD's translucent-black helper text is too faint on tinted light surfaces.
                 ...(isLightColor(main) && {
                     colorTextTertiary: cssVar('--color-text-muted', textSecondary),
                     colorTextDescription: cssVar('--color-text-muted', textSecondary),
@@ -188,7 +187,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 Switch: {
                     colorPrimary: cssVar('--color-highlight-fill', highlight),
                     colorPrimaryHover: cssVar('--color-highlight-fill-hover', highlight),
-                    // AntD's translucent-black off track turns muddy over tinted light surfaces; use the frame hue.
                     ...(isLightColor(main) && {
                         colorTextQuaternary: alpha(secondary, 0.55),
                         colorTextTertiary: secondary,

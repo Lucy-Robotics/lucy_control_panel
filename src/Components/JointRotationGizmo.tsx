@@ -223,11 +223,16 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                 cancelPress();
             }
         };
+        const releaseIfHidden = () => { if (document.hidden) handleGlobalPointerUp(); };
         window.addEventListener('pointerup', handleGlobalPointerUp);
         window.addEventListener('pointercancel', handleGlobalPointerUp);
+        window.addEventListener('blur', handleGlobalPointerUp);
+        document.addEventListener('visibilitychange', releaseIfHidden);
         return () => {
             window.removeEventListener('pointerup', handleGlobalPointerUp);
             window.removeEventListener('pointercancel', handleGlobalPointerUp);
+            window.removeEventListener('blur', handleGlobalPointerUp);
+            document.removeEventListener('visibilitychange', releaseIfHidden);
         };
     }, [finishDrag, cancelPress]);
 

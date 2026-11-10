@@ -87,7 +87,7 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const OVERLAY_MARGIN_PX = 10;
-const SETTINGS_BOX_WIDTH = 165;
+const SETTINGS_BOX_WIDTH = 145;
 const VIEW_CUBE_GAP_PX = 6;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
@@ -857,7 +857,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
             {/* Settings — bottom-right, under the view cube */}
             <CollapsibleOverlay
-                title="VIEW SETTINGS"
+                title="3D SETTINGS"
                 style={{ left: 'auto', right: OVERLAY_MARGIN_PX, width: SETTINGS_BOX_WIDTH }}
                 gap={6}
                 boxRef={settingsRef}
@@ -866,7 +866,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 {availableParts.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUS</span>
+                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUSED</span>
                             <select
                                 value={selectedPartName || ''}
                                 onChange={e => handlePartSelect(e.target.value)}
@@ -882,7 +882,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                     cursor: 'pointer',
                                 }}
                             >
-                                <option value="">(None - Free view)</option>
+                                <option value="">None - Free view</option>
                                 {availableParts.map(name => (
                                     <option key={name} value={name}>{name}</option>
                                 ))}

@@ -10,6 +10,11 @@ const globals = globalThis as unknown as Record<string, unknown>;
 for (const key of Object.getOwnPropertyNames(dom.window)) {
     if (!(key in globalThis)) globals[key] = (dom.window as unknown as Record<string, unknown>)[key];
 }
+// Node defines its own localStorage/sessionStorage globals (undefined unless
+// --localstorage-file is passed), which pre-empts the "already in globalThis"
+// skip above and leaves jsdom's working versions uncopied.
+globals.localStorage = dom.window.localStorage;
+globals.sessionStorage = dom.window.sessionStorage;
 globals.window = dom.window;
 dom.window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {} }) as unknown as MediaQueryList;
 (dom.window as unknown as Record<string, unknown>).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };

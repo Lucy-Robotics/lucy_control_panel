@@ -64,6 +64,10 @@ function disposeRobot(robot: URDFRobot): void {
     });
 }
 
+export function forgetRobotModel(): void {
+    globalCache = { ready: false };
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------

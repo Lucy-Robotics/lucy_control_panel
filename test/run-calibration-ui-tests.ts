@@ -44,7 +44,7 @@ try {
         // Resolve the project root and config explicitly rather than from process.cwd():
         // this file is run with a path argument, so cwd may be a different checkout of
         // this same repo (e.g. the main worktree) while the stub files and the source
-        // under test both live in this one, PR #156's own branch worktree.
+        // under test both live in this one, the branch's own checkout.
         root: projectRoot,
         configFile: path.join(projectRoot, 'vite.config.ts'),
         // This harness only ever loads the specific modules it asks for below, so skip

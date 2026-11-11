@@ -30,6 +30,7 @@ import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
@@ -73,6 +74,8 @@ import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
+import { switchBlockedReason } from '../Utils/robotSwitchRules.ts';
+import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
@@ -159,6 +162,9 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const stackStatus = useStackStatus(isConnected);
+    const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
+    const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
+    useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
 
     const {
         controllerConfigsFromActive,
@@ -611,13 +617,16 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
-    if (!isConnected || stackStatus?.status === 'loading') {
+    if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
             <StackProgress
-                robot={serverRobotPackage || null}
+                target={switchingTo}
+                robot={robots?.active ?? null}
                 status={stackStatus}
                 isConnected={isConnected}
+                timedOut={switchTimedOut}
                 connectButton={!isConnected && !isConnecting}
+                onDismiss={dismissSwitch}
             />
         );
     }
@@ -681,6 +690,11 @@ export const RobotControlPanel: React.FC = () => {
 
     const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
 
+    const robotSwitchBlocked = switchBlockedReason(
+        activeControllerId === '' ? 'none' : isSending ? 'self' : 'other',
+        switchingTo,
+    );
+
     const viewer = (
         <Robot3DViewer
             isControlOn={isSending}
@@ -690,7 +704,10 @@ export const RobotControlPanel: React.FC = () => {
                 ? (
                     <RobotMenuButton
                         robotPackage={serverRobotPackage}
-                        controller={activeControllerId === '' ? 'none' : isSending ? 'self' : 'other'}
+                        robots={robots}
+                        switchingTo={switchingTo}
+                        blockedReason={robotSwitchBlocked}
+                        onSelect={setRobotToConfirm}
                     />
                 )
                 : null}
@@ -959,6 +976,16 @@ export const RobotControlPanel: React.FC = () => {
                     retakeCountRef.current += 1;
                     setShowControlTakenModal(false);
                     applyControlToggle(true);
+                }}
+            />
+
+            <RobotSwitchConfirmModal
+                robotPackage={robotToConfirm}
+                onCancel={() => setRobotToConfirm(null)}
+                onConfirm={(robotPackage) => {
+                    setRobotToConfirm(null);
+                    if (robotSwitchBlocked) return;
+                    selectRobot(robotPackage);
                 }}
             />
 

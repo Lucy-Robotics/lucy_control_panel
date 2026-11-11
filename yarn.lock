@@ -1104,6 +1104,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-three/test-renderer@npm:9.1.1":
+  version: 9.1.1
+  resolution: "@react-three/test-renderer@npm:9.1.1"
+  peerDependencies:
+    "@react-three/fiber": ">=9.0.0"
+    react: ^19.0.0
+    three: ">=0.156"
+  checksum: 10c0/5e5550f3364b6f53c0c3e9496a10e972e23ab591f20b5b275dc9b7d8d870e17c0948fc9ceb4259fff2c516292fb5f2edf07e489f04cbb538353c6789ade30678
+  languageName: node
+  linkType: hard
+
 "@rolldown/pluginutils@npm:1.0.0-beta.27":
   version: 1.0.0-beta.27
   resolution: "@rolldown/pluginutils@npm:1.0.0-beta.27"
@@ -3284,6 +3295,7 @@ __metadata:
     "@mediapipe/tasks-vision": "npm:^0.10.22-rc.20250304"
     "@react-three/drei": "npm:^10.1.2"
     "@react-three/fiber": "npm:^9.1.2"
+    "@react-three/test-renderer": "npm:9.1.1"
     "@types/crypto-js": "npm:^4.2.2"
     "@types/js-yaml": "npm:^4.0.9"
     "@types/jsdom": "npm:21.1.7"

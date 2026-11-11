@@ -40,8 +40,13 @@ const { RosBridgeService } = await import('../src/Services/ros/ros.service.ts');
 const { ControlModeHandler } = await import('../src/Services/ros/handlers/ControlMode.handler.ts');
 const calls: FakeCall[] = [];
 const fakeRos = new ROSLIB.Ros({});
+let controlReply: { success: boolean; message: string } | null = null;
 fakeRos.callOnConnection = (call: FakeCall) => {
     calls.push(call);
+    if (call.op === 'call_service' && call.service === '/lucy/control' && controlReply) {
+        const values = controlReply;
+        queueMicrotask(() => fakeRos.emit(call.id!, { result: true, values }));
+    }
     if (call.op === 'call_service' && call.service === '/config/get') {
         queueMicrotask(() => fakeRos.emit(call.id!, {
             result: true,
@@ -75,13 +80,22 @@ try {
     await encoderAt(0.1, 0.2);
     await act(() => wait(150));
     await act(async () => toggle().click());
+    assert.equal(toggle().getAttribute('aria-busy'), 'true', 'the toggle shows it is taking control');
+    assert.ok(toggle().querySelector('.anticon-loading'), 'the toggle spins while taking control');
     const seed = lastCommand();
     assert.ok(Math.abs(seed.Rotation - 0.1) < 1e-6 && Math.abs(seed.Pitch - 0.2) < 1e-6, 'taking control first holds the arm where it is');
     assert.ok(Math.abs(seed.Elbow) < 1e-6, 'a joint the encoder has not reported yet is held at its slider value');
 
     assert.ok(await waitFor(() => calls.some((c) => c.op === 'call_service' && c.service === '/lucy/control')), 'control is requested after the seed');
     await act(async () => fakeRos.emit('/lucy/active_client', { data: ControlModeHandler.getInstance().clientId }));
-    assert.equal(toggle().getAttribute('aria-pressed'), 'true', 'the toggle turns on once control arrives');
+    assert.equal(toggle().getAttribute('aria-busy'), 'false', 'the toggle stops loading once control arrives');
+
+    await act(async () => fakeRos.emit('/lucy/active_client', { data: '' }));
+    controlReply = { success: false, message: 'servos are not powered' };
+    await act(async () => toggle().click());
+    assert.equal(toggle().getAttribute('aria-busy'), 'true', 'a new attempt loads again');
+    assert.ok(await waitFor(() => toggle().getAttribute('aria-busy') === 'false'), 'a refused request stops the loading');
+    assert.equal(toggle().getAttribute('aria-pressed'), 'false', 'a refused request leaves control off');
 } finally {
     await page.unmount();
 }

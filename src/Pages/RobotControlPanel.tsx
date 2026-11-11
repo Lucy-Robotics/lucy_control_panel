@@ -30,6 +30,7 @@ import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
+import { useStackStatus } from '../hooks/useStackStatus.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -46,7 +47,6 @@ import {
     DEFAULT_JOINT_SLIDER_VALUE_RAD,
 } from '../Constants/hardwareConfigDefaults';
 
-import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
@@ -73,6 +73,7 @@ import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
+import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
@@ -157,6 +158,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
+    const stackStatus = useStackStatus(isConnected);
 
     const {
         controllerConfigsFromActive,
@@ -609,6 +611,17 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    if (!isConnected || stackStatus?.status === 'loading') {
+        return (
+            <StackProgress
+                robot={serverRobotPackage || null}
+                status={stackStatus}
+                isConnected={isConnected}
+                connectButton={!isConnected && !isConnecting}
+            />
+        );
+    }
+
     if (isConnected && loading) {
         return (
             <>
@@ -780,18 +793,7 @@ export const RobotControlPanel: React.FC = () => {
                 showTrigger={false}
             />
 
-            {!isConnected ? (
-                <LucyLoader
-                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
-                    connectButton={!isConnecting}
-                    detail={
-                        isConnecting
-                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use Quick Connect in the header to start the link.'
-                    }
-                    showSpinner={isConnecting}
-                />
-            ) : (
+            {(
                 <div
                     style={{
                         position: 'relative',

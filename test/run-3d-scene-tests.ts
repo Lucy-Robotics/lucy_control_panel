@@ -12,6 +12,8 @@ import { URDFJoint, URDFLink, URDFRobot, URDFVisual } from 'urdf-loader/src/URDF
 const { JointEffortGauges } = await import('../src/Components/JointEffortGauges.tsx');
 const { RobotFKModel } = await import('../src/Components/RobotFKModel.tsx');
 const { effortHeat } = await import('../src/Utils/jointEffort.utils.ts');
+const { effortColor } = await import('../src/Utils/effortArrow.utils.ts');
+const { JointRotationGizmo } = await import('../src/Components/JointRotationGizmo.tsx');
 
 const GREY = 0x555555;
 
@@ -50,6 +52,41 @@ function so101Shoulder() {
     assert.equal(sources[1].w, 0, 'unused heat sources are switched off');
     await scene.unmount();
     assert.equal(sources[0].w, 0, 'closing the view switches every heat source off');
+}
+
+{
+    const { robot } = so101Shoulder();
+    const sources = [new THREE.Vector4()];
+    const gauges = (load: number, showArrows: boolean) => React.createElement(JointEffortGauges, { robot, efforts: new Map([['Pitch', load]]), heatSources: sources, showArrows });
+    const scene = await renderScene(gauges(0.3, false));
+    await scene.advanceFrames(1, 0.016);
+    const arrow = scene.scene.children[0].instance as THREE.Group;
+    assert.equal(arrow.visible, false, 'arrows stay hidden until they are switched on');
+    await scene.update(gauges(0.3, true));
+    await scene.advanceFrames(1, 0.016);
+    const shaft = arrow.children[0] as THREE.Mesh;
+    assert.ok(arrow.visible && arrow.position.distanceTo(new THREE.Vector3(1, 2, 3)) < 1e-6, 'a loaded joint shows its arrow on the joint');
+    assert.equal((shaft.material as THREE.MeshBasicMaterial).color.getStyle(), new THREE.Color(effortColor(0.3)).getStyle(), 'the arrow takes the effort colour');
+    assert.equal(shaft.scale.y, -1, 'a positive load sweeps the arrow one way');
+    await scene.update(gauges(-0.3, true));
+    for (let i = 0; i < 30; i++) await scene.advanceFrames(1, 0.05);
+    assert.equal(shaft.scale.y, 1, 'a negative load sweeps it the other way');
+    await scene.update(gauges(0.01, true));
+    for (let i = 0; i < 30; i++) await scene.advanceFrames(1, 0.05);
+    assert.equal(arrow.visible, false, 'resting noise shows no arrow');
+    await scene.unmount();
+}
+
+{
+    const { joint } = so101Shoulder();
+    const colors = { accent: '#00ff00', active: '#ffffff', warning: '#ffaa00', text: '#ffffff', surface: '#111111', border: '#333333' };
+    const scene = await renderScene(React.createElement(JointRotationGizmo, { joint, isControlOn: true, controlsRef: { current: null }, colors }));
+    await scene.advanceFrames(1, 0.016);
+    const ring = scene.scene.children[0].instance as THREE.Object3D;
+    assert.ok(ring.position.distanceTo(joint.getWorldPosition(new THREE.Vector3())) < 1e-6, 'the gizmo sits on its joint');
+    await scene.update(React.createElement(JointRotationGizmo, { joint: null, isControlOn: true, controlsRef: { current: null }, colors }));
+    assert.equal(scene.scene.children.length, 0, 'no gizmo without a selected joint');
+    await scene.unmount();
 }
 
 {

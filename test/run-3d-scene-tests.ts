@@ -115,5 +115,38 @@ function so101Shoulder() {
     assert.equal(plasticMesh.material, loadedPlastic, 'closing the view restores the loaded part material');
 }
 
+{
+    const { robot, joint, motorMesh, plasticMesh } = so101Shoulder();
+    const hovers: (string | null)[] = [];
+    const model = (props: Record<string, unknown>) => React.createElement(RobotFKModel, {
+        robot, jointAngles: new Map(), focusColor: '#00ff00', onPartHover: (name: string | null) => hovers.push(name), ...props,
+    });
+    const scene = await renderScene(model({}));
+    const robotNode = scene.scene.children[0].children[0];
+    await scene.fireEvent(robotNode, 'onPointerMove', { intersections: [{ object: plasticMesh }] });
+    assert.deepEqual(hovers, ['upper_arm'], 'moving over a part reports it');
+
+    await scene.update(model({ hoveredPartName: 'upper_arm' }));
+    await scene.advanceFrames(1, 0.016);
+    const shells = scene.scene.instance.children.filter((child) => (child as THREE.Mesh).isMesh) as THREE.Mesh[];
+    assert.deepEqual(new Set(shells.map((shell) => shell.geometry)), new Set([plasticMesh.geometry, motorMesh.geometry]), 'the hovered part and the motor driving it glow, outside the robot');
+    joint.setJointValue(1);
+    await scene.advanceFrames(1, 0.016);
+    const plasticShell = shells.find((shell) => shell.geometry === plasticMesh.geometry)!;
+    assert.ok(plasticShell.matrix.equals(plasticMesh.matrixWorld), 'the glow follows the part as it moves');
+    const glowOpacity = (plasticShell.material as THREE.Material).opacity;
+
+    const gizmoHit = new THREE.Mesh();
+    gizmoHit.userData.isGizmoHit = true;
+    await scene.fireEvent(robotNode, 'onPointerMove', { intersections: [{ object: gizmoHit }, { object: plasticMesh }] });
+    assert.ok((plasticShell.material as THREE.Material).opacity < glowOpacity, 'the glow dims when the gizmo is in front');
+    await scene.fireEvent(robotNode, 'onPointerOut', { intersections: [] });
+    assert.equal(hovers.at(-1), null, 'leaving the robot clears the hover');
+
+    await scene.update(model({ hoveredPartName: null, selectedPartName: 'upper_arm' }));
+    assert.ok((motorMesh.material as THREE.MeshStandardMaterial).color.equals(new THREE.Color('#00ff00')), 'selecting the upper arm highlights the motor that drives it');
+    await scene.unmount();
+}
+
 console.log('3D scene tests passed');
 process.exit(0);

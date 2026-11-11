@@ -23,6 +23,10 @@ import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
 import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
 import { useGhostOpacity } from '../hooks/useGhostOpacity';
 import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
+import { GhostStyleSelector } from '../Components/GhostStyleSelector';
+import { GHOST_OUTLINE_RENDER_PRIORITY, GhostOutline } from '../Components/GhostOutline';
+import { useGhostStyle } from '../hooks/useGhostStyle';
+import { attachGhostEdges } from '../Utils/ghostEdges';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -66,6 +70,8 @@ import {
 const { Text } = Typography;
 
 const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
+// Dark casing around the white ghost so the intended pose reads on any background
+const GHOST_CASING_COLOR = '#000000';
 const STORAGE_KEY_ORTHOGRAPHIC = 'lucy_3d_orthographic';
 
 const getInitialUnselectedOpacity = (): number => {
@@ -521,6 +527,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const isGhostVisible = useGhostVisible();
     const isTeleopGhostVisible = useTeleopGhostVisible();
     const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
+    const ghostStyle = useGhostStyle();
+    const isGhostOutlined = Boolean(ghost && showGhost && ghostStyle === 'outline');
+
+    useEffect(() => (ghost && ghostStyle === 'edges' ? attachGhostEdges(ghost, GHOST_CASING_COLOR) : undefined), [ghost, ghostStyle]);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -761,6 +771,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+                {isGhostOutlined && ghost && <GhostOutline ghost={ghost} color={GHOST_CASING_COLOR} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={showArrows} />}
 
@@ -801,6 +812,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         onSelectView={handleSelectView}
                         centerRight={OVERLAY_MARGIN_PX + SETTINGS_BOX_WIDTH / 2}
                         bottomInset={OVERLAY_MARGIN_PX + settingsHeight + VIEW_CUBE_GAP_PX}
+                        renderPriority={isGhostOutlined ? GHOST_OUTLINE_RENDER_PRIORITY + 1 : 1}
                     />
                 )}
             </Canvas>
@@ -888,6 +900,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 <SwitchRow label="GHOST" value={isGhostVisible} onChange={setGhostVisible} />
                 <GhostOpacitySlider enabled={isGhostVisible} />
+                <GhostStyleSelector enabled={isGhostVisible} />
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />

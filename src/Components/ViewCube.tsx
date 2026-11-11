@@ -280,6 +280,7 @@ export interface ViewCubeProps {
     onSelectView: (direction: THREE.Vector3) => void;
     centerRight?: number;
     bottomInset?: number;
+    renderPriority?: number;
 }
 
 export const ViewCube: React.FC<ViewCubeProps> = ({
@@ -287,10 +288,11 @@ export const ViewCube: React.FC<ViewCubeProps> = ({
     onSelectView,
     centerRight = CUBE_MARGIN_PX,
     bottomInset = EDGE_GAP_PX,
+    renderPriority = 1,
 }) => {
     const mainCamera = useThree(s => s.camera);
     return (
-        <Hud renderPriority={1}>
+        <Hud renderPriority={renderPriority}>
             <ViewCubeScene
                 mainCamera={mainCamera}
                 colors={colors}

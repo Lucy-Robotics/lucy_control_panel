@@ -11,6 +11,8 @@ import { RosBridgeService } from '../ros.service.ts';
 
 type JointReadings = Map<string, number>;
 
+const READINGS_PERIOD_MS = 100;
+
 function subscribeToDynamicJointStates<T>(
   read: (state: DynamicJointState) => T,
   callback: (readings: T) => void,
@@ -22,6 +24,8 @@ function subscribeToDynamicJointStates<T>(
     ros,
     name: '/dynamic_joint_states',
     messageType: 'control_msgs/msg/DynamicJointState',
+    throttle_rate: READINGS_PERIOD_MS,
+    queue_length: 1,
   });
   topic.subscribe((msg: ROSLIB.Message) => callback(read(msg as unknown as DynamicJointState)));
   return () => topic.unsubscribe();

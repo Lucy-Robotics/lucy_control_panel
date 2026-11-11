@@ -11,6 +11,18 @@ export const CAMERA_FOV = 50;
 export const MIN_CAMERA_DISTANCE = 0.2;
 export const MAX_CAMERA_DISTANCE = 10;
 
+export type Vec3 = [number, number, number];
+
+export const DEFAULT_CAMERA: { readonly position: Vec3; readonly target: Vec3 } = {
+    position: [0, 2, 3],
+    target: [0, 1, 0],
+};
+
+/** Where the camera looks from when it frames the whole robot. */
+export const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(...DEFAULT_CAMERA.position)
+    .sub(new THREE.Vector3(...DEFAULT_CAMERA.target))
+    .normalize();
+
 const DEFAULT_FIT_MARGIN = 1.2;
 const POLE_NUDGE = 1e-3;
 const ORIGIN = new THREE.Vector3();

@@ -36,3 +36,9 @@
         transform: rotate(360deg);
     }
 }
+
+.lucy-progress .ant-progress-inner,
+.lucy-progress .ant-progress-bg {
+  border-radius: 0 !important;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-xs)) 0, 100% var(--chamfer-xs), 100% 100%, var(--chamfer-xs) 100%, 0 calc(100% - var(--chamfer-xs)));
+}

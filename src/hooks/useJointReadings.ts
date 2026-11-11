@@ -11,8 +11,9 @@ const subscribeToReadings = subscribeToJointInterfaces({
     currents: 'current',
     efforts: 'effort',
     temperatures: 'temperature',
+    voltages: 'voltage',
 });
-const NO_READINGS = { loads: new Map(), currents: new Map(), efforts: new Map(), temperatures: new Map() };
+const NO_READINGS = { loads: new Map(), currents: new Map(), efforts: new Map(), temperatures: new Map(), voltages: new Map() };
 
 export function useJointReadings(isConnected: boolean) {
     return useThrottledReadings(subscribeToReadings, isConnected, NO_READINGS);

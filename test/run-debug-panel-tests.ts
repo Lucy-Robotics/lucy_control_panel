@@ -24,13 +24,13 @@ assert.equal(panel.container.querySelector('table'), null, 'no table before the 
 fakeRos.emit('/dynamic_joint_states', {
     joint_names: ['Pitch', 'Elbow'],
     interface_values: [
-        { interface_names: ['load', 'current', 'effort', 'temperature'], values: [0.25, 2.7, 1.5, 45] },
-        { interface_names: ['load', 'current', 'effort', 'temperature'], values: [-0.05, 0, 0, 30] },
+        { interface_names: ['load', 'current', 'effort', 'temperature', 'voltage'], values: [0.25, 2.7, 1.5, 45, 12.2] },
+        { interface_names: ['load', 'current', 'effort', 'temperature', 'voltage'], values: [-0.05, 0, 0, 30, 0] },
     ],
 });
 assert.ok(await waitFor(() => panel.container.querySelectorAll('tbody tr').length === 2), 'one row per joint once readings arrive');
 const pitch = [...panel.container.querySelectorAll('tbody tr')[0].querySelectorAll('td')].map((cell) => cell.textContent);
-assert.deepEqual(pitch, ['Pitch', '0.250', '2.700', '1.500', '2.940', '45', '44'], 'a row shows load, current, effort, I×Kt, raw and median temperature');
+assert.deepEqual(pitch, ['Pitch', '0.250', '2.700', '1.500', '2.940', '45', '44', '12.2'], 'a row shows load, current, effort, I×Kt, raw and median temperature, and supply voltage');
 
 const button = (label: string) => [...panel.container.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement;
 assert.ok(button('CLEAR').disabled, 'nothing to clear before a mock');

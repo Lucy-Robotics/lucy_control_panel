@@ -43,3 +43,6 @@ export const subscribeToJointInterfaces = <K extends string>(interfaces: Record<
       ) as Record<K, JointReadings>,
       callback,
     );
+
+export const subscribeToJointVoltages = (callback: (readings: JointReadings) => void) =>
+  subscribeToDynamicJointStates((state) => interfaceValuesByJoint(state, 'voltage'), callback);

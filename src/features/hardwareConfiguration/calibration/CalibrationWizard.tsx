@@ -148,11 +148,14 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                         type="warning"
                         showIcon
                         message={status.message}
-                        description="Resume to carry on where it stopped. Restore to put the servos back as they were."
+                        description="Resume to carry on where it stopped. Restore to put the servos back as they were. Discard to drop it without touching the servos."
                         style={{ marginBottom: 12 }}
                     />
                     <div style={stepBody} />
                     <WizardFooter
+                        left={(
+                            <Button disabled={busy} onClick={() => void send('discard')}>Discard</Button>
+                        )}
                         right={(
                             <>
                                 <Button disabled={busy} onClick={() => void send('restore')}>Restore</Button>

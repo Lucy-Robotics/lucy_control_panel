@@ -31,11 +31,17 @@ jobs:
       - run: corepack yarn@4.18.0 install --immutable
       - run: corepack yarn@4.18.0 build
       - run: corepack yarn@4.18.0 coverage
-      - uses: codecov/codecov-action@v4
-        if: success()
+      - uses: actions/upload-artifact@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage/lcov.info
-          flags: lucy_control_panel
-          name: lucy_control_panel
-          fail_ci_if_error: false
+          name: coverage-lucy_control_panel
+          path: coverage/cobertura-coverage.xml
+          if-no-files-found: error
+
+  upload-coverage:
+    needs: build-test
+    uses: Lucy-Robotics/.github/.github/workflows/codecov-upload.yaml@cma/fix-robot-package-ci-generalize
+    with:
+      artifact_name: coverage-lucy_control_panel
+      flags: lucy_control_panel
+      name: lucy_control_panel
+    secrets: inherit

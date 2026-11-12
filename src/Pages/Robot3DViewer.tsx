@@ -9,7 +9,7 @@ import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@rea
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { Grid as AntGrid, Slider, Typography } from 'antd';
+import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
@@ -130,13 +130,17 @@ const SWITCH_ROW: React.CSSProperties = {
 
 const SwitchRow: React.FC<{
     label: string;
+    /** What the switch does: the label alone is a terse all-caps keyword. */
+    tooltip: string;
     value: boolean;
     onChange: (value: boolean) => void;
-}> = ({ label, value, onChange }) => (
-    <div style={SWITCH_ROW}>
-        <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>{label}</span>
-        <StreamSwitch value={value} onChange={onChange} />
-    </div>
+}> = ({ label, tooltip, value, onChange }) => (
+    <Tooltip title={tooltip} placement="left">
+        <div style={SWITCH_ROW}>
+            <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>{label}</span>
+            <StreamSwitch value={value} onChange={onChange} />
+        </div>
+    </Tooltip>
 );
 
 /** Matches the `.collapsible-body` transition in index.css. */
@@ -929,16 +933,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </div>
                 )}
 
-                <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
-                <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
-                <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
+                <SwitchRow label="WIRE" tooltip="Show the robot as a wireframe" value={wireframe} onChange={setWireframe} />
+                <SwitchRow label="GRID" tooltip="Show the floor grid" value={showGrid} onChange={setShowGrid} />
+                <SwitchRow label="ORTHO" tooltip="Orthographic camera: no perspective, sizes stay true at any depth" value={orthographic} onChange={setOrthographic} />
                 {effortSupported && (
                     <>
-                        <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
-                        <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
+                        <SwitchRow label="HEATMAP" tooltip="Colour each part by the effort its servos produce" value={showHeatMap} onChange={setShowHeatMap} />
+                        <SwitchRow label="ARROWS" tooltip="Show an arrow on each joint for the effort its servo produces" value={showArrows} onChange={setShowArrows} />
                     </>
                 )}
-                <SwitchRow label="DEBUG" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
+                <SwitchRow label="DEBUG" tooltip="Show the raw joint readings, and buttons to simulate an overheated motor" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
 
                 <button
                     onClick={handleResetCamera}

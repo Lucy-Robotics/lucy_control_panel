@@ -37,9 +37,8 @@ interface TrackMarkerProps {
   label: string;
   valueText: string;
   description: string;
-  /** Side the tooltip opens on, so it never covers the slider it sits next to. */
-  placement: 'top' | 'bottom';
   onRail?: boolean;
+  open?: boolean;
 }
 
 const MARKER_HIT_SIZE = 12;
@@ -48,9 +47,10 @@ const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
-const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, placement, onRail = false }: TrackMarkerProps) => (
+const TrackMarker = React.memo(({ percent, top, color, label, valueText, description, onRail = false, open }: TrackMarkerProps) => (
   <Tooltip
-    placement={placement}
+    placement="bottom"
+    open={open}
     title={
       <span style={{ fontSize: '11px' }}>
         <strong style={{ color }}>{label}: {valueText}</strong>
@@ -73,7 +73,7 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'help',
+        ...(onRail ? { pointerEvents: 'none' } : { cursor: 'help' }),
         transform: `translateX(${percent}cqw)`,
         willChange: 'transform',
       }}
@@ -85,7 +85,6 @@ const TrackMarker = React.memo(({ percent, top, color, label, valueText, descrip
           backgroundColor: color,
           borderRadius: 1,
           boxShadow: '0 0 0 1px var(--color-main)',
-          pointerEvents: 'none',
         } : {
           width: 4,
           height: 4,
@@ -292,6 +291,24 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     return `${Math.round(value * 1000) / 1000} rad`;
   }, [actuatorValue, showDegrees]);
 
+  const [restMarkerHovered, setRestMarkerHovered] = useState(false);
+
+  const handleTrackMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (restBarPercent === undefined || e.buttons !== 0) {
+      setRestMarkerHovered(false);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const markerX = (restBarPercent / 100) * rect.width;
+    const half = MARKER_HIT_SIZE / 2;
+    setRestMarkerHovered(
+      Math.abs(e.clientX - rect.left - markerX) <= half &&
+      Math.abs(e.clientY - rect.top - SLIDER_RAIL_CENTER_PX) <= half
+    );
+  }, [restBarPercent]);
+
+  const handleTrackMouseLeave = useCallback(() => setRestMarkerHovered(false), []);
+
   const readOnlyReason = disabled ? CONTROL_OFF_HINT : undefined;
 
   return (
@@ -309,7 +326,11 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         </Text>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 8, rowGap: 8, alignItems: 'center' }}>
-          <div style={{ position: 'relative', containerType: 'inline-size' }}>
+          <div
+            style={{ position: 'relative', containerType: 'inline-size' }}
+            onMouseMove={handleTrackMouseMove}
+            onMouseLeave={handleTrackMouseLeave}
+          >
             <ReadOnlyHint reason={readOnlyReason} block>
               <Slider
                 min={minDisplay}
@@ -331,11 +352,11 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 percent={restBarPercent}
                 top={SLIDER_RAIL_CENTER_PX}
                 onRail
+                open={restMarkerHovered}
                 color={UI_TEXT_SECONDARY_MUTED}
                 label="Default"
                 valueText={formatMarkerValue(joint.restValue!)}
                 description="Rest position of this joint: where the reset button sends it back to."
-                placement="top"
               />
             )}
             {actualBarPercent !== undefined && (
@@ -346,7 +367,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 label="Actual"
                 valueText={formatMarkerValue(joint.actualValue!)}
                 description="Real position reported by the simulator: it may lag behind the value you command."
-                placement="bottom"
               />
             )}
           </div>

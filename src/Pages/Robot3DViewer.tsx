@@ -51,6 +51,7 @@ import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
 import { createEffortHeatMap } from '../Utils/effortHeatMap';
+import { hasEffortFeedback } from '../Utils/robotCapabilities';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -525,10 +526,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
-    const [showHeatMap, setShowHeatMap] = useState(true);
+    const [showHeatMap, setShowHeatMap] = useState(false);
     const [showArrows, setShowArrows] = useState(false);
     const [debugMode, setDebugMode] = useState(false);
-    const showEffort = showHeatMap || showArrows;
+    const effortSupported = useMemo(() => hasEffortFeedback(robot?.urdfRobotNode), [robot]);
+    const heatMapOn = showHeatMap && effortSupported;
+    const arrowsOn = showArrows && effortSupported;
+    const showEffort = heatMapOn || arrowsOn;
     const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const heatMap = useMemo(createEffortHeatMap, []);
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
@@ -785,8 +789,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         partsClickable={effectiveControlOn}
                         actuatedJointNames={actuatedJointNames}
                         overheatedJointNames={motorOverheat?.trippedJoints}
-                        heatMaterial={showHeatMap ? heatMap.material : undefined}
-                        motorTemperatures={showHeatMap ? motorOverheat?.temperatures : undefined}
+                        heatMaterial={heatMapOn ? heatMap.material : undefined}
+                        motorTemperatures={heatMapOn ? motorOverheat?.temperatures : undefined}
                     />
                 )}
 
@@ -797,7 +801,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     ) : null;
                 })}
 
-                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={showArrows} />}
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
 
                 <JointRotationGizmo
                     joint={effectiveControlOn ? gizmoJoint : null}
@@ -928,8 +932,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" value={orthographic} onChange={setOrthographic} />
-                <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
-                <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
+                {effortSupported && (
+                    <>
+                        <SwitchRow label="HEATMAP" value={showHeatMap} onChange={setShowHeatMap} />
+                        <SwitchRow label="ARROWS" value={showArrows} onChange={setShowArrows} />
+                    </>
+                )}
                 <SwitchRow label="DEBUG" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
 
                 <button

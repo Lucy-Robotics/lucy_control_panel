@@ -54,5 +54,17 @@ assert.equal(throttled.result.current.size, 0, 'readings clear on disconnect');
 assert.equal(unsubscribed, 1, 'disconnecting unsubscribes');
 await throttled.unmount();
 
+// rosbridge must throttle the 100 Hz stream itself: it shares the websocket with /mesh/get.
+const sent: Record<string, unknown>[] = [];
+fakeRos.callOnConnection = (message: Record<string, unknown>) => { sent.push(message); };
+const { DYNAMIC_JOINT_STATES_THROTTLE_MS, subscribeToJointVoltages } = await import('../src/Services/ros/handlers/DynamicJointState.handler.ts');
+const stopVoltages = subscribeToJointVoltages(() => {});
+const subscribeOp = sent.find((m) => m.op === 'subscribe' && m.topic === '/dynamic_joint_states');
+assert.ok(subscribeOp, 'subscribing sends a rosbridge subscribe op');
+assert.equal(subscribeOp.throttle_rate, DYNAMIC_JOINT_STATES_THROTTLE_MS, 'rosbridge throttles /dynamic_joint_states');
+assert.equal(subscribeOp.queue_length, 1, 'rosbridge keeps only the latest /dynamic_joint_states');
+assert.ok(DYNAMIC_JOINT_STATES_THROTTLE_MS >= 100, 'no faster than the 10 Hz the readers refresh at');
+stopVoltages();
+
 console.log('dynamic joint states tests passed');
 process.exit(0);

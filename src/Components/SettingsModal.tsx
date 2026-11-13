@@ -39,7 +39,7 @@ import { PipelineDiagnostics } from './PipelineDiagnostics';
 import { refreshAllPipelines } from '../Services/pipelineProbes';
 import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
 
-import { isProductionModeEnabled, PRODUCTION_MODE_EVENT, PRODUCTION_MODE_KEY } from '../Utils/productionMode';
+import { isProductionModeEnabled, PRODUCTION_MODE_EVENT, PRODUCTION_MODE_SETTING } from '../Utils/productionMode';
 const { Text } = Typography;
 
 interface SettingsModalProps {
@@ -117,7 +117,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     useEffect(() => {
         localStorage.setItem(
-            PRODUCTION_MODE_KEY,
+            PRODUCTION_MODE_SETTING,
             String(productionMode)
         );
         window.dispatchEvent(new Event(PRODUCTION_MODE_EVENT));
@@ -253,7 +253,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             centerTitle={false}
                         />
 
-                        <span title={servoControlAvailable ? undefined : 'No robot or simulator behind ros2_control: no servo to drive'}>
+                        <span title={servoControlAvailable ? undefined : 'No robot or simulator connected: no servo to drive'}>
                             <ToggleSwitch
                                 isOn={productionMode || !servoControlAvailable}
                                 onToggle={setProductionMode}

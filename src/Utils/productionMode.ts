@@ -8,11 +8,11 @@ import type { UrdfJointLimitRad } from '../hooks/useUrdfJointLimits';
 import { DEFAULT_ACTUATOR_MAPPING, servoRadToJointRad } from './actuatorJointMapping.ts';
 
 /** Settings flag: on (default) = URDF joint angles (production), off = servo angles (bench). */
-export const PRODUCTION_MODE_KEY = 'productionModeEnabled';
+export const PRODUCTION_MODE_SETTING = 'productionModeEnabled';
 export const PRODUCTION_MODE_EVENT = 'productionModeChanged';
 
 export const isProductionModeEnabled = () =>
-    localStorage.getItem(PRODUCTION_MODE_KEY) !== 'false';
+    localStorage.getItem(PRODUCTION_MODE_SETTING) !== 'false';
 
 /**
  * True when no hardware or simulator is behind ros2_control: the generator emits

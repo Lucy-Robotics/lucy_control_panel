@@ -54,7 +54,8 @@ import { MovableModal } from './MovableModal';
 import { ToggleSwitch } from './ToggleSwitch';
 import { CustomTitle } from './CustomTitle';
 import { CONTROL_OFF_HINT, ReadOnlyHint } from './ControlPage/ReadOnlyHint.tsx';
-import { SERVO_POSE_HINT, isJointAnglePose } from '../Utils/poseUnits.ts';
+import { SERVO_POSE_HINT } from '../Constants/poses.ts';
+import { isJointAnglePose } from '../Utils/poseUnits.ts';
 
 const { Text } = Typography;
 

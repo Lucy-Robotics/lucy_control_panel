@@ -5,6 +5,4 @@
 
 import type { SavedPose } from '../Services/storage.service.ts';
 
-export const SERVO_POSE_HINT = 'This pose was saved in servo angles: set the joints and save it again.';
-
 export const isJointAnglePose = (pose: SavedPose): boolean => pose.unit === 'joint';

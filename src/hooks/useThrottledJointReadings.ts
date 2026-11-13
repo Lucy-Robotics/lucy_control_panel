@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { sameReadings } from '../Utils/sameReadings.ts';
 
 type JointReadings = ReadonlyMap<string, number>;
 type Subscribe<T> = (callback: (readings: T) => void) => () => void;
@@ -22,8 +23,9 @@ export function useThrottledReadings<T>(subscribe: Subscribe<T>, isConnected: bo
         const unsubscribe = subscribe((next) => { latest = next; });
         const interval = setInterval(() => {
             if (latest === null) return;
-            setReadings(latest);
+            const next = latest;
             latest = null;
+            setReadings((current) => (sameReadings(current, next) ? current : next));
         }, 1000 / hz);
         return () => {
             clearInterval(interval);

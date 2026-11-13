@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
+import { fileURLToPath } from "url";
+import { meshRoute } from "./server/meshRoute.ts";
 
 const ROSLIB_THIS = "var ROSLIB = this.ROSLIB ||";
 
@@ -51,7 +53,14 @@ export default defineConfig(({ mode }) => {
   const port = parseInt(env.VITE_PORT || "4004");
 
   return {
-    plugins: [react(), roslibGlobalThis()],
+    plugins: [
+      react(),
+      roslibGlobalThis(),
+      meshRoute(
+        [fileURLToPath(new URL("..", import.meta.url)), fileURLToPath(new URL("../../install", import.meta.url))],
+        fileURLToPath(new URL("node_modules/.cache/lucy-meshes", import.meta.url)),
+      ),
+    ],
     server: {
       https,
       host: true,

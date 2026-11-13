@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import type { URDFLink, URDFVisual, URDFJoint } from 'urdf-loader';
-import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
+import { JointStateHandler } from '../Services/ros/handlers/JointState.handler.ts';
 import type { JointControlState } from '../Constants/robotTypes';
 
 export function isURDFLink(obj: THREE.Object3D): obj is URDFLink {
@@ -34,11 +34,6 @@ export function wrapAngle(angle: number): number {
 
 export function getJointAngle(joint: URDFJoint): number {
     return joint.angle ?? joint.jointValue?.[0] ?? 0;
-}
-
-export function jointAngleError(joint: URDFJoint, actual: number, target: number): number {
-    const diff = target - actual;
-    return joint.jointType === 'continuous' ? wrapAngle(diff) : diff;
 }
 
 export function urdfNameOf(obj: URDFLink | URDFJoint): string {

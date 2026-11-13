@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -13,6 +13,7 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { DEFAULT_ACTUATOR_MAPPING, jointRadToServoRad, clampServoRad } from '../Utils/actuatorJointMapping';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
+import { JointMoveContext } from '../hooks/useJointMove';
 import {
     CLICK_DRAG_THRESHOLD_PX,
     getJointAngle,
@@ -45,11 +46,6 @@ export interface JointRotationGizmoProps {
     isControlOn: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
-    onValuePreview?: (name: string, value: number | null) => void;
-    onTargetChange?: (name: string, targetRad: number, dragging: boolean, commandValue?: number) => void;
-    /** A drag on `name` was aborted without committing (joint switched, control disabled). */
-    onTargetCancel?: (name: string) => void;
-    getPendingTarget?: (name: string) => number | undefined;
     onDraggingChange?: (isDragging: boolean) => void;
     onHoverChange?: (isHovered: boolean) => void;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
@@ -61,16 +57,13 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     isControlOn,
     joints,
     onJointValueChange,
-    onValuePreview,
-    onTargetChange,
-    onTargetCancel,
-    getPendingTarget,
     onDraggingChange,
     onHoverChange,
     controlsRef,
     colors,
 }) => {
     const { gl } = useThree();
+    const jointMove = useContext(JointMoveContext);
     const groupRef = useRef<THREE.Group>(null);
     const isDraggingRef = useRef<boolean>(false);
     const isHoveredRef = useRef<boolean>(false);
@@ -97,6 +90,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         const jointState = joints?.find(j => j.name === jointName);
         return jointState ? clampServoRad(servoRad, jointState.minValue, jointState.maxValue) : servoRad;
     }, [joints, jointName]);
+
+    const commandedValue = useCallback(() => joints?.find(j => j.name === jointName)?.currentValue, [joints, jointName]);
 
     const mats = useMemo(() => ({
         ring: overlayMaterial(0.55),
@@ -151,8 +146,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const pointerAngleRef = useRef<number>(0);
     const rotationPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
     const lastEmittedValueRef = useRef<{ name: string; value: number } | null>(null);
-    // Joint the current drag started on: `joint` can change mid-drag, and every
-    // emission of that drag must stay attributed to the same ghost entry.
+    // Joint the current drag started on: `joint` can change mid-drag.
     const dragJointNameRef = useRef<string>('');
     // A press on the ring only becomes a drag past CLICK_DRAG_THRESHOLD_PX, so
     // plain clicks reach the parts behind the ring.
@@ -169,8 +163,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
     const clearEmittedValue = useCallback(() => {
         const emitted = lastEmittedValueRef.current;
         lastEmittedValueRef.current = null;
-        if (emitted) onValuePreview?.(emitted.name, null);
-    }, [onValuePreview]);
+        if (emitted) jointMove?.release();
+    }, [jointMove]);
 
     useEffect(() => clearEmittedValue, [clearEmittedValue]);
 
@@ -191,7 +185,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             controlsRef.current.enabled = true;
         }
 
-        onTargetChange?.(dragJointNameRef.current, currentTargetRadRef.current, false, lastEmittedValueRef.current?.value);
         if (lastEmittedValueRef.current) {
             const { name, value } = lastEmittedValueRef.current;
             onJointValueChange?.(name, value);
@@ -200,7 +193,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         onDraggingChange?.(false);
         if (!pointerInsideRef.current) setHovered(false);
-    }, [controlsRef, onTargetChange, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
+    }, [controlsRef, onJointValueChange, clearEmittedValue, onDraggingChange, setHovered]);
 
     useEffect(() => {
         if (pressRef.current && (!joint || !isControlOn || pressRef.current.jointName !== jointName)) {
@@ -215,13 +208,12 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             if (controlsRef.current) {
                 controlsRef.current.enabled = true;
             }
-            onTargetCancel?.(dragJointNameRef.current);
             onDraggingChange?.(false);
         }
         if (joint && isControlOn) return;
         pointerInsideRef.current = false;
         setHovered(false);
-    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onTargetCancel, onDraggingChange, setHovered, cancelPress]);
+    }, [joint, jointName, isControlOn, controlsRef, clearEmittedValue, onDraggingChange, setHovered, cancelPress]);
 
     useEffect(() => {
         const handleGlobalPointerUp = () => {
@@ -250,7 +242,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         setIsDragging(true);
         onDraggingChange?.(true);
 
-        const start = getPendingTarget?.(jointName) ?? getJointAngle(joint);
+        const start = getJointAngle(joint);
         startTargetRadRef.current = start;
         currentTargetRadRef.current = start;
         accumulatedAngleRef.current = 0;
@@ -258,7 +250,6 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         pointerAngleRef.current = grabAngle;
         lastEmittedValueRef.current = null;
         dragJointNameRef.current = jointName;
-        onTargetChange?.(jointName, start, true);
     };
 
     const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -320,10 +311,9 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         }
         currentTargetRadRef.current = targetRad;
         const name = dragJointNameRef.current;
-        onTargetChange?.(name, targetRad, true);
         const value = toSliderValue(targetRad);
         lastEmittedValueRef.current = { name, value };
-        onValuePreview?.(name, value);
+        jointMove?.move(name, value);
     };
 
     const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
@@ -377,8 +367,8 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
 
         fadeRef.current = Math.min(1, fadeRef.current + delta / FADE_IN_S);
         const fade = fadeRef.current;
-        mats.ring.color.set(dragging ? colors.active : colors.accent);
-        mats.knob.color.set(colors.active);
+        mats.ring.color.set(dragging ? colors.ghost : colors.accent);
+        mats.knob.color.set(dragging ? colors.ghost : colors.active);
         mats.ring.opacity = (dragging ? 1 : hovered ? 0.9 : 0.55) * fade;
         mats.knob.opacity = fade;
 
@@ -387,11 +377,10 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
             knobRef.current.position.set(Math.cos(pointerAngleRef.current) * radius, Math.sin(pointerAngleRef.current) * radius, 0);
         }
 
-        const actual = getJointAngle(joint);
-        const pending = dragging ? undefined : getPendingTarget?.(jointName);
-
         if (badgeValueRef.current) {
-            const shown = toSliderValue(dragging ? currentTargetRadRef.current : (pending ?? actual));
+            const shown = dragging
+                ? toSliderValue(currentTargetRadRef.current)
+                : (commandedValue() ?? toSliderValue(getJointAngle(joint)));
             const text = `${THREE.MathUtils.radToDeg(shown).toFixed(1)}°`;
             if (badgeValueRef.current.textContent !== text) badgeValueRef.current.textContent = text;
         }
@@ -428,7 +417,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
                             style={{
                                 fontFamily: 'monospace',
                                 fontSize: 11,
-                                color: isDragging ? colors.active : colors.accent,
+                                color: isDragging ? colors.ghost : colors.accent,
                                 textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
                                 whiteSpace: 'nowrap',
                             }}

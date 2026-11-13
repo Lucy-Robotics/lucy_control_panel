@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { JointPreviewContext, createJointPreviewStore } from '../hooks/useJointPreview';
+import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
@@ -34,6 +34,7 @@ import { isJointAnglePose } from '../Utils/poseUnits.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
+import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 import type { JointControlState } from '../Constants/robotTypes';
@@ -59,6 +60,7 @@ import { takeControlFromCurrentPose } from "../Services/ros/takeControlFromCurre
 import { useServoPower } from "../hooks/useServoPower";
 import { withJointsEncoderFeedback } from "../Utils/jointFeedback.utils";
 import { MovableModal } from '../Components/MovableModal';
+import { TeleopGhostSwitch } from '../Components/TeleopGhostSwitch';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
@@ -188,7 +190,7 @@ export const RobotControlPanel: React.FC = () => {
     const slidersProductionModeRef = useRef(productionMode);
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [jointPreviewStore] = useState(createJointPreviewStore);
+    const [jointMoveStore] = useState(createJointMoveStore);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -240,6 +242,7 @@ export const RobotControlPanel: React.FC = () => {
 
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+    const isHandsOn = isWebcamActive;
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -677,6 +680,8 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    usePublishTargetPose(jointMoveStore, joints, isSending);
+
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
             <StackProgress
@@ -760,6 +765,7 @@ export const RobotControlPanel: React.FC = () => {
             isControlOn={isSending}
             joints={joints}
             onJointValueChange={handleGizmoJointCommit}
+            isHandsOn={isHandsOn}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton
@@ -859,7 +865,7 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <MotorOverheatContext.Provider value={motorOverheat}>
-        <JointPreviewContext.Provider value={jointPreviewStore}>
+        <JointMoveContext.Provider value={jointMoveStore}>
             <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
@@ -931,6 +937,7 @@ export const RobotControlPanel: React.FC = () => {
                                         WEBCAM
                                     </span>
                                     <ReadOnlyTag reason={readOnlyReason} />
+                                    <TeleopGhostSwitch />
                                 </Space>
                                 <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
                                     X
@@ -1015,7 +1022,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
-                    header={<ReadOnlyTag reason={readOnlyReason} />}
+                    header={<><ReadOnlyTag reason={readOnlyReason} /><TeleopGhostSwitch /></>}
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}
@@ -1102,7 +1109,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointPreviewContext.Provider>
+        </JointMoveContext.Provider>
         </MotorOverheatContext.Provider>
     );
 };

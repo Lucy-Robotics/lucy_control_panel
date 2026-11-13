@@ -4,8 +4,8 @@
  */
 
 import type { ControllerJointConfig, JointLimitRad } from '../Constants/rosConfig';
-import type { ActuatorMapping } from './actuatorJointMapping';
-import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
+import type { ActuatorMapping } from './actuatorJointMapping.ts';
+import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping.ts';
 
 export interface JointConfigMeta {
   limit?: JointLimitRad;

@@ -12,18 +12,23 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
-import { JointGhost, type GhostTargetMap } from '../Components/JointGhost';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
 import { overheatMock } from '../Services/overheatMock';
 import { JointReadingsLine } from '../Components/JointReadingsLine';
+import { RobotGhost } from '../Components/RobotGhost';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
+import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
+import { useGhostOpacity } from '../hooks/useGhostOpacity';
+import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
-import { JointPreviewContext } from '../hooks/useJointPreview';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
 import {
     findJointForLink,
@@ -499,6 +504,7 @@ export interface Robot3DViewerProps {
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
     hudCenter?: React.ReactNode;
+    isHandsOn?: boolean;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -508,13 +514,18 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     hudCenter,
     onJointValueChange,
+    isHandsOn = false,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const jointPreview = useContext(JointPreviewContext);
     const motorOverheat = useContext(MotorOverheatContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
+    const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
+    const isTeleopGhostVisible = useTeleopGhostVisible();
+    const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -582,49 +593,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const ghostTargetsRef = useRef<GhostTargetMap>(new Map());
-    const [ghostJointNames, setGhostJointNames] = useState<string[]>([]);
-
-    const handleTargetChange = useCallback((name: string, targetRad: number, dragging: boolean, commandValue?: number) => {
-        if (dragging) {
-            // Only one drag can be live: an entry still flagged as dragging here
-            // lost its release event, and would otherwise never fade out.
-            ghostTargetsRef.current.forEach((entry, other) => {
-                if (other === name) return;
-                entry.dragging = false;
-                entry.cancelled = true;
-            });
-        }
-        ghostTargetsRef.current.set(name, { targetRad, dragging, commandValue });
-        setGhostJointNames(prev => (prev.includes(name) ? prev : [...prev, name]));
-    }, []);
-
-    const handleTargetCancel = useCallback((name: string) => {
-        const entry = ghostTargetsRef.current.get(name);
-        if (!entry) return;
-        entry.dragging = false;
-        entry.cancelled = true;
-    }, []);
-
-    useEffect(() => {
-        if (!joints) return;
-        ghostTargetsRef.current.forEach((entry, name) => {
-            if (entry.dragging || entry.cancelled || entry.commandValue === undefined) return;
-            const state = joints.find(j => j.name === name);
-            if (state && Math.abs(state.targetValue - entry.commandValue) > 1e-6) {
-                entry.cancelled = true;
-            }
-        });
-    }, [joints]);
-
-    const getPendingTarget = useCallback((name: string) => ghostTargetsRef.current.get(name)?.targetRad, []);
-
-    const handleGhostDone = useCallback((name: string) => {
-        if (ghostTargetsRef.current.get(name)?.dragging) return;
-        ghostTargetsRef.current.delete(name);
-        setGhostJointNames(prev => prev.filter(n => n !== name));
-    }, []);
-
     const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
     const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
 
@@ -636,8 +604,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     useEffect(() => {
         if (effectiveControlOn) return;
         setGizmoPartName(null);
-        ghostTargetsRef.current.clear();
-        setGhostJointNames([]);
     }, [effectiveControlOn]);
 
     const initialCamera = useRef({
@@ -802,12 +768,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && ghostJointNames.map(name => {
-                    const joint = robot.joints[name];
-                    return joint ? (
-                        <JointGhost key={name} joint={joint} targetsRef={ghostTargetsRef} colors={themeColors} onDone={handleGhostDone} />
-                    ) : null;
-                })}
+                {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
 
@@ -816,10 +777,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     isControlOn={effectiveControlOn}
                     joints={joints}
                     onJointValueChange={onJointValueChange}
-                    onValuePreview={jointPreview?.set}
-                    onTargetChange={handleTargetChange}
-                    onTargetCancel={handleTargetCancel}
-                    getPendingTarget={getPendingTarget}
                     controlsRef={controlsRef}
                     colors={themeColors}
                 />
@@ -937,6 +894,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </div>
                 )}
 
+                <SwitchRow label="GHOST" tooltip="Show where the robot is heading" value={isGhostVisible} onChange={setGhostVisible} />
+                <GhostOpacitySlider enabled={isGhostVisible} />
                 <SwitchRow label="WIRE" tooltip="Show the robot as a wireframe" value={wireframe} onChange={setWireframe} />
                 <SwitchRow label="GRID" tooltip="Show the floor grid" value={showGrid} onChange={setShowGrid} />
                 <SwitchRow label="ORTHO" tooltip="Orthographic camera: no perspective, sizes stay true at any depth" value={orthographic} onChange={setOrthographic} />

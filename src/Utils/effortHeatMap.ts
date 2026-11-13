@@ -17,6 +17,7 @@ uniform vec4 heatSources[${MAX_HEAT_SOURCES}];
 float heatAtFragment() {
     float heat = 0.0;
     for (int i = 0; i < ${MAX_HEAT_SOURCES}; i++) {
+        if (heatSources[i].w <= 0.0) continue;
         float falloff = distance(vHeatWorldPosition, heatSources[i].xyz) / ${HEAT_RADIUS_M.toFixed(3)};
         heat = max(heat, heatSources[i].w * exp(-falloff * falloff));
     }

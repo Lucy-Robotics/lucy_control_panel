@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
@@ -18,8 +18,11 @@ const MESH_EXTENSIONS = new Set(['.dae', '.stl', '.obj']);
 const CONVERTER_VERSION = '1';
 
 class MeshRequestError extends Error {
-    constructor(readonly status: number, message: string) {
+    readonly status: number;
+
+    constructor(status: number, message: string) {
         super(message);
+        this.status = status;
     }
 }
 
@@ -43,8 +46,9 @@ export function createMeshCache(cacheDir: string, convert: (file: string) => Pro
     async function build(file: string, cached: string): Promise<Buffer> {
         const glb = await promisify(gzip)(Buffer.from(await convert(file)));
         await fs.mkdir(cacheDir, { recursive: true });
-        await fs.writeFile(`${cached}.tmp`, glb);
-        await fs.rename(`${cached}.tmp`, cached);
+        const partial = `${cached}.${process.pid}.${randomUUID()}.tmp`;
+        await fs.writeFile(partial, glb);
+        await fs.rename(partial, cached);
         return glb;
     }
 

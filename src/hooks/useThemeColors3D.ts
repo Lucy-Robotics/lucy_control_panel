@@ -11,6 +11,7 @@ export interface ThemeColors3D {
     accent: string;
     active: string;
     ghost: string;
+    ghostOutline: string;
     warning: string;
     text: string;
     surface: string;
@@ -19,7 +20,7 @@ export interface ThemeColors3D {
 
 function readThemeColors(): ThemeColors3D {
     if (typeof document === 'undefined') {
-        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, ghost: TEXT_PRIMARY, warning: STATUS_WARNING, text: TEXT_PRIMARY, surface: MAIN_ELEVATED, border: SECONDARY_COLOR };
+        return { accent: HIGHLIGHT_COLOR, active: TEXT_PRIMARY, ghost: TEXT_PRIMARY, ghostOutline: HIGHLIGHT_COLOR, warning: STATUS_WARNING, text: TEXT_PRIMARY, surface: MAIN_ELEVATED, border: SECONDARY_COLOR };
     }
     const style = getComputedStyle(document.documentElement);
     const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
@@ -27,6 +28,7 @@ function readThemeColors(): ThemeColors3D {
         accent: read('--color-highlight', HIGHLIGHT_COLOR),
         active: read('--color-text-primary', TEXT_PRIMARY),
         ghost: read('--color-ghost', read('--color-text-primary', TEXT_PRIMARY)),
+        ghostOutline: read('--color-ghost-outline', read('--color-highlight', HIGHLIGHT_COLOR)),
         warning: read('--color-status-warning', STATUS_WARNING),
         text: read('--color-text-primary', TEXT_PRIMARY),
         surface: read('--color-main-elevated', MAIN_ELEVATED),

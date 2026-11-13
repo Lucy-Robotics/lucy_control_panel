@@ -69,8 +69,6 @@ import {
 const { Text } = Typography;
 
 const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
-// Dark casing around the white ghost so the intended pose reads on any background
-const GHOST_CASING_COLOR = '#000000';
 const STORAGE_KEY_ORTHOGRAPHIC = 'lucy_3d_orthographic';
 
 const getInitialUnselectedOpacity = (): number => {
@@ -769,7 +767,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 )}
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
-                {isGhostOutlined && ghost && <GhostOutline ghost={ghost} color={GHOST_CASING_COLOR} />}
+                {isGhostOutlined && ghost && <GhostOutline ghost={ghost} color={themeColors.ghostOutline} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={showArrows} />}
 

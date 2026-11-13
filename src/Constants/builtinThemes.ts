@@ -22,6 +22,7 @@ export interface ThemePreset {
         highlight: string;
         text: string;
         ghost?: string;
+        ghostOutline?: string;
     };
     css?: string;
 }

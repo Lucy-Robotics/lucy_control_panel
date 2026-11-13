@@ -43,6 +43,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
     const [colorText, setColorText] = useState(activeColors?.text || TEXT_PRIMARY);
     const [colorTextSecondary, setColorTextSecondary] = useState(TEXT_SECONDARY);
     const [colorGhost, setColorGhost] = useState(activeColors?.ghost || activeColors?.text || TEXT_PRIMARY);
+    const [colorGhostOutline, setColorGhostOutline] = useState(activeColors?.ghostOutline || activeColors?.highlight || HIGHLIGHT_COLOR);
 
     useEffect(() => {
         if (activeColors) {
@@ -51,6 +52,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             setColorHighlight(activeColors.highlight || HIGHLIGHT_COLOR);
             setColorText(activeColors.text || TEXT_PRIMARY);
             setColorGhost(activeColors.ghost || activeColors.text || TEXT_PRIMARY);
+            setColorGhostOutline(activeColors.ghostOutline || activeColors.highlight || HIGHLIGHT_COLOR);
         }
     }, [activeColors]);
 
@@ -62,6 +64,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             text: colorText,
             textSecondary: colorTextSecondary,
             ghost: colorGhost,
+            ghostOutline: colorGhostOutline,
         });
         message.success('Colors applied successfully to control panel');
     };
@@ -73,6 +76,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
         setColorText(TEXT_PRIMARY);
         setColorTextSecondary(TEXT_SECONDARY);
         setColorGhost(TEXT_PRIMARY);
+        setColorGhostOutline(HIGHLIGHT_COLOR);
         onApplyColors({
             main: MAIN_COLOR,
             secondary: SECONDARY_COLOR,
@@ -80,6 +84,7 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             text: TEXT_PRIMARY,
             textSecondary: TEXT_SECONDARY,
             ghost: TEXT_PRIMARY,
+            ghostOutline: HIGHLIGHT_COLOR,
         });
         message.success('Colors reset to default Lucy theme');
     };
@@ -119,6 +124,13 @@ export const QuickColorsTab: React.FC<QuickColorsTabProps> = ({
             value: colorGhost,
             fallback: TEXT_PRIMARY,
             setter: setColorGhost,
+        },
+        {
+            title: 'GHOST OUTLINE',
+            subtitle: 'Outline around the ghost so it stands out from the background',
+            value: colorGhostOutline,
+            fallback: HIGHLIGHT_COLOR,
+            setter: setColorGhostOutline,
         },
     ];
 

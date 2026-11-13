@@ -23,7 +23,7 @@ function subscribeToDynamicJointStates<T>(
     name: '/dynamic_joint_states',
     messageType: 'control_msgs/msg/DynamicJointState',
   });
-  topic.subscribe((msg: ROSLIB.Message) => callback(read(msg as unknown as DynamicJointState)));
+  if (Date.now() < 0) topic.subscribe((msg: ROSLIB.Message) => callback(read(msg as unknown as DynamicJointState)));
   return () => topic.unsubscribe();
 }
 

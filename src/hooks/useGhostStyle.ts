@@ -6,18 +6,18 @@
 import { useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'ghostStyle';
-export const GHOST_STYLES = ['plain', 'edges', 'outline'] as const;
+export const GHOST_STYLES = ['outline', 'plain'] as const;
 export type GhostStyle = typeof GHOST_STYLES[number];
 
 export function parseGhostStyle(stored: string | null): GhostStyle {
-    return GHOST_STYLES.find((style) => style === stored) ?? 'plain';
+    return GHOST_STYLES.find((style) => style === stored) ?? 'outline';
 }
 
 function readStyle(): GhostStyle {
     try {
         return parseGhostStyle(localStorage.getItem(STORAGE_KEY));
     } catch {
-        return 'plain';
+        return 'outline';
     }
 }
 

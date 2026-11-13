@@ -26,7 +26,6 @@ import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
 import { GhostStyleSelector } from '../Components/GhostStyleSelector';
 import { GHOST_OUTLINE_RENDER_PRIORITY, GhostOutline } from '../Components/GhostOutline';
 import { useGhostStyle } from '../hooks/useGhostStyle';
-import { attachGhostEdges } from '../Utils/ghostEdges';
 import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
@@ -530,7 +529,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const ghostStyle = useGhostStyle();
     const isGhostOutlined = Boolean(ghost && showGhost && ghostStyle === 'outline');
 
-    useEffect(() => (ghost && ghostStyle === 'edges' ? attachGhostEdges(ghost, GHOST_CASING_COLOR) : undefined), [ghost, ghostStyle]);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {

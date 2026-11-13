@@ -94,7 +94,7 @@ const MOUSE_HINTS = [
     'click cube · snap view',
 ];
 
-const savedCamera: { position: Vec3; target: Vec3 } = {
+const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     position: [...DEFAULT_CAMERA.position],
     target: [...DEFAULT_CAMERA.target],
 };
@@ -303,7 +303,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
     selectedPartName,
     controlsRef,
 }) => {
-    const camera = useThree(s => s.camera);
+    const get = useThree(s => s.get);
     const orbitControls = useThree(s => s.controls);
     const viewportHeight = useThree(s => s.size.height);
     const startZoomRef = useRef<number>(1);
@@ -355,6 +355,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         lastWorldCenterRef.current.copy(worldCenter);
 
         const controls = controlsRef.current;
+        const camera = get().camera;
         if (controls) {
             startTargetRef.current.copy(controls.target);
             startCamPosRef.current.copy(camera.position);
@@ -381,9 +382,9 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         }
         // Resizing must not re-trigger the framing transition
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [robot, selectedPartName, camera, controlsRef]);
+    }, [robot, selectedPartName, get, controlsRef]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ camera }, delta) => {
         const controls = controlsRef.current;
         if (!controls || !selectedPartName || !robot) return;
 
@@ -454,7 +455,9 @@ const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl 
         const dir = offset.lengthSq() > 1e-12 ? offset.normalize() : new THREE.Vector3(0, 0, 1);
 
         if (camera instanceof THREE.OrthographicCamera) {
-            camera.zoom = zoomForDistance(distance, viewportHeight);
+            camera.zoom = !prev && savedCamera.zoom !== undefined
+                ? savedCamera.zoom
+                : zoomForDistance(distance, viewportHeight);
             camera.position.copy(target).addScaledVector(dir, distance);
         } else {
             const perspectiveDistance = prev instanceof THREE.OrthographicCamera
@@ -682,6 +685,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         if (!controls) { return; }
         savedCamera.position = controls.object.position.toArray() as Vec3;
         savedCamera.target = controls.target.toArray() as Vec3;
+        savedCamera.zoom = controls.object instanceof THREE.OrthographicCamera ? controls.object.zoom : undefined;
     };
 
     const handlePartSelect = (linkName: string) => {

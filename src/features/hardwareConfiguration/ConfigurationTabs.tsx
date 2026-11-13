@@ -10,6 +10,9 @@ import { HeaderHeightContext } from '../../contexts/HeaderHeightContext.ts';
 import './configurationTabs.css';
 import { HardwareConfigHandler } from '../../Services/ros/handlers/HardwareConfig.handler.ts';
 import { RosBridgeService } from '../../Services/ros/ros.service.ts';
+import { useActiveHardwareRos } from '../../contexts/ActiveHardwareRosContext.tsx';
+import { calibrationTeaser } from './calibration/calibrationTeaser.ts';
+import { CalibrationTeaserPage } from './calibration/CalibrationTeaserPage.tsx';
 import { CalibrationWizard } from './calibration/CalibrationWizard.tsx';
 import { useCalibrationSession } from './calibration/useCalibrationSession.ts';
 import ConfigurationPage from './ConfigurationPage.tsx';
@@ -31,15 +34,19 @@ function useRobotPackage(): string {
     return robotPackage;
 }
 
-/** Robots with a calibration profile get the wizard first; the others see only the editor. */
+/** The Calibrate tab leads: the wizard on real hardware, the teaser page otherwise. */
 const ConfigurationTabs = () => {
     const robotPackage = useRobotPackage();
     const session = useCalibrationSession(robotPackage);
     const [tab, setTab] = useState('calibrate');
     const headerHeight = useContext(HeaderHeightContext);
     const screenPadding = getScreenPadding(Grid.useBreakpoint());
+    const { servoControlAvailable } = useActiveHardwareRos();
 
-    if (!session.supported) return <ConfigurationPage />;
+    if (session.supported === null) return <ConfigurationPage />;
+
+    const teaser = calibrationTeaser(robotPackage, session.supported, !servoControlAvailable);
+    const wizard = <CalibrationWizard session={session} />;
 
     return (
         <Tabs
@@ -54,9 +61,13 @@ const ConfigurationTabs = () => {
                 {
                     key: 'calibrate',
                     label: 'Calibrate',
-                    children: <CalibrationWizard session={session} />,
+                    children: teaser ? (
+                        <CalibrationTeaserPage teaser={teaser} onManualConfiguration={() => setTab('yaml')} />
+                    ) : (
+                        wizard
+                    ),
                 },
-                { key: 'yaml', label: 'Hardware YAML', children: <ConfigurationPage /> },
+                { key: 'yaml', label: 'Manual Configuration', children: <ConfigurationPage /> },
             ]}
         />
     );

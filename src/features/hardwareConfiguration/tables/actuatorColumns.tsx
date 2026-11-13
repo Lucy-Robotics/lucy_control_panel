@@ -28,8 +28,6 @@ import {
     appendPassiveUrdfJointIfUnassigned,
     removePassiveUrdfJoint,
 } from '../model/passiveUrdf.ts';
-import type { UrdfJointLimitRad } from '../../../hooks/useUrdfJointLimits.ts';
-import { withUrdfCalibration } from '../model/calibration.ts';
 import { DegAngleInputNumber } from './DegAngleInputNumber.tsx';
 
 export type ActuatorColumnsArgs = {
@@ -40,8 +38,6 @@ export type ActuatorColumnsArgs = {
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
-    /** URDF joint ranges for the per-row FIT (SCALE / OFFSET from the URDF range onto MIN..MAX). */
-    urdfJointLimits: Map<string, UrdfJointLimitRad>;
 };
 
 export function buildActuatorColumns({
@@ -52,7 +48,6 @@ export function buildActuatorColumns({
     patchDoc,
     actuatorIdOnFocusRef,
     deleteActuatorAt,
-    urdfJointLimits,
 }: ActuatorColumnsArgs): ColumnsType<ActuatorTableRecord> {
     return [
         {
@@ -479,48 +474,26 @@ export function buildActuatorColumns({
         {
             title: 'SCALE',
             key: 'scale',
-            width: 140,
+            width: 90,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'scale');
-                const urdf = urdfJointLimits.get(String(row.urdf_joint ?? '').trim());
                 return (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                        <InputNumber
-                            size="small"
-                            step={0.01}
-                            style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                            value={Number(row.scale)}
-                            title={cellTooltipText(serverFieldErrors, ao)}
-                            onChange={(val) => {
-                                if (!yamlDoc || val == null) return;
-                                const next = structuredClone(yamlDoc);
-                                const list = next.actuators as Record<string, unknown>[];
-                                list[index] = { ...list[index], scale: val };
-                                patchDoc(next);
-                            }}
-                        />
-                        {/* Scale is the mechanism's ratio and MIN/MAX only a clamp: fit on request,
-                            never on every travel edit, so tightening a limit keeps the calibration. */}
-                        <Button
-                            size="small"
-                            disabled={!urdf}
-                            title={urdf
-                                ? 'Set SCALE and OFFSET so the joint\'s whole URDF range maps onto MIN..MAX '
-                                  + '(use when MIN/MAX are where the real part reaches the URDF limits)'
-                                : 'URDF joint limits not loaded (connect to the robot)'}
-                            onClick={() => {
-                                if (!yamlDoc) return;
-                                const next = structuredClone(yamlDoc);
-                                const list = next.actuators as Record<string, unknown>[];
-                                list[index] = withUrdfCalibration(list[index], urdfJointLimits);
-                                patchDoc(next);
-                            }}
-                        >
-                            FIT
-                        </Button>
-                    </div>
+                    <InputNumber
+                        size="small"
+                        step={0.01}
+                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
+                        value={Number(row.scale)}
+                        title={cellTooltipText(serverFieldErrors, ao)}
+                        onChange={(val) => {
+                            if (!yamlDoc || val == null) return;
+                            const next = structuredClone(yamlDoc);
+                            const list = next.actuators as Record<string, unknown>[];
+                            list[index] = { ...list[index], scale: val };
+                            patchDoc(next);
+                        }}
+                    />
                 );
             },
         },

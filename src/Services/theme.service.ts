@@ -198,7 +198,7 @@ class ThemeService {
   --color-text-primary: ${colors.text};
   --color-text-secondary: ${textSec};
   --ui-accent-green: ${colors.highlight};
-${colors.ghost ? `  --color-ghost: ${colors.ghost};\n` : ''}}`;
+${colors.ghost ? `  --color-ghost: ${colors.ghost};\n` : ''}${colors.ghostOutline ? `  --color-ghost-outline: ${colors.ghostOutline};\n` : ''}}`;
         this.setCustomCss(css);
     }
 
@@ -219,6 +219,7 @@ ${colors.ghost ? `  --color-ghost: ${colors.ghost};\n` : ''}}`;
                 highlight: extract('--color-highlight', HIGHLIGHT_COLOR),
                 text: extract('--color-text-primary', TEXT_PRIMARY),
                 ghost: extract('--color-ghost', extract('--color-text-primary', TEXT_PRIMARY)),
+                ghostOutline: extract('--color-ghost-outline', extract('--color-highlight', HIGHLIGHT_COLOR)),
             };
         }
         const preset = BUILTIN_THEMES.find(t => t.id === activeId);

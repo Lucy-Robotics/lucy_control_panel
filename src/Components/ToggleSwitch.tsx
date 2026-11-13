@@ -21,7 +21,6 @@ export interface ToggleSwitchProps {
     titlePlacement?: 'above' | 'inline';
     centerTitle?: boolean; /* Only used if placement === 'above'*/
     isOffRed?: boolean;
-    /** Greys the switch out and ignores clicks. */
     disabled?: boolean;
 }
 

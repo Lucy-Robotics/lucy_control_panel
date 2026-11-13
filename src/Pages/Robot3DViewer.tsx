@@ -785,7 +785,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                         partsClickable={effectiveControlOn}
                         actuatedJointNames={actuatedJointNames}
                         overheatedJointNames={motorOverheat?.trippedJoints}
-                        heatMaterial={showHeatMap ? heatMap.material : undefined}
+                        heatMaterial={showHeatMap && efforts.size > 0 ? heatMap.material : undefined}
                         motorTemperatures={showHeatMap ? motorOverheat?.temperatures : undefined}
                     />
                 )}

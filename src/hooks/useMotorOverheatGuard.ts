@@ -31,7 +31,7 @@ export function useMotorOverheatGuard(
     holdsControl: boolean,
     controllers: ControllerJointConfig[] | null,
 ): MotorOverheat {
-    const realTemperatures = useThrottledJointReadings(subscribeToJointTemperatures, isConnected, TEMPERATURE_HZ);
+    const realTemperatures = useThrottledJointReadings(subscribeToJointTemperatures, false, TEMPERATURE_HZ);
     const mockTemperatures = useOverheatMock();
     const temperatures = useMemo(() => withOverheatMock(realTemperatures, mockTemperatures), [realTemperatures, mockTemperatures]);
     const [state, setState] = useState(NO_OVERHEAT);

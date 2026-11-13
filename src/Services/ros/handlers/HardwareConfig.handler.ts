@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * ROS transport only: hardware YAML validation and URDF cross-checks run on the
  * `lucy_config_services` node (`config/get`, `config/save`). The frontend displays
@@ -70,6 +75,7 @@ function normalizeGetConfig(raw: any): GetConfigResponse {
         flashed_config_name:
             typeof raw?.flashed_config_name === 'string' ? raw.flashed_config_name : '',
         flashed_at: typeof raw?.flashed_at === 'string' ? raw.flashed_at : '',
+        motors_yaml: typeof raw?.motors_yaml === 'string' ? raw.motors_yaml : '',
     };
 }
 

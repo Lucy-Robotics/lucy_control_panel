@@ -1,12 +1,15 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React from 'react';
 import { Button, Typography } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook.ts';
 import {
-    UI_ACCENT_GREEN,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SUBTLE,
-} from '../Constants/uiTheme.ts';
+    fonts,
+} from '../Constants/theme.ts';
 import './LucyLoader.css';
 
 const { Text } = Typography;
@@ -24,6 +27,7 @@ export interface LucyLoaderProps {
     compact?: boolean;
     /** Show the spinner animation. */
     showSpinner?: boolean;
+    children?: React.ReactNode;
 }
 
 /**
@@ -37,6 +41,7 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
     detail,
     compact = false,
     showSpinner = true,
+    children,
 }) => {
     const { connect, currentUrl, connectionStatus } = useRosConnection();
 
@@ -45,11 +50,12 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
             {showSpinner && <div className="lucy-loader-spinner" />}
             <div className="lucy-loader-text">
                 <Text
-                    strong
                     style={{
-                        color: UI_TEXT_PRIMARY_ON_DARK,
-                        fontSize: 18,
-                        letterSpacing: 4,
+                        color: 'var(--color-text-primary)',
+                        fontFamily: fonts.graphical,
+                        fontSize: 32,
+                        fontWeight: 700,
+                        letterSpacing: 6,
                     }}
                 >
                     {title}
@@ -57,23 +63,27 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                 {label ? (
                     <Text
                         style={{
-                            color: UI_ACCENT_GREEN,
+                            color: 'var(--color-highlight)',
+                            fontFamily: fonts.mono,
                             fontSize: 13,
+                            fontWeight: 'bold',
                             letterSpacing: 2,
-                            marginTop: 4,
+                            marginTop: 8,
                         }}
                     >
-                        {label}
+                        {`> ${label}`}
                     </Text>
                 ) : null}
                 {detail ? (
                     <Text
                         style={{
-                            color: UI_TEXT_SUBTLE,
+                            color: 'var(--color-text-secondary)',
+                            fontFamily: fonts.mono,
                             fontSize: 12,
-                            marginTop: 6,
-                            maxWidth: 360,
+                            marginTop: 8,
+                            maxWidth: 420,
                             textAlign: 'center',
+                            lineHeight: 1.5,
                         }}
                     >
                         {detail}
@@ -81,14 +91,24 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                 ) : null}
                 {connectButton && (
                     <Button
+                        type="primary"
                         icon={<ThunderboltOutlined />}
                         onClick={() => connect(currentUrl)}
                         loading={connectionStatus === 'connecting'}
-                        style={{ marginTop: 24 }}
+                        style={{
+                            marginTop: 24,
+                            backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                            color: 'var(--color-text-on-highlight)',
+                            fontWeight: 'bold',
+                            borderRadius: 0,
+                            boxShadow: 'none',
+                        }}
                     >
-                        Connect
+                        CONNECT
                     </Button>
                 )}
+                {children}
             </div>
         </div>
     );

@@ -1,12 +1,20 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useContext } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
+import { RosConnectionAlert } from '../../Components/RosConnectionAlert.tsx';
+import { CustomTitle } from '../../Components/CustomTitle.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../../contexts/HeaderHeightContext.ts';
+import { useRosConnection } from '../../hooks/useRosConnection.hook.ts';
 import './configuration.switch.css';
 import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWorkflowModal.tsx';
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
@@ -16,6 +24,7 @@ const { useBreakpoint } = Grid;
 
 const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
+    const { isConnecting } = useRosConnection();
     const editorLocked = hw.editorLocked;
     // The page header is `position: sticky; top: 0`, so the actuator table header has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
@@ -149,14 +158,24 @@ const ConfigurationPage = () => {
                 </Space>
             </div>
 
+            <RosConnectionAlert message="Connect to the ROS bridge to load, save or activate a robot configuration." />
+
             {!hw.yamlDoc ? (
                 <LucyLoader
-                    label={hw.loading ? 'LOADING ROBOT CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    label={
+                        hw.loading
+                            ? 'LOADING ROBOT CONFIGURATION'
+                            : isConnecting
+                              ? 'CONNECTING TO ROS BRIDGE'
+                              : 'WAITING FOR ROS BRIDGE'
+                    }
                     connectButton={!hw.loading}
                     detail={
                         hw.loading
                             ? 'Fetching the active hardware preset and joint catalog.'
-                            : 'Use Quick Connect in the header — the configuration loads automatically once linked.'
+                            : isConnecting
+                              ? 'The configuration loads automatically once linked.'
+                              : 'Use Quick Connect in the header — the configuration loads automatically once linked.'
                     }
                 />
             ) : null}
@@ -231,11 +250,15 @@ const ConfigurationPage = () => {
                 workflowRunning={hw.workflowRunning}
                 workflowSteps={hw.workflowSteps}
                 workflowOverallPercent={hw.workflowOverallPercent}
-                workflowDetailLine={hw.workflowDetailLine}
                 workflowLastRunSucceeded={hw.workflowLastRunSucceeded}
                 workflowLastRunDiff={hw.workflowLastRunDiff}
                 gazeboRunning={hw.gazeboRunning}
                 canRun={hw.modalCanRun && hw.isConnected}
+                runBlockedReason={hw.modalRunBlockedReason}
+                pendingEnableConfirm={hw.pendingEnableConfirm}
+                runPreparing={hw.runPreparing}
+                onConfirmPendingEnable={hw.confirmPendingEnableAndRun}
+                onCancelPendingEnable={hw.cancelPendingEnableConfirm}
                 generatedFileNames={hw.generatedFileNames}
             />
 
@@ -247,12 +270,16 @@ const ConfigurationPage = () => {
                             : undefined
                     }
                 >
-                    <Card title="BOARDS (READ-ONLY)" size="small" style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}>
+                    <Card
+                        title={<CustomTitle title="BOARDS" subtitle="READ-ONLY" level={4} />}
+                        size="small"
+                        style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
+                    >
                         <Table size="small" dataSource={hw.boardRows} columns={hw.boardColumns} pagination={false} scroll={{ x: 'max-content' }} />
                     </Card>
 
                     <Card
-                        title="ACTUATORS"
+                        title={<CustomTitle title="ACTUATORS" subtitle="CALIBRATION" level={4} />}
                         size="small"
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
                         extra={
@@ -307,7 +334,7 @@ const ConfigurationPage = () => {
                     </Card>
 
                     <Card
-                        title="FINGER PRESSURE SENSORS"
+                        title={<CustomTitle title="FINGER PRESSURE SENSORS" subtitle="PIN MAPPING" level={4} />}
                         size="small"
                         style={UI_CARD_SURFACE_STYLE}
                         extra={

@@ -1,11 +1,22 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
-import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
-import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
 
 const UPDATE_HZ_S = 5;
+
+/** Claw control reads a single pinch; finger control tracks both hands. */
+function maxNumHandsFor(mode: ControlMode): number {
+    return mode === ControlMode.Claw ? 1 : 2;
+}
+
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -21,14 +32,15 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     onAspectRatioChange
 }) => {
     type Point3D = { x: number; y: number; z: number };
-    type Finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string};
-    type Finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
-    type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
-    type FingerIndex = { name: string, idx: Finger3DIndex }
+    type Finger3D = { tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointNames: string[] };
+    type Finger3DSample = { point1: Point3D, point2: Point3D, point3: Point3D };
+    type Finger3DIndex = { TIP: number, DIP: number, PIP: number, MCP: number }
+    // i1 (inmoov_urdf) and i2 (inmoov_i2_urdf) joint per finger; only the loaded robot has one, the other is a no-op.
+    type FingerIndex = { names: string[], idx: Finger3DIndex }
 
     const Fingers: Array<FingerIndex> = [
         {
-            name: "i01.side.thumb_link_joint", idx: {
+            names: ["i01.side.thumb_link_joint", "i02_side_ThumbMid_joint"], idx: {
                 TIP: 4,
                 DIP: 3,
                 PIP: 2,
@@ -36,7 +48,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.index_link_joint", idx: {
+            names: ["i01.side.index_link_joint", "i02_side_indexPhal_joint"], idx: {
                 TIP: 8,
                 DIP: 7,
                 PIP: 6,
@@ -44,7 +56,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.majeure_link_joint", idx: {
+            names: ["i01.side.majeure_link_joint", "i02_side_majeurePhal_joint"], idx: {
                 TIP: 12,
                 DIP: 11,
                 PIP: 10,
@@ -52,7 +64,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.ringFinger_link_joint", idx: {
+            names: ["i01.side.ringFinger_link_joint", "i02_side_ringFingerPhal_joint"], idx: {
                 TIP: 16,
                 DIP: 15,
                 PIP: 14,
@@ -60,7 +72,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         },
         {
-            name: "i01.side.pinky_link_joint", idx: {
+            names: ["i01.side.pinky_link_joint", "i02_side_pinkyPhal_joint"], idx: {
                 TIP: 20,
                 DIP: 19,
                 PIP: 18,
@@ -69,12 +81,26 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         },
     ]
 
+    const videoConstraints = useMemo(
+        () => (width || height ? { width, height } : undefined),
+        [width, height]
+    );
+
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const lastProcessTimeRef = useRef<number>(0);
     const reportedRatioRef = useRef<number | null>(null);
     const aspectRatioCallbackRef = useRef(onAspectRatioChange);
     aspectRatioCallbackRef.current = onAspectRatioChange;
+    const handsRef = useRef<Hands | null>(null);
+
+    const { serverRobotPackage } = useActiveHardwareRos();
+    const controlMode = useMemo(
+        () => controlModeForRobotPackage(serverRobotPackage),
+        [serverRobotPackage],
+    );
+    const controlModeRef = useRef<ControlMode>(controlMode);
+    controlModeRef.current = controlMode;
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) return;
@@ -123,9 +149,14 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             for (let i = 0; i < 5; i++) {
 
                 const label: string =
-                handedness[handIndex].label === "Left"
-                    ? "leftHand"
-                    : "rightHand";
+                    handedness[handIndex].label === "Left"
+                        ? "leftHand"
+                        : "rightHand";
+
+                if (controlModeRef.current === ControlMode.Claw) {
+                    processClaw(hand);
+                    return;
+                }
 
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
@@ -133,23 +164,61 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", label)
+                    jointNames: Fingers[i].names.map((name) => name.replace("side", label))
                 });
             }
         });
     };
 
+    function processClaw(hand: NormalizedLandmark[]) {
+        const thumbTip = hand[4];
+        const fingerTips = [hand[8], hand[12], hand[16], hand[20]]; // index, middle, ring, pinky
+
+        const avgTip: Point3D = {
+            x: fingerTips.reduce((sum, p) => sum + p.x, 0) / fingerTips.length,
+            y: fingerTips.reduce((sum, p) => sum + p.y, 0) / fingerTips.length,
+            z: fingerTips.reduce((sum, p) => sum + p.z, 0) / fingerTips.length,
+        };
+
+        const pinchDistance = distance3D(thumbTip, avgTip);
+
+        // Normalize by hand size (wrist to middle-finger MCP) so pinch detection
+        // doesn't depend on how close the hand is to the camera
+        const handScale = distance3D(hand[0], hand[9]);
+        const normalizedDistance = handScale > 0 ? pinchDistance / handScale : 0;
+
+        const clawOpenness = clawPercentage(normalizedDistance);
+
+        moveRobotIndex(clawOpenness, `Jaw`);
+    }
+
+    function distance3D(a: Point3D, b: Point3D): number {
+        return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
+
+    // Returns 0 (pinched/closed) to 1 (fully open) from a normalized thumb-to-fingers distance
+    function clawPercentage(normalizedDistance: number): number {
+        const pinchedLowerLimit = 0.15; // calibrate: value when thumb touches fingers
+        const openHigherLimit = 0.9;    // calibrate: value when hand is fully spread
+
+        const clamp = (value: number, min: number, max: number): number =>
+            Math.min(Math.max(value, min), max);
+
+        const clamped = clamp(normalizedDistance, pinchedLowerLimit, openHigherLimit);
+        return (clamped - pinchedLowerLimit) / (openHigherLimit - pinchedLowerLimit);
+    }
+
     function processFinger(finger: Finger3D) {
-        const sample1: Finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
-        const sample2: Finger3DSample = {point1: finger.dip, point2: finger.pip, point3: finger.mcp};
-        const sample3: Finger3DSample = {point1: finger.pip, point2: finger.mcp, point3: finger.wrist};
+        const sample1: Finger3DSample = { point1: finger.tip, point2: finger.dip, point3: finger.pip };
+        const sample2: Finger3DSample = { point1: finger.dip, point2: finger.pip, point3: finger.mcp };
+        const sample3: Finger3DSample = { point1: finger.pip, point2: finger.mcp, point3: finger.wrist };
 
         const angle1: number = angleBetweenPoints3D(sample1);
         const angle2: number = angleBetweenPoints3D(sample2);
         const angle3: number = angleBetweenPoints3D(sample3);
         const flex: number = flexingPercentage(angle1, angle2, angle3);
 
-        moveRobotIndex(flex, finger.jointName);
+        finger.jointNames.forEach((name) => moveRobotIndex(flex, name));
     };
 
     // Returns a value between O (fully relaxed) and 1 (fully flexed) using the 3 joint angles in a finger
@@ -179,7 +248,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         // b: Point3D,
         // c: Point3D
         sample: Finger3DSample
-        ): number {
+    ): number {
         // Build vectors "BA" and "BC" for the math formula
         const v1x = sample.point1.x - sample.point2.x;
         const v1y = sample.point1.y - sample.point2.y;
@@ -207,41 +276,70 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     };
 
     useEffect(() => {
+        let cancelled = false;
+        let frameRequest = 0;
+        let lastFrameTime = -1;
+        let pendingSend: Promise<void> = Promise.resolve();
+
         const hands = new Hands({
             locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
-        hands.setOptions(HANDS_MODEL_CONFIG);
+        handsRef.current = hands;
+        hands.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: maxNumHandsFor(controlModeRef.current),
+        });
         hands.onResults(onResults);
 
-        const initCamera = () => {
-            if (!webcamRef.current?.video) { return; }
-            const camera = new Camera(webcamRef.current.video, {
-                onFrame: async () => {
-                    if (!webcamRef.current?.video) { return; }
-                    await hands.send({ image: webcamRef.current.video });
-                },
-                width,
-                height,
+        const pump = () => {
+            if (cancelled) { return; }
+
+            const video = webcamRef.current?.video;
+            const hasNewFrame =
+                video &&
+                video.readyState === 4 &&
+                !video.paused &&
+                video.currentTime !== lastFrameTime;
+
+            if (!hasNewFrame) {
+                frameRequest = requestAnimationFrame(pump);
+                return;
+            }
+
+            lastFrameTime = video.currentTime;
+            pendingSend = hands.send({ image: video }).catch(() => undefined);
+            pendingSend.then(() => {
+                if (!cancelled) { frameRequest = requestAnimationFrame(pump); }
             });
-            camera.start();
         };
 
-        const interval = setInterval(() => {
-            if (webcamRef.current?.video?.readyState === 4) {
-                clearInterval(interval);
-                initCamera();
-            }
-        }, 100);
+        frameRequest = requestAnimationFrame(pump);
 
-        return () => clearInterval(interval);
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(frameRequest);
+            handsRef.current = null;
+            // Let any in-flight send() settle before tearing down the WASM module.
+            pendingSend.then(() => hands.close()).catch(() => undefined);
+        };
 
     }, []);
+
+    // A robot package swap changes how many hands the tracker needs.
+    useEffect(() => {
+        handsRef.current?.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: maxNumHandsFor(controlMode),
+        });
+    }, [controlMode]);
 
     return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
             <Webcam
                 ref={webcamRef}
+                audio={false}
                 mirrored={true}
+                videoConstraints={videoConstraints}
                 onUserMedia={(m) => { console.log(m) }}
                 onUserMediaError={(e) => { console.error(e) }}
                 style={{

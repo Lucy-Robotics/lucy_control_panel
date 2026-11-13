@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -6,7 +11,7 @@ import {
     ThunderboltOutlined,
     WarningOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, Divider, Progress, Space, Switch, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Progress, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
 import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
@@ -68,7 +73,6 @@ export interface ActivateConfigureWorkflowModalProps {
     workflowRunning: boolean;
     workflowSteps: WorkflowStepSlice[];
     workflowOverallPercent: number;
-    workflowDetailLine: string;
     /** True once the most recent run finished successfully (and no new run started). */
     workflowLastRunSucceeded: boolean;
     /**
@@ -82,6 +86,14 @@ export interface ActivateConfigureWorkflowModalProps {
      */
     gazeboRunning: boolean | null;
     canRun: boolean;
+    /** Human-readable reason when RUN is disabled (empty when canRun). */
+    runBlockedReason?: string;
+    /** Actuators that will newly enable — confirm UI shown inside this modal. */
+    pendingEnableConfirm?: { actuatorId: string; label: string }[] | null;
+    /** True while RUN is checking the enable-diff before start / confirm. */
+    runPreparing?: boolean;
+    onConfirmPendingEnable?: () => void | Promise<void>;
+    onCancelPendingEnable?: () => void;
     /**
      * Generated-artifact filenames resolved from the active hardware doc
      * (`generated_files` in the YAML). Keeps the regenerate copy in sync with
@@ -112,13 +124,20 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         workflowRunning,
         workflowSteps,
         workflowOverallPercent,
-        workflowDetailLine,
         workflowLastRunSucceeded,
         workflowLastRunDiff,
         gazeboRunning,
         canRun,
+        runBlockedReason = '',
+        pendingEnableConfirm = null,
+        runPreparing = false,
+        onConfirmPendingEnable,
+        onCancelPendingEnable,
         generatedFileNames,
     } = props;
+
+    const awaitingEnableConfirm = Boolean(pendingEnableConfirm && pendingEnableConfirm.length > 0);
+    const busy = workflowRunning || runPreparing;
 
     // A pipeline run always rebuilds the model the running Gazebo loaded, so if
     // Gazebo is up after a successful run it must be restarted regardless of diff.
@@ -131,7 +150,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         <MovableModal
             modalName="ACTIVATE & CONFIGURE"
             isVisible={open}
-            onClose={workflowRunning ? () => { } : onClose}
+            onClose={busy ? () => { } : onClose}
             centered
             initialSize={{ w: 720, h: 600 }}
             header={<ThunderboltOutlined style={{ color: UI_ACCENT_GREEN }} />}
@@ -142,12 +161,13 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                             ABORT
                         </Button>
                     ) : null}
-                    {!workflowRunning && workflowLastRunSucceeded ? (
+                    {!workflowRunning && workflowLastRunSucceeded && !awaitingEnableConfirm ? (
                         <>
                             <Button
                                 icon={<ThunderboltOutlined />}
                                 onClick={() => void onRun()}
-                                disabled={!canRun}
+                                disabled={!canRun || runPreparing}
+                                loading={runPreparing}
                             >
                                 RUN AGAIN
                             </Button>
@@ -159,21 +179,41 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                                 DONE
                             </Button>
                         </>
+                    ) : awaitingEnableConfirm ? (
+                        <>
+                            <Button onClick={onCancelPendingEnable} disabled={workflowRunning}>
+                                CANCEL
+                            </Button>
+                            <Button
+                                type="primary"
+                                danger
+                                icon={<ThunderboltOutlined />}
+                                onClick={() => void onConfirmPendingEnable?.()}
+                                style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                            >
+                                ENABLE & RUN
+                            </Button>
+                        </>
                     ) : (
                         <>
-                            <Button onClick={onClose} disabled={workflowRunning}>
+                            <Button onClick={onClose} disabled={busy}>
                                 CANCEL
                             </Button>
                             {!workflowRunning ? (
-                                <Button
-                                    type="primary"
-                                    icon={<ThunderboltOutlined />}
-                                    onClick={() => void onRun()}
-                                    disabled={!canRun}
-                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                                >
-                                    RUN
-                                </Button>
+                                <Tooltip title={!canRun && runBlockedReason ? runBlockedReason : undefined}>
+                                    <span style={{ display: 'inline-block' }}>
+                                        <Button
+                                            type="primary"
+                                            icon={<ThunderboltOutlined />}
+                                            onClick={() => void onRun()}
+                                            disabled={!canRun || runPreparing}
+                                            loading={runPreparing}
+                                            style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                        >
+                                            RUN
+                                        </Button>
+                                    </span>
+                                </Tooltip>
                             ) : null}
                         </>
                     )}
@@ -181,6 +221,28 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
             }
         >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                {awaitingEnableConfirm ? (
+                    <Alert
+                        type="error"
+                        showIcon
+                        icon={<WarningOutlined />}
+                        message="ENABLE ACTUATORS ON REAL HARDWARE?"
+                        description={
+                            <div>
+                                <p style={{ marginTop: 0 }}>
+                                    Activating this configuration will start driving the following
+                                    actuator{pendingEnableConfirm!.length === 1 ? '' : 's'}. Confirm
+                                    power, clearance, and limits before continuing.
+                                </p>
+                                <ul style={{ maxHeight: 160, overflow: 'auto', paddingLeft: 18, marginBottom: 0 }}>
+                                    {pendingEnableConfirm!.map((a) => (
+                                        <li key={a.actuatorId}>{a.label}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        }
+                    />
+                ) : null}
                 {serverActiveConfigName && serverActiveConfigName !== selectedTargetConfigName ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Current active on system: <Text code>{serverActiveConfigName}</Text>
@@ -216,52 +278,48 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                 </div>
 
                 {!activateModalSimulationOnly ? (
-                <>
-                <div>
-                    <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
-                        BOARDS
-                        {pipelineBoardOptions.length > 0 ? (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {' '}
-                                — none selected → ACTIVATE ONLY (no build / flash)
+                    <>
+                        <div>
+                            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
+                                BOARDS
+                                {pipelineBoardOptions.length > 0 ? (
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        {' '}
+                                        — none selected → ACTIVATE ONLY (no build / flash)
+                                    </Text>
+                                ) : null}
                             </Text>
-                        ) : null}
-                    </Text>
-                    {pipelineBoardOptions.length === 0 ? (
-                        <Text type="secondary">No boards in the loaded YAML — system mapping applies.</Text>
-                    ) : (
-                        <Checkbox.Group
-                            className="hardware-config-ant-checkbox-group"
-                            options={pipelineBoardOptions}
-                            value={activateModalBoards}
-                            onChange={(vals) => onActivateModalBoardsChange(vals.map(String))}
-                            disabled={workflowRunning}
-                        />
-                    )}
-                </div>
-                <div>
-                    <Switch
-                        className="hardware-config-ant-switch"
-                        checked={activateModalActivateOnly}
-                        onChange={onActivateModalActivateOnlyChange}
-                        disabled={workflowRunning}
-                    />
-                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
-                </div>
-                <div>
-                    <Switch
-                        className="hardware-config-ant-switch"
-                        checked={activateModalBuildOnly}
-                        onChange={onActivateModalBuildOnlyChange}
-                        disabled={workflowRunning}
-                    />
-                    <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
-                </div>
-                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                    ros2_control and controllers are regenerated before firmware build (same as simulation,
-                    plus BUILD / FLASH when selected).
-                </Text>
-                </>
+                            {pipelineBoardOptions.length === 0 ? (
+                                <Text type="secondary">No boards in the loaded YAML — system mapping applies.</Text>
+                            ) : (
+                                <Checkbox.Group
+                                    className="hardware-config-ant-checkbox-group"
+                                    options={pipelineBoardOptions}
+                                    value={activateModalBoards}
+                                    onChange={(vals) => onActivateModalBoardsChange(vals.map(String))}
+                                    disabled={workflowRunning}
+                                />
+                            )}
+                        </div>
+                        <div>
+                            <Switch
+                                className="hardware-config-ant-switch"
+                                checked={activateModalActivateOnly}
+                                onChange={onActivateModalActivateOnlyChange}
+                                disabled={workflowRunning}
+                            />
+                            <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
+                        </div>
+                        <div>
+                            <Switch
+                                className="hardware-config-ant-switch"
+                                checked={activateModalBuildOnly}
+                                onChange={onActivateModalBuildOnlyChange}
+                                disabled={workflowRunning}
+                            />
+                            <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
+                        </div>
+                    </>
                 ) : null}
 
                 <Card size="small" style={{ ...UI_CARD_SURFACE_STYLE }}>
@@ -276,6 +334,9 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     </Text>
                     <Text style={{ color: UI_ACCENT_GREEN }}>{serverRobotPackage || '—'}</Text>
                 </Card>
+                {!canRun && runBlockedReason && !workflowRunning ? (
+                    <Alert type="warning" showIcon message={runBlockedReason} />
+                ) : null}
 
                 <Divider style={{ margin: '8px 0' }} />
 
@@ -305,44 +366,47 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                             .map((id) => workflowSteps.find((s) => s.id === id))
                             .filter((s): s is NonNullable<typeof s> => s != null)
                             .map((s) => (
-                            <Card
-                                key={s.id}
-                                size="small"
-                                style={{
-                                    ...UI_CARD_SURFACE_STYLE,
-                                    borderColor: s.status === 'running' ? UI_ACCENT_GREEN : UI_BORDER_MUTED,
-                                    opacity: s.status === 'pending' ? 0.75 : 1,
-                                }}
-                            >
-                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                    <Space size={6}>
-                                        {stepIcon(s.status)}
-                                        <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 12 }}>
-                                            {s.title}
-                                        </Text>
+                                <Card
+                                    key={s.id}
+                                    size="small"
+                                    style={{
+                                        ...UI_CARD_SURFACE_STYLE,
+                                        borderColor: s.status === 'running' ? UI_ACCENT_GREEN : UI_BORDER_MUTED,
+                                        opacity: s.status === 'pending' ? 0.75 : 1,
+                                    }}
+                                >
+                                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                        <Space size={6}>
+                                            {stepIcon(s.status)}
+                                            <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 12 }}>
+                                                {s.title}
+                                            </Text>
+                                        </Space>
+                                        {s.status === 'running' ? (
+                                            <Progress
+                                                percent={Math.round(s.fraction * 100)}
+                                                size="small"
+                                                showInfo={false}
+                                                strokeColor={UI_WARNING}
+                                            />
+                                        ) : null}
+                                        {s.detail ? (
+                                            <Text
+                                                type={s.status === 'error' ? 'danger' : 'secondary'}
+                                                style={{
+                                                    fontSize: 10,
+                                                    lineHeight: 1.3,
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordBreak: 'break-word',
+                                                }}
+                                            >
+                                                {s.detail}
+                                            </Text>
+                                        ) : null}
                                     </Space>
-                                    {s.status === 'running' ? (
-                                        <Progress
-                                            percent={Math.round(s.fraction * 100)}
-                                            size="small"
-                                            showInfo={false}
-                                            strokeColor={UI_WARNING}
-                                        />
-                                    ) : null}
-                                    {s.detail ? (
-                                        <Text type="secondary" style={{ fontSize: 10, lineHeight: 1.3 }}>
-                                            {s.detail}
-                                        </Text>
-                                    ) : null}
-                                </Space>
-                            </Card>
-                        ))}
+                                </Card>
+                            ))}
                     </div>
-                    {workflowDetailLine ? (
-                        <Text type="secondary" style={{ display: 'block', marginTop: 10, fontSize: 12 }}>
-                            {workflowDetailLine}
-                        </Text>
-                    ) : null}
                 </div>
 
                 {showGazeboRestartPrompt ? (
@@ -419,7 +483,7 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
                         {diff.actuatorsModified.map((a) => (
                             <div key={`a~${a.actuatorId}`}>
                                 <Text type="warning">~ actuator {a.label}</Text>
-                                <span style={{ color: '#999' }}>
+                                <span style={{ color: 'var(--color-text-secondary)' }}>
                                     {' '}
                                     {a.changes
                                         .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)

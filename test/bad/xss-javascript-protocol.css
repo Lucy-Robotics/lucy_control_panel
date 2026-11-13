@@ -1,0 +1,19 @@
+/*
+ * Malicious Test CSS: XSS via JavaScript Protocol
+ * Attack Vector: Executable javascript: pseudo-protocol in url()
+ * Expected Result: BLOCKED (Critical Severity: xss-script-protocol)
+ */
+
+:root {
+  --color-main: #141414;
+}
+
+/* Direct XSS via background-image url() */
+.ant-card {
+  background-image: url("javascript:alert('XSS_PAYLOAD_EXECUTED')");
+}
+
+/* Secondary payload with single quotes and spaces */
+.telemetry-panel {
+  list-style-image: url(' javascript:alert(document.domain) ');
+}

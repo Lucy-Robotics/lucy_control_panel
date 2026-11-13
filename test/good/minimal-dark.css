@@ -1,0 +1,26 @@
+/*
+ * Lucy Control Panel - Minimal Dark Theme
+ * Security Status: VALID / SAFE
+ * Purpose: Clean, minimal slate theme using standard CSS variables and simple rules
+ */
+
+:root {
+  --color-main: #121214;
+  --color-main-surface: #18181b;
+  --color-main-elevated: #27272a;
+  --color-secondary: #3f3f46;
+  --color-secondary-border: #52525b;
+  --color-highlight: #38bdf8;
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+}
+
+body {
+  background-color: var(--color-main);
+  color: var(--color-text-primary);
+}
+
+.panel-header {
+  border-bottom: 1px solid var(--color-secondary);
+  padding: 8px 12px;
+}

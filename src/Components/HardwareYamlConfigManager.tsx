@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useCallback, useState } from 'react';
 import {
     Button,
@@ -359,6 +364,8 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                                                       cancelText="CANCEL"
                                                       okButtonProps={{ danger: true }}
                                                       onConfirm={() => void deleteConfigByName(name)}
+                                                      getPopupContainer={() => document.body}
+                                                      zIndex={1200}
                                                   >
                                                       <Button
                                                           type="text"

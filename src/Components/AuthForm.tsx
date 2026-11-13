@@ -1,25 +1,18 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import CryptoJS from 'crypto-js';
 import {
-    UI_ACCENT_GREEN,
-    UI_ACCENT_TEXT_SHADOW,
-    UI_AUTH_ALERT_SURFACE,
-    UI_BORDER_DIM,
-    UI_BORDER_MUTED,
-    UI_CHROME_SURFACE,
-    UI_ERROR,
-    UI_GRADIENT_AUTH_PAGE,
-    UI_PANEL_BG,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
-    UI_TEXT_SUBTLE,
-    uiAccentRgba,
-} from '../Constants/uiTheme.ts';
+    fonts,
+} from '../Constants/theme.ts';
+import { CustomTitle } from './CustomTitle.tsx';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface AuthFormProps {
     onLogin: (username: string) => void;
@@ -70,38 +63,39 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
     };
 
     return (
-        <div style={{
+        <div className="lucy-grid-bg" style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '100vh',
-            background: UI_GRADIENT_AUTH_PAGE,
-            padding: '20px'
+            padding: '30px'
         }}>
             <Card
+                className="hud-corners"
                 style={{
                     width: '100%',
-                    maxWidth: 400,
-                    backgroundColor: UI_PANEL_BG,
-                    border: `1px solid ${UI_BORDER_MUTED}`,
-                    borderRadius: 12,
-                    boxShadow: `0 8px 32px ${uiAccentRgba(0.1)}`
+                    maxWidth: 440,
                 }}
-                bodyStyle={{ padding: '40px 32px' }}
+                styles={{ body: { padding: '40px 32px' } }}
             >
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <Title
-                        level={2}
-                        style={{
-                            color: UI_ACCENT_GREEN,
-                            fontFamily: 'monospace',
-                            textShadow: UI_ACCENT_TEXT_SHADOW,
-                            margin: 0
-                        }}
-                    >
-                        ▲ LUCY CONTROL PANEL
-                    </Title>
-                    <Text style={{ color: UI_TEXT_SUBTLE, fontFamily: 'monospace', fontSize: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+                        <CustomTitle
+                            title="LUCY"
+                            separator="//"
+                            subtitle="CONTROL PANEL"
+                            level="graphical"
+                            align="center"
+                            style={{ fontSize: '28px' }}
+                        />
+                    </div>
+                    <Text style={{
+                        color: 'var(--color-text-secondary)',
+                        fontFamily: fonts.mono,
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                    }}>
                         Authentication Required
                     </Text>
                 </div>
@@ -110,7 +104,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     <Alert
                         message={error}
                         type="error"
-                        style={{ marginBottom: 24, backgroundColor: UI_AUTH_ALERT_SURFACE, borderColor: UI_ERROR }}
+                        style={{
+                            marginBottom: 24,
+                            backgroundColor: 'color-mix(in srgb, var(--color-status-error) 15%, transparent)',
+                            borderColor: 'var(--color-status-error)',
+                            borderRadius: 0,
+                        }}
                     />
                 )}
 
@@ -129,14 +128,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         ]}
                     >
                         <Input
-                            prefix={<UserOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                            prefix={<UserOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Username"
-                            style={{
-                                backgroundColor: UI_CHROME_SURFACE,
-                                borderColor: UI_BORDER_MUTED,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                fontFamily: 'monospace'
-                            }}
                         />
                     </Form.Item>
 
@@ -148,14 +141,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                         ]}
                     >
                         <Input.Password
-                            prefix={<LockOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                            prefix={<LockOutlined style={{ color: 'var(--color-highlight)' }} />}
                             placeholder="Password"
-                            style={{
-                                backgroundColor: UI_CHROME_SURFACE,
-                                borderColor: UI_BORDER_MUTED,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                fontFamily: 'monospace'
-                            }}
                         />
                     </Form.Item>
 
@@ -167,22 +154,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                             block
                             style={{
                                 height: 48,
-                                backgroundColor: UI_ACCENT_GREEN,
-                                borderColor: UI_ACCENT_GREEN,
-                                color: UI_TEXT_ON_ACCENT,
-                                fontFamily: 'monospace',
+                                backgroundColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                borderColor: 'var(--color-highlight-fill, var(--color-highlight))',
+                                color: 'var(--color-text-on-highlight)',
+                                fontFamily: fonts.mono,
                                 fontSize: 16,
                                 fontWeight: 'bold',
-                                boxShadow: `0 0 20px ${uiAccentRgba(0.3)}`,
-                                transition: 'all 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.boxShadow = `0 0 30px ${uiAccentRgba(0.5)}`;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.boxShadow = `0 0 20px ${uiAccentRgba(0.3)}`;
-                                e.currentTarget.style.transform = 'translateY(0)';
+                                borderRadius: 0,
+                                boxShadow: 'none',
+                                transition: 'all 0.25s ease'
                             }}
                         >
                             {loading ? 'AUTHENTICATING...' : 'LOGIN'}
@@ -190,19 +170,19 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     </Form.Item>
                 </Form>
 
-                <div style={{
+                <div className="chamfer-box chamfer-box-sm" style={{
                     textAlign: 'center',
                     marginTop: 24,
-                    padding: '16px',
-                    backgroundColor: UI_CHROME_SURFACE,
-                    borderRadius: 8,
-                    border: `1px solid ${UI_BORDER_DIM}`
-                }}>
-                    <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontFamily: 'monospace', fontSize: 12 }}>
-                        Secure access to Lucy's control systems
+                    padding: '12px',
+                    '--fill': 'var(--color-main-deep)',
+                } as React.CSSProperties}>
+                    <Text style={{ color: 'var(--color-text-secondary)', fontFamily: fonts.mono, fontSize: 11, letterSpacing: '0.5px' }}>
+                        Secure access to Lucy robot control system
                     </Text>
                 </div>
             </Card>
         </div>
     );
 };
+
+export default AuthForm;

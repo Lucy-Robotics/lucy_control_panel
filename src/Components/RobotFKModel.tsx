@@ -1,9 +1,15 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * Robot render component backed by urdf-loader.
  *
- * urdf-loader handles URDF parsing, FK, Collada/STL loading, and visual
+ * urdf-loader handles URDF parsing, FK, Collada/STL/OBJ loading, and visual
  * origins natively — we just render the resulting Three.js scene graph via
  * React Three Fiber's <primitive> and update joint angles every frame.
+ * (Mesh bytes themselves are fetched via MeshHandler in useRobotModel.)
  *
  * Coordinate system:
  *   URDF / ROS uses Z-up. Three.js uses Y-up.
@@ -11,108 +17,197 @@
  *   rotated Rx(-π/2) — exactly what robot_viewer does with its world object.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
-import { UI_ACCENT_GREEN } from '../Constants/uiTheme';
+import {
+    CLICK_DRAG_THRESHOLD_PX,
+    findParentLink,
+    urdfNameOf,
+    wrapAngle,
+    type ActuatedJointNames,
+} from '../Utils/robotModel.utils';
+import { motorMeshesOf } from '../Utils/motorMeshes';
+import { robotPartNames } from '../Utils/robotParts';
+import { useMotorTemperatureMaterials } from '../hooks/useMotorTemperatureMaterials';
+import { useHoverGlow } from '../hooks/useHoverGlow';
+import { useRobotHover } from '../hooks/useRobotHover';
+import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
+import { getMaterialState, robotMaterialStates } from '../Utils/robotMaterialState';
 
-// Pristine DAE/mesh materials, captured per robot instance and kept at module
-// level so they survive remounts (the robot itself is module-cached in
-// useRobotModel). Capture happens before any override is applied, so a green
-// material can never be mistaken for the original — this is what makes the
-// GRN ↔ DAE switch reliable.
-const robotOriginalMaterials = new WeakMap<
-    URDFRobot,
-    Map<THREE.Mesh, THREE.Material | THREE.Material[]>
->();
+
+const ANGLE_SMOOTHING_RATE = 12;
+const ANGLE_SNAP_EPSILON = 1e-4;
+const NO_JOINTS: ReadonlySet<string> = new Set();
 
 export interface RobotFKModelProps {
     robot: URDFRobot;
-    /** URDF joint name → current angle (rad). */
     jointAngles: Map<string, number>;
-    opacity?: number;
     wireframe?: boolean;
-    /** When true, restores the original DAE/mesh materials instead of the green override. */
-    useOriginalTexture?: boolean;
+    selectedPartName?: string | null;
+    unselectedOpacity?: number;
+    focusColor: string;
+    onPartClick?: (partName: string) => void;
+    onPartDoubleClick?: (partName: string) => void;
+    onPartHover?: (partName: string | null) => void;
+    actuatedJointNames?: ActuatedJointNames;
+    overheatedJointNames?: ReadonlySet<string>;
+    heatMaterial?: THREE.Material;
+    motorTemperatures?: ReadonlyMap<string, number>;
+    hoveredPartName?: string | null;
+    partsClickable?: boolean;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     robot,
     jointAngles,
-    opacity = 0.85,
     wireframe = false,
-    useOriginalTexture = true,
+    selectedPartName = null,
+    unselectedOpacity = 0.25,
+    focusColor,
+    onPartClick,
+    onPartDoubleClick,
+    onPartHover,
+    actuatedJointNames,
+    overheatedJointNames = NO_JOINTS,
+    heatMaterial,
+    motorTemperatures,
+    hoveredPartName = null,
+    partsClickable = true,
 }) => {
-    const greenMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+    const { gl } = useThree();
+    const displayedAnglesRef = useRef<Map<string, number>>(new Map());
+    const motorMaterialByMesh = useMotorTemperatureMaterials(robot, heatMaterial ? motorTemperatures : undefined, wireframe);
+    const partNameOf = useMemo(() => robotPartNames(robot, actuatedJointNames), [robot, actuatedJointNames]);
 
     useEffect(() => {
-        let originals = robotOriginalMaterials.get(robot);
-        if (!originals) {
-            originals = new Map();
-            robotOriginalMaterials.set(robot, originals);
+        for (const joint of Object.values(robot.joints)) {
+            joint.ignoreLimits = true;
         }
+
+        // Display clones live as long as the robot: restore every mesh and
+        // free them only when the robot changes or the view unmounts.
+        return () => {
+            const state = robotMaterialStates.get(robot);
+            if (!state) return;
+            state.originals.forEach((orig, mesh) => { mesh.material = orig; });
+            state.displays.forEach(mats => mats.forEach(m => m.dispose()));
+            robotMaterialStates.delete(robot);
+        };
+    }, [robot]);
+
+    useEffect(() => {
+        const { originals, displays } = getMaterialState(robot);
+        const focus = new THREE.Color(focusColor);
+        const isAnySelected = selectedPartName !== null;
+        const hasOverheat = overheatedJointNames.size > 0;
+        const overheatedMeshes = new Set([...overheatedJointNames].flatMap((name) => {
+            const joint = robot.joints[name];
+            return joint ? [...motorMeshesOf(joint)] : [];
+        }));
+        if (heatMaterial && 'wireframe' in heatMaterial) heatMaterial.wireframe = wireframe;
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
             if (!mesh.isMesh) return;
 
-            // Capture the pristine material the first time we ever touch this
-            // mesh — before any green override — so originals are always DAE.
-            if (!originals!.has(mesh)) {
-                originals!.set(mesh, mesh.material);
+            if (!originals.has(mesh)) {
+                originals.set(mesh, mesh.material);
+            }
+            const origMat = originals.get(mesh)!;
+
+            if (!isAnySelected && !wireframe && !hasOverheat && !heatMaterial) {
+                mesh.material = origMat;
+                return;
             }
 
-            // Ignore URDF joint limits — real ROS angles may exceed them.
-            for (const joint of Object.values(robot.joints)) {
-                joint.ignoreLimits = true;
+            const part = isAnySelected ? partNameOf(mesh) : null;
+            const link = isAnySelected && part === null ? findParentLink(mesh, robot) : null;
+            const isSelected = isAnySelected && (part ?? (link && urdfNameOf(link))) === selectedPartName;
+            const selectionStyle: PartStyle = isSelected ? 'selected' : isAnySelected ? 'unselected' : 'normal';
+            const style: PartStyle = !hasOverheat ? selectionStyle : overheatedMeshes.has(mesh) ? 'overheated' : 'unselected';
+            if (heatMaterial && style === 'normal') {
+                mesh.material = motorMaterialByMesh.get(mesh) ?? heatMaterial;
+                return;
             }
 
-            if (useOriginalTexture) {
-                mesh.material = originals!.get(mesh)!;
-            } else {
-                const mat = new THREE.MeshStandardMaterial({
-                    color: UI_ACCENT_GREEN,
-                    transparent: true,
-                    opacity,
-                    wireframe,
-                    roughness: 0.3,
-                    metalness: 0.7,
-                    side: THREE.DoubleSide,
-                });
-                mesh.material = mat;
-                greenMaterialsRef.current.push(mat);
+            let slots = displays.get(mesh);
+            if (!slots) {
+                slots = [];
+                displays.set(mesh, slots);
+            }
+            const restyle = (m: THREE.Material, slot: number): THREE.Material => {
+                const display = slots[slot] ??= m.clone();
+                applyStyle(display, m, style, wireframe, focus, unselectedOpacity);
+                return display;
+            };
+            mesh.material = Array.isArray(origMat)
+                ? origMat.map(restyle)
+                : restyle(origMat, 0);
+        });
+    }, [robot, wireframe, selectedPartName, partNameOf, overheatedJointNames, heatMaterial, focusColor, unselectedOpacity, motorMaterialByMesh]);
+
+    useFrame((_state, delta) => {
+        if (jointAngles.size === 0) return;
+        const displayed = displayedAnglesRef.current;
+        const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
+        const values: Record<string, number> = {};
+
+        jointAngles.forEach((serverAngle, name) => {
+            const prev = displayed.get(name);
+            let next = serverAngle;
+            if (prev !== undefined) {
+                // Continuous joints take the short way around a ±π wrap
+                const diff = robot.joints[name]?.jointType === 'continuous'
+                    ? wrapAngle(serverAngle - prev)
+                    : serverAngle - prev;
+                if (Math.abs(diff) > ANGLE_SNAP_EPSILON) {
+                    next = prev + diff * alpha;
+                }
+            }
+            if (next !== prev) {
+                displayed.set(name, next);
+                values[name] = next;
             }
         });
 
-        return () => {
-            // Restore pristine originals, then drop the green materials we made.
-            robot.traverse(child => {
-                const mesh = child as THREE.Mesh;
-                if (!mesh.isMesh) return;
-                const orig = originals!.get(mesh);
-                if (orig) mesh.material = orig;
-            });
-            greenMaterialsRef.current.forEach(m => m.dispose());
-            greenMaterialsRef.current = [];
-        };
-    }, [robot, opacity, wireframe, useOriginalTexture]);
-
-    // ------------------------------------------------------------------
-    // Push live joint angles into the urdf-loader scene graph each frame.
-    // ------------------------------------------------------------------
-    useFrame(() => {
-        if (jointAngles.size === 0) return;
-        const values: Record<string, number> = {};
-        jointAngles.forEach((angle, name) => { values[name] = angle; });
-        robot.setJointValues(values);
+        if (Object.keys(values).length > 0) {
+            robot.setJointValues(values);
+        }
     });
+
+
+    const handleClick = (e: ThreeEvent<MouseEvent>) => {
+        // Ring drags end past the threshold; plain clicks on the ring pass through
+        if (e.delta > CLICK_DRAG_THRESHOLD_PX) return;
+        // Second click of a double-click: the dblclick handler owns it
+        if (e.nativeEvent.detail > 1) return;
+        e.stopPropagation();
+        const name = partNameOf(e.object);
+        if (name) onPartClick?.(name);
+    };
+
+    const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
+        e.stopPropagation();
+        const name = partNameOf(e.object);
+        if (name) onPartDoubleClick?.(name);
+    };
+
+    const { handlePointerMove, handlePointerOut, gizmoUnderPointer } = useRobotHover(gl.domElement, robot, partNameOf, onPartHover, partsClickable);
+    useHoverGlow(robot, hoveredPartName, partNameOf, focusColor, gizmoUnderPointer);
 
     // urdf-loader emits geometry in URDF/ROS Z-up space.
     // Rx(-π/2) converts to Three.js Y-up — matching robot_viewer's world rotation.
     return (
         <group rotation={[-Math.PI / 2, 0, 0]}>
-            <primitive object={robot} />
+            <primitive
+                object={robot}
+                onClick={handleClick}
+                onDoubleClick={handleDoubleClick}
+                onPointerMove={handlePointerMove}
+                onPointerOut={handlePointerOut}
+            />
         </group>
     );
 };

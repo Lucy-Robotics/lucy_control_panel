@@ -1,12 +1,17 @@
-import type { ControllerJointConfig, JointLimitDeg, JointMapping } from '../Constants/rosConfig';
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import type { ControllerJointConfig, JointLimitRad, JointMapping } from '../Constants/rosConfig';
 import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
 
 function readMapping(row: Record<string, unknown>): JointMapping {
-    const offsetDeg = Number(row.offset_deg);
+    const offsetRad = Number(row.offset);
     const direction = Number(row.direction);
     const scale = Number(row.scale);
     return {
-        offsetDeg: Number.isFinite(offsetDeg) ? offsetDeg : DEFAULT_ACTUATOR_MAPPING.offsetDeg,
+        offsetRad: Number.isFinite(offsetRad) ? offsetRad : DEFAULT_ACTUATOR_MAPPING.offsetRad,
         direction: Number.isFinite(direction) && direction !== 0
             ? direction
             : DEFAULT_ACTUATOR_MAPPING.direction,
@@ -15,7 +20,7 @@ function readMapping(row: Record<string, unknown>): JointMapping {
 }
 
 function boardIdToCategory(boardId: string): string {
-    const tail = boardId.replace(/^rp2040_/, '');
+    const tail = boardId.replace(/^(rp2040|linux)_/, '');
     return tail.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -54,7 +59,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             );
 
         const joints: string[] = [];
-        const jointLimits: Record<string, JointLimitDeg> = {};
+        const jointLimits: Record<string, JointLimitRad> = {};
         const jointDisplayNames: Record<string, string> = {};
 
         for (const row of rows) {
@@ -68,14 +73,14 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                 jointDisplayNames[joint] = actuatorId;
             }
 
-            const minDeg = Number(r.servo_min_deg);
-            const maxDeg = Number(r.servo_max_deg);
-            const defaultDeg = Number(r.servo_default_deg);
-            if (Number.isFinite(minDeg) && Number.isFinite(maxDeg) && minDeg < maxDeg) {
+            const minRad = Number(r.limit_min);
+            const maxRad = Number(r.limit_max);
+            const defaultRad = Number(r.default);
+            if (Number.isFinite(minRad) && Number.isFinite(maxRad) && minRad < maxRad) {
                 jointLimits[joint] = {
-                    minDeg,
-                    maxDeg,
-                    defaultDeg: Number.isFinite(defaultDeg) ? defaultDeg : (minDeg + maxDeg) / 2,
+                    minRad,
+                    maxRad,
+                    defaultRad: Number.isFinite(defaultRad) ? defaultRad : (minRad + maxRad) / 2,
                     mapping: readMapping(r),
                 };
             }

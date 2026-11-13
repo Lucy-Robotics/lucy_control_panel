@@ -1,11 +1,21 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useMemo, useState } from 'react';
-import { Alert, Col, Row, Select } from 'antd';
+import { Alert, Col, Row, Select, Typography } from 'antd';
+import { RosConnectionAlert } from '../Components/RosConnectionAlert';
 import { FloatGraph } from '../Components/Sensors';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useSensorSources } from '../hooks/useSensorSources';
+import {
+    fonts,
+} from '../Constants/theme';
 
 const { Option } = Select;
+const { Text } = Typography;
 
 const SensorDisplay: React.FC = () => {
     const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
@@ -22,15 +32,19 @@ const SensorDisplay: React.FC = () => {
     );
 
     return (
-        <>
-            {!isConnected ? (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="Connect to the ROS bridge to stream live sensor data."
-                    style={{ marginBottom: 16 }}
-                />
-            ) : null}
+        <div
+            style={{
+                width: '100%',
+                height: '100%',
+                minWidth: 0,
+                minHeight: 0,
+                overflowX: 'hidden',
+                overflowY: 'auto',
+                boxSizing: 'border-box',
+            }}
+        >
+
+            <RosConnectionAlert message="Connect to the ROS bridge to stream live sensor data." />
 
             {activeHardwareLoading ? (
                 <Alert
@@ -60,23 +74,34 @@ const SensorDisplay: React.FC = () => {
             ) : null}
 
             <div
-                className="tui-container-dark"
+                className="chamfer-box"
                 style={{
                     marginBottom: '20px',
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
                     gap: '12px',
+                    padding: '20px',
                 }}
             >
-                <span
-                    className="tui-text-muted"
-                    style={{ fontSize: '12px', flexShrink: 0, whiteSpace: 'nowrap' }}
-                >
-                    SELECT PRESSURE SENSORS TO MONITOR:
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: 'var(--color-highlight)', fontWeight: 'bold' }}>&gt;</span>
+                    <Text
+                        style={{
+                            fontSize: '12px',
+                            color: 'var(--color-text-primary)',
+                            fontFamily: fonts.mono,
+                            textTransform: 'uppercase',
+                            textDecoration: 'underline',
+                            letterSpacing: '0.5px',
+                        }}
+                    >
+                        SELECT PRESSURE SENSORS TO MONITOR:
+                    </Text>
+                </div>
                 <Select
                     mode="multiple"
-                    style={{ flex: 1, minWidth: 0 }}
+                    style={{ width: '100%', minWidth: 0 }}
                     placeholder="Select pressure sensors..."
                     value={selectedSensorIds}
                     onChange={setSelectedSensorIds}
@@ -94,14 +119,14 @@ const SensorDisplay: React.FC = () => {
                 </Select>
             </div>
 
-            <Row gutter={[16, 16]}>
+            <Row gutter={[20, 20]}>
                 {selectedSources.map((source) => (
                     <Col key={source.id} xs={24} sm={12} md={8}>
                         <FloatGraph source={source} />
                     </Col>
                 ))}
             </Row>
-        </>
+        </div>
     );
 };
 

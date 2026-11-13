@@ -1,19 +1,24 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** URDF command ↔ actuator calibration (matches ros2_control hardware params). */
 export interface JointMapping {
-  offsetDeg: number;
+  offsetRad: number;
   direction: number;
   scale: number;
 }
 
-/** Per-joint position limits read from the hardware YAML (actuator degrees). */
-export interface JointLimitDeg {
-  /** Minimum actuator angle for this joint (degrees). */
-  minDeg: number;
-  /** Maximum actuator angle for this joint (degrees). */
-  maxDeg: number;
-  /** Default / rest actuator angle for this joint (degrees). */
-  defaultDeg: number;
-  /** Calibration used to convert slider (actuator deg) ↔ trajectory (URDF rad). */
+/** Per-joint position limits read from the hardware YAML (servo radians). */
+export interface JointLimitRad {
+  /** Minimum servo angle for this joint (radians). */
+  minRad: number;
+  /** Maximum servo angle for this joint (radians). */
+  maxRad: number;
+  /** Default / rest servo angle for this joint (radians). */
+  defaultRad: number;
+  /** Calibration used to convert slider (servo rad) ↔ trajectory (URDF rad). */
   mapping: JointMapping;
 }
 
@@ -24,8 +29,8 @@ export interface ControllerJointConfig {
   joints: string[];
   /** Default category label for these joints in the panel */
   defaultCategory: string;
-  /** Per-joint actuator limits extracted from the hardware YAML. Keyed by URDF joint name. */
-  jointLimits?: Record<string, JointLimitDeg>;
+  /** Per-joint servo limits extracted from the hardware YAML. Keyed by URDF joint name. */
+  jointLimits?: Record<string, JointLimitRad>;
   /** Per-joint slider label (actuator id). Keyed by URDF joint name. */
   jointDisplayNames?: Record<string, string>;
 }
@@ -44,23 +49,23 @@ export const AUDIO_TOPICS = {
 } as const;
 
 export interface StreamSource {
-    id: string;
-    name: string;
-    topic: string;
-    messageType: string;
+  id: string;
+  name: string;
+  topic: string;
+  messageType: string;
 }
 
 /** Per-sensor stream entry derived from hardware YAML (pressure sensors on `sensors/<scope>` topics). */
 export interface SensorSource {
-    id: string;
-    name: string;
-    /** ROS topic for the board's Float32Array payload (e.g. `/sensors/left_arm`). */
-    topic: string;
-    messageType: string;
-    /** Index into the Float32Array for this sensor (board sensors sorted by `virtual_pin`). */
-    arrayIndex: number;
-    type: string;
-    boardId: string;
+  id: string;
+  name: string;
+  /** ROS topic for the board's Float32Array payload (e.g. `/sensors/left_arm`). */
+  topic: string;
+  messageType: string;
+  /** Index into the Float32Array for this sensor (board sensors sorted by `virtual_pin`). */
+  arrayIndex: number;
+  type: string;
+  boardId: string;
 }
 
 export const SENSOR_FLOAT32_ARRAY_MESSAGE_TYPE = 'ros_gz_interfaces/msg/Float32Array' as const;

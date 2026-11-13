@@ -6,7 +6,7 @@
 /**
  * Per-robot capabilities declared in the URDF with a `<lucy_capabilities>` child
  * of `<robot>`, e.g. `<lucy_capabilities effort_feedback="false"/>`.
- * Robots that do not declare the element keep every capability.
+ * A capability the robot does not declare is off.
  */
 const CAPABILITIES_TAG = 'lucy_capabilities';
 
@@ -17,7 +17,7 @@ function capabilitiesNode(robotNode: Element | null | undefined): Element | unde
 
 function readFlag(robotNode: Element | null | undefined, attribute: string): boolean {
     const value = capabilitiesNode(robotNode)?.getAttribute(attribute)?.trim().toLowerCase();
-    return value !== 'false' && value !== '0';
+    return value === 'true' || value === '1';
 }
 
 /** Whether the robot's servos report effort/load (drives the effort heat map and arrows). */

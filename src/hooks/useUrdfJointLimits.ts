@@ -70,7 +70,3 @@ export function useRobotDescription(isConnected: boolean): RobotDescription {
     mockHardware: urdf ? isMockHardware(urdf) : null,
   }), [urdf]);
 }
-
-export function useUrdfJointLimits(isConnected: boolean): Map<string, UrdfJointLimitRad> {
-  return useRobotDescription(isConnected).jointLimits;
-}

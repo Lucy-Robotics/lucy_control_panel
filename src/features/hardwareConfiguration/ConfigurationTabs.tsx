@@ -14,6 +14,7 @@ import { useActiveHardwareRos } from '../../contexts/ActiveHardwareRosContext.ts
 import { calibrationTeaser } from './calibration/calibrationTeaser.ts';
 import { CalibrationTeaserPage } from './calibration/CalibrationTeaserPage.tsx';
 import { CalibrationWizard } from './calibration/CalibrationWizard.tsx';
+import { isSimulatedArm } from './calibration/simulatedArm.ts';
 import { useCalibrationSession } from './calibration/useCalibrationSession.ts';
 import ConfigurationPage from './ConfigurationPage.tsx';
 
@@ -45,7 +46,8 @@ const ConfigurationTabs = () => {
 
     if (session.supported === null) return <ConfigurationPage />;
 
-    const teaser = calibrationTeaser(robotPackage, session.supported, !servoControlAvailable);
+    const withoutRealHardware = !servoControlAvailable || isSimulatedArm(session.status);
+    const teaser = calibrationTeaser(robotPackage, session.supported, withoutRealHardware);
     const wizard = <CalibrationWizard session={session} />;
 
     return (

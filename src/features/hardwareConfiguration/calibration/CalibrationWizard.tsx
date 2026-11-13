@@ -10,12 +10,9 @@ import { LucyLoader } from '../../../Components/LucyLoader.tsx';
 import { ROUTES } from '../../../Constants/routes.ts';
 import { UI_CARD_SURFACE_STYLE } from '../../../Constants/uiTheme.ts';
 import { useRobotModel } from '../../../hooks/useRobotModel.ts';
-import {
-    nextJoint,
-    requiredHealthOk,
-    WIZARD_STEPS,
-    wizardStepIndex,
-} from './calibrationModel.ts';
+import { nextJoint, WIZARD_STEPS, wizardStepIndex } from './calibrationModel.ts';
+import { blockingChecks, calibrationBlocked } from './calibrationGate.ts';
+import { CalibrationBlockedNotice } from './CalibrationBlockedNotice.tsx';
 import { CalibrationHealthChecks } from './CalibrationHealthChecks.tsx';
 import { CalibrationRobotPreview } from './CalibrationRobotPreview.tsx';
 import { JointRangeBar } from './JointRangeBar.tsx';
@@ -61,18 +58,19 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
 
     const needsAdapterChoice = status.link === 'ambiguous' || status.link === 'selected_missing';
     const recording = status.phase === 'joints' && joint !== null && status.recording === joint.name;
-    const canAccept = recording && !busy && Boolean(status.range);
+    const blocked = calibrationBlocked(status.phase, status.health);
+    const canAccept = recording && !busy && !blocked && Boolean(status.range);
 
     const primaryEnabled = (() => {
         switch (status.phase) {
             case 'idle':
-                return !busy;
+                return !busy && !blocked;
             case 'mid_pose':
-                return requiredHealthOk(status.health) && !busy;
+                return !blocked && !busy;
             case 'joints':
                 return canAccept;
             case 'review':
-                return !busy;
+                return !busy && !blocked;
             case 'applied':
             case 'verify_drive':
                 return !busy;
@@ -142,6 +140,10 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                 <Alert type="info" showIcon message={status.message} style={{ marginBottom: 12 }} />
             )}
 
+            {blocked && status.phase !== 'idle' && (
+                <CalibrationBlockedNotice failing={blockingChecks(status.phase, status.health)} />
+            )}
+
             {status.phase === 'recovery' && (
                 <>
                     <Alert
@@ -204,7 +206,7 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                                 <Button disabled={busy} onClick={() => void send('adopt')}>
                                     Already calibrated: use the active preset
                                 </Button>
-                                <Button type="primary" disabled={busy} onClick={() => void send('start')}>
+                                <Button type="primary" disabled={busy || blocked} onClick={() => void send('start')}>
                                     Start calibration
                                 </Button>
                             </>
@@ -226,9 +228,6 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                                     message="The arm is unpowered and can drop"
                                     description="Support it, and hold it in the middle of each joint's travel, like the 3D view."
                                 />
-                                {!requiredHealthOk(status.health) && (
-                                    <CalibrationHealthChecks health={status.health} />
-                                )}
                             </div>
                             <CalibrationRobotPreview robot={robot} loading={robotLoading} />
                         </div>
@@ -239,7 +238,7 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                             <Button
                                 type="primary"
                                 loading={busy}
-                                disabled={!requiredHealthOk(status.health)}
+                                disabled={blocked}
                                 onClick={() => void send('capture_mid')}
                             >
                                 The arm is in this pose
@@ -284,11 +283,11 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                         right={(
                             <>
                                 {error?.code === 'span_too_small' && (
-                                    <Button disabled={busy} onClick={() => void send('accept_joint', 'override')}>
+                                    <Button disabled={busy || blocked} onClick={() => void send('accept_joint', 'override')}>
                                         Accept anyway
                                     </Button>
                                 )}
-                                <Button disabled={busy} onClick={() => void send('begin_joint', joint.name)}>
+                                <Button disabled={busy || blocked} onClick={() => void send('begin_joint', joint.name)}>
                                     Start over
                                 </Button>
                                 <Button type="primary" disabled={!canAccept} onClick={() => void send('accept_joint')}>
@@ -323,7 +322,7 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                                     render: (_, row) => (
                                         <Button
                                             size="small"
-                                            disabled={busy}
+                                            disabled={busy || blocked}
                                             onClick={() => void send('begin_joint', row.name)}
                                         >
                                             Redo
@@ -336,7 +335,7 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                     <WizardFooter
                         left={cancelButton}
                         right={(
-                            <Button type="primary" disabled={busy} onClick={() => void send('apply')}>Save preset</Button>
+                            <Button type="primary" disabled={busy || blocked} onClick={() => void send('apply')}>Save preset</Button>
                         )}
                     />
                 </>

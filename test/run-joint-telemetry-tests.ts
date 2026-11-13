@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import ROSLIB from 'roslib';
 
 const { RosBridgeService } = await import('../src/Services/ros/ros.service.ts');
-const { subscribeToJointTemperatures } = await import('../src/Services/ros/handlers/DynamicJointState.handler.ts');
+const { JOINT_TELEMETRY_THROTTLE_MS, subscribeToJointTemperatures, subscribeToJointVoltages } = await import('../src/Services/ros/handlers/JointTelemetry.handler.ts');
 const { interfaceValuesByJoint } = await import('../src/Utils/dynamicJointState.utils.ts');
 const { useThrottledJointReadings } = await import('../src/hooks/useThrottledJointReadings.ts');
 
@@ -54,5 +54,14 @@ assert.equal(throttled.result.current.size, 0, 'readings clear on disconnect');
 assert.equal(unsubscribed, 1, 'disconnecting unsubscribes');
 await throttled.unmount();
 
-console.log('dynamic joint states tests passed');
+const sent: Record<string, unknown>[] = [];
+fakeRos.callOnConnection = (message: Record<string, unknown>) => { sent.push(message); };
+const stopVoltages = subscribeToJointVoltages(() => {});
+const subscribeOp = sent.find((message) => message.op === 'subscribe' && message.topic === '/dynamic_joint_states');
+assert.equal(subscribeOp?.throttle_rate, JOINT_TELEMETRY_THROTTLE_MS, 'rosbridge throttles joint telemetry before it shares the socket with /mesh/get');
+assert.equal(subscribeOp?.queue_length, 1, 'rosbridge sends only the latest joint telemetry');
+assert.ok(JOINT_TELEMETRY_THROTTLE_MS <= 100, 'telemetry still arrives as fast as the 10 Hz readers refresh');
+stopVoltages();
+
+console.log('joint telemetry tests passed');
 process.exit(0);

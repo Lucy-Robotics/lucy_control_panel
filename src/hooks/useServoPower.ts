@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { subscribeToJointVoltages } from '../Services/ros/handlers/DynamicJointState.handler';
+import { subscribeToJointVoltages } from '../Services/ros/handlers/JointTelemetry.handler';
 import { servoPowerOf, type ServoPower } from '../Utils/servoPower.utils';
 import { motorValuesByJoint } from '../Utils/motorSpecs';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';

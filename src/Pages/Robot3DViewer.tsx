@@ -49,7 +49,7 @@ import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
-import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
+import { subscribeToJointLoads } from '../Services/ros/handlers/JointTelemetry.handler';
 import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
 import type { JointControlState } from '../Constants/robotTypes';

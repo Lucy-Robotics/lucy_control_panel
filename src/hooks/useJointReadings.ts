@@ -4,7 +4,7 @@
  */
 
 import { useThrottledReadings } from './useThrottledJointReadings';
-import { subscribeToJointInterfaces } from '../Services/ros/handlers/DynamicJointState.handler';
+import { subscribeToJointInterfaces } from '../Services/ros/handlers/JointTelemetry.handler';
 
 const subscribeToReadings = subscribeToJointInterfaces({
     loads: 'load',

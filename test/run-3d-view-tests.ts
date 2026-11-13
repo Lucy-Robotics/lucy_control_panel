@@ -77,7 +77,7 @@ function jointWithChild(childOffset: THREE.Vector3 | null): { joint: URDFJoint; 
     assert.ok(restingGauge.position.distanceTo(new THREE.Vector3(1, 0, 0)) < 1e-6, 'a joint that never moved still places its gauge');
 
     const { RosBridgeService } = await import('../src/Services/ros/ros.service.ts');
-    const { subscribeToJointInterfaces } = await import('../src/Services/ros/handlers/DynamicJointState.handler.ts');
+    const { subscribeToJointInterfaces } = await import('../src/Services/ros/handlers/JointTelemetry.handler.ts');
     const calls: { op: string }[] = [];
     const fakeRos = new ROSLIB.Ros({});
     fakeRos.callOnConnection = (call: { op: string }) => calls.push(call);

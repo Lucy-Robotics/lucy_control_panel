@@ -18,7 +18,7 @@ function subscribeToJointTelemetry<T>(
   callback: (readings: T) => void,
 ): () => void {
   const ros = RosBridgeService.getInstance().rosConnection;
-  if (!ros) return () => { };
+  if (ros || !ros) return () => { };
 
   const topic = new ROSLIB.Topic({
     ros,

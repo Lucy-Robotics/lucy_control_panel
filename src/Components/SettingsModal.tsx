@@ -47,15 +47,15 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
+export const AUTO_CONNECT_SETTING = 'autoConnectEnabled';
 
 export const isAutoConnectEnabled = () =>
-    localStorage.getItem(AUTO_CONNECT_KEY) !== 'false';
+    localStorage.getItem(AUTO_CONNECT_SETTING) !== 'false';
 
-export const SHOW_DEGREES_KEY = 'showDegreesEnabled';
+export const SHOW_DEGREES_SETTING = 'showDegreesEnabled';
 
 export const isShowDegreesEnabled = () =>
-    localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
+    localStorage.getItem(SHOW_DEGREES_SETTING) !== 'false';
 
 /** Fixed hint for the URL field: the bridge served alongside this page. */
 const originRosUrl = getOriginRosUrl();
@@ -101,7 +101,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     useEffect(() => {
         localStorage.setItem(
-            AUTO_CONNECT_KEY,
+            AUTO_CONNECT_SETTING,
             String(autoConnect)
         );
         window.dispatchEvent(new Event('autoConnectChanged'));
@@ -109,7 +109,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     useEffect(() => {
         localStorage.setItem(
-            SHOW_DEGREES_KEY,
+            SHOW_DEGREES_SETTING,
             String(showDegrees)
         );
         window.dispatchEvent(new Event('showDegreesChanged'));

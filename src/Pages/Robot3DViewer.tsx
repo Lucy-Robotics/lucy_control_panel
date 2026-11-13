@@ -525,7 +525,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
     const [showGrid, setShowGrid] = useState(true);
     const [wireframe, setWireframe] = useState(false);
-    const [showHeatMap, setShowHeatMap] = useState(true);
+    const [showHeatMap, setShowHeatMap] = useState(false);
     const [showArrows, setShowArrows] = useState(false);
     const [debugMode, setDebugMode] = useState(false);
     const showEffort = showHeatMap || showArrows;

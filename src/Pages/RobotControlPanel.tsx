@@ -848,7 +848,7 @@ export const RobotControlPanel: React.FC = () => {
                 : null}
             hudCenter={servoPower === 'off' && (
                 <div className="chamfer-box no-servo-power" role="alert">
-                    NO SERVO POWER: connect the power supply
+                    No power supply
                 </div>
             )}
             hudRight={(

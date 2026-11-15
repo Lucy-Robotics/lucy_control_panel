@@ -139,7 +139,7 @@ try {
     }));
     await supply(0);
     assert.ok(await waitFor(() => banner() !== null), 'a servo without power shows the banner');
-    assert.match(banner()!.textContent ?? '', /connect the power supply/, 'the banner says what to do');
+    assert.match(banner()!.textContent ?? '', /No power supply/, 'the banner says the power supply is off');
     await supply(12.1);
     assert.ok(await waitFor(() => banner() === null), 'the banner goes once every servo is powered');
     await supply(0);

@@ -39,6 +39,9 @@ import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
 import { useJogTeleop } from '../hooks/useJogTeleop.ts';
+import { GRIP_JOINT, useGamepadTeleop } from '../hooks/useGamepadTeleop.ts';
+import { useGamepadConnected } from '../hooks/useGamepadConnected.ts';
+import { atOpenness, jointOpenness } from '../Utils/jointOpenness.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
 import type { JointPositions } from '../Utils/jointStateMessage.ts';
 import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
@@ -103,6 +106,8 @@ import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
 import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
 import { JogPad } from '../Components/ControlPage/JogPad.tsx';
+import { gamepadTeleopRailItem } from '../Components/ControlPage/gamepadTeleopRailItem.tsx';
+import { GamepadLegend } from '../Components/ControlPage/GamepadLegend.tsx';
 import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
 import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
@@ -529,16 +534,7 @@ export const RobotControlPanel: React.FC = () => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
                 if (joint.name !== jointName) return joint;
-                const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
-                const a = servoRadToJointRad(joint.minValue, mapping);
-                const b = servoRadToJointRad(joint.maxValue, mapping);
-                const lo = Math.min(a, b);
-                const servo = clampServoRad(
-                    jointRadToServoRad(lo + y * (Math.max(a, b) - lo), mapping),
-                    joint.minValue,
-                    joint.maxValue,
-                );
-                return { ...joint, currentValue: servo, targetValue: servo };
+                return atOpenness(joint, y, actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING);
             })
         );
     }
@@ -719,7 +715,37 @@ export const RobotControlPanel: React.FC = () => {
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
     const jogTeleop = useJogTeleop(isSending && endEffector !== null && !phoneTeleop.isOn, endEffector, handleIkSolution);
-    const teleopTarget = phoneTeleop.target ?? jogTeleop.target;
+    const mappingOf = (name: string) => actuatorMappingByJointRef.current.get(name) ?? DEFAULT_ACTUATOR_MAPPING;
+    const isGamepadConnected = useGamepadConnected();
+    const gamepadTeleop = useGamepadTeleop(
+        isSending && endEffector !== null && isGamepadConnected && !phoneTeleop.isOn,
+        endEffector,
+        {
+            onSolution: handleIkSolution,
+            onClaw: (openness) => {
+                if (!isSendingRef.current) return;
+                const next = jointsRef.current.map((joint) =>
+                    joint.name === GRIP_JOINT ? atOpenness(joint, openness, mappingOf(joint.name)) : joint);
+                jointsRef.current = next;
+                setJoints(next);
+                JointStateHandler.getInstance().publishJointStates(next);
+            },
+            clawNow: () => {
+                const jaw = jointsRef.current.find((joint) => joint.name === GRIP_JOINT);
+                return jaw ? jointOpenness(jaw, mappingOf(jaw.name)) : 0;
+            },
+            overheated: motorOverheat.trippedJoints,
+        },
+    );
+    const toggleJogTeleop = () => {
+        if (gamepadTeleop.isOn) gamepadTeleop.toggle();
+        jogTeleop.toggle();
+    };
+    const toggleGamepadTeleop = () => {
+        if (jogTeleop.isOn) jogTeleop.toggle();
+        gamepadTeleop.toggle();
+    };
+    const teleopTarget = phoneTeleop.target ?? jogTeleop.target ?? gamepadTeleop.target;
     usePublishTargetPose(jointMoveStore, joints, isSending);
     const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
@@ -902,10 +928,18 @@ export const RobotControlPanel: React.FC = () => {
                 }),
                 jogTeleopRailItem({
                     isOn: jogTeleop.isOn,
-                    onToggle: jogTeleop.toggle,
+                    onToggle: toggleJogTeleop,
                     isSending,
                     hasEndEffector: endEffector !== null,
                     isPhoneTeleopOn: phoneTeleop.isOn,
+                }),
+                gamepadTeleopRailItem({
+                    isOn: gamepadTeleop.isOn,
+                    onToggle: toggleGamepadTeleop,
+                    isConnected: isGamepadConnected,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    otherTeleop: phoneTeleop.isOn ? 'phone Teleop' : null,
                 }),
                 {
                     key: 'stream',
@@ -1122,6 +1156,14 @@ export const RobotControlPanel: React.FC = () => {
                 <JogPad
                     onPress={jogTeleop.press}
                     onRelease={jogTeleop.release}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
+
+            {gamepadTeleop.isOn && (
+                <GamepadLegend
+                    isHeld={gamepadTeleop.isHeld}
+                    isFine={gamepadTeleop.isFine}
                     mobileRailHeight={isMobile ? railHeight : null}
                 />
             )}

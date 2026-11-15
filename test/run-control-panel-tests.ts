@@ -142,6 +142,10 @@ try {
     assert.match(banner()!.textContent ?? '', /connect the power supply/, 'the banner says what to do');
     await supply(12.1);
     assert.ok(await waitFor(() => banner() === null), 'the banner goes once every servo is powered');
+    await supply(0);
+    assert.ok(await waitFor(() => banner() !== null), 'the banner comes back when the power drops');
+    await act(async () => fakeRos.emit('/lucy/gazebo_running', { data: true }));
+    assert.ok(await waitFor(() => banner() === null), 'a simulated robot never warns about its power supply');
 } finally {
     Date.now = realNow;
     await page.unmount();

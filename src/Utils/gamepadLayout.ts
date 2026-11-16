@@ -5,9 +5,12 @@
 
 export interface PadInput {
     enable: boolean;
-    swing: number;
-    reach: number;
-    lift: number;
+    right: number;
+    forward: number;
+    up: boolean;
+    down: boolean;
+    pitch: number;
+    roll: number;
     squeeze: number;
     slow: number;
     nudge: { forward: number; right: number };
@@ -17,7 +20,8 @@ export interface PadInput {
 }
 
 interface Layout {
-    buttons: { l1: number; triangle: number; circle: number; square: number };
+    buttons: { l1: number; r1: number; triangle: number; cross: number; circle: number; square: number };
+    rightX: (pad: Gamepad) => number;
     rightY: (pad: Gamepad) => number;
     l2: (pad: Gamepad) => number;
     r2: (pad: Gamepad) => number;
@@ -32,7 +36,8 @@ const NO_DPAD = { forward: 0, right: 0 };
 const untouchedAsReleased = (value: number) => (value === 0 ? 0 : (value + 1) / 2);
 
 const STANDARD: Layout = {
-    buttons: { l1: 4, triangle: 3, circle: 1, square: 2 },
+    buttons: { l1: 4, r1: 5, triangle: 3, cross: 0, circle: 1, square: 2 },
+    rightX: (pad) => axis(pad, 2),
     rightY: (pad) => axis(pad, 3),
     l2: (pad) => buttonValue(pad, 6),
     r2: (pad) => buttonValue(pad, 7),
@@ -40,7 +45,8 @@ const STANDARD: Layout = {
 };
 
 const FIREFOX_REVOLUTION_PRO: Layout = {
-    buttons: { l1: 2, triangle: 3, circle: 17, square: 0 },
+    buttons: { l1: 2, r1: 18, triangle: 3, cross: 1, circle: 17, square: 0 },
+    rightX: (pad) => buttonValue(pad, 6) * 2 - 1,
     rightY: (pad) => buttonValue(pad, 7) * 2 - 1,
     l2: (pad) => untouchedAsReleased(axis(pad, 2)),
     r2: (pad) => untouchedAsReleased(axis(pad, 3)),
@@ -54,16 +60,20 @@ const unit = (value: number) => Math.min(Math.max(value, 0), 1);
 
 export function readPad(pad: Gamepad): PadInput {
     const layout = layoutOf(pad);
+    const { buttons } = layout;
     return {
-        enable: pressed(pad, layout.buttons.l1),
-        swing: axis(pad, 0),
-        reach: -axis(pad, 1),
-        lift: -layout.rightY(pad),
+        enable: pressed(pad, buttons.l1),
+        right: axis(pad, 0),
+        forward: -axis(pad, 1),
+        up: pressed(pad, buttons.triangle),
+        down: pressed(pad, buttons.cross),
+        pitch: -layout.rightY(pad),
+        roll: layout.rightX(pad),
         squeeze: unit(layout.r2(pad)),
         slow: unit(layout.l2(pad)),
         nudge: layout.dpad(pad),
-        open: pressed(pad, layout.buttons.triangle),
-        close: pressed(pad, layout.buttons.circle),
-        fine: pressed(pad, layout.buttons.square),
+        open: pressed(pad, buttons.square),
+        close: pressed(pad, buttons.circle),
+        fine: pressed(pad, buttons.r1),
     };
 }

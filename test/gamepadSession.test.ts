@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NEW_SESSION, gamepadTick, type Session } from '../src/Utils/gamepadSession.ts';
+import { NEW_SESSION, gamepadTick, type ArmNow, type Session } from '../src/Utils/gamepadSession.ts';
 import { STEP_M } from '../src/Utils/gamepadMotion.ts';
 import type { PadInput } from '../src/Utils/gamepadLayout.ts';
 import type { Vec3 } from '../src/Utils/phoneMotion.ts';
@@ -8,37 +8,56 @@ import type { Vec3 } from '../src/Utils/phoneMotion.ts';
 const END_EFFECTOR: Vec3 = [0, -0.2, 0.2];
 const DT = 0.05;
 const released: PadInput = {
-    enable: false, swing: 0, reach: 0, lift: 0, squeeze: 0, slow: 0,
+    enable: false, right: 0, forward: 0, up: false, down: false, pitch: 0, roll: 0, squeeze: 0, slow: 0,
     nudge: { forward: 0, right: 0 }, open: false, close: false, fine: false,
 };
 const held = (input: Partial<PadInput> = {}): PadInput => ({ ...released, enable: true, ...input });
-const clawAt = (openness: number) => () => openness;
+const arm = (now: Partial<ArmNow> = {}): ArmNow => ({
+    endEffector: END_EFFECTOR, pitch: -0.3, claw: () => 0.6, roll: () => 0.4, ...now,
+});
 
-function run(inputs: PadInput[], claw = clawAt(0.6), session: Session = NEW_SESSION) {
+function run(inputs: PadInput[], now: ArmNow = arm(), session: Session = NEW_SESSION) {
     return inputs.map((input) => {
-        const tick = gamepadTick(session, input, END_EFFECTOR, claw, DT);
+        const tick = gamepadTick(session, input, now, DT);
         session = tick.session;
         return tick;
     });
 }
 
 test('nothing moves while L1 is released, whatever the sticks do', () => {
-    const [tick] = run([{ ...released, reach: 1, lift: 1, squeeze: 1, nudge: { forward: 1, right: 0 } }]);
-    assert.equal(tick.publish, null);
-    assert.equal(tick.claw, null);
+    const [tick] = run([{ ...released, forward: 1, up: true, pitch: 1, roll: 1, squeeze: 1 }]);
+    assert.deepEqual([tick.publish, tick.claw, tick.roll], [null, null, null]);
 });
 
 test('pressing L1 keeps the claw where it is instead of jumping', () => {
-    const [tick] = run([held()], clawAt(0.6));
+    const [tick] = run([held()]);
     assert.ok(Math.abs(tick.claw! - 0.6) < 1e-9);
 });
 
-test('holding L1 with the left stick forward moves the target away from the base', () => {
-    const ticks = run([held({ reach: 1 }), held({ reach: 1 })]);
-    assert.ok(ticks[1].publish![1] < END_EFFECTOR[1]);
+test('pressing L1 sends no roll until the right stick turns it', () => {
+    const ticks = run([held(), held({ roll: 1 })]);
+    assert.equal(ticks[0].roll, null);
+    assert.ok(ticks[1].roll! > 0.4);
 });
 
-test('an idle stick under L1 publishes no new target', () => {
+test('holding L1 with the left stick forward moves the target and keeps the wrist pitch', () => {
+    const ticks = run([held({ forward: 1 }), held({ forward: 1 })]);
+    assert.ok(ticks[1].publish!.target[1] < END_EFFECTOR[1]);
+    assert.equal(ticks[1].publish!.pitch, -0.3);
+});
+
+test('the right stick up raises the pitch target without moving the position', () => {
+    const [tick] = run([held({ pitch: 1 })]);
+    assert.deepEqual(tick.publish!.target, END_EFFECTOR);
+    assert.ok(tick.publish!.pitch! > -0.3);
+});
+
+test('without a pitch from the robot the target is a plain position', () => {
+    const [tick] = run([held({ forward: 1, pitch: 1 })], arm({ pitch: null }));
+    assert.equal(tick.publish!.pitch, null);
+});
+
+test('an idle pad under L1 publishes nothing new', () => {
     const ticks = run([held(), held()]);
     assert.equal(ticks[1].publish, null);
 });
@@ -46,7 +65,7 @@ test('an idle stick under L1 publishes no new target', () => {
 test('one D-pad press moves exactly one step however long it is held', () => {
     const up = held({ nudge: { forward: 1, right: 0 } });
     const ticks = run([held(), up, up, up]);
-    assert.ok(Math.abs(ticks[1].publish![1] - (END_EFFECTOR[1] - STEP_M)) < 1e-9);
+    assert.ok(Math.abs(ticks[1].publish!.target[1] - (END_EFFECTOR[1] - STEP_M)) < 1e-9);
     assert.equal(ticks[2].publish, null);
     assert.equal(ticks[3].publish, null);
 });
@@ -57,7 +76,7 @@ test('releasing L1 freezes the claw even when R2 lets go', () => {
     assert.equal(ticks[1].claw, null);
 });
 
-test('a touchpad click toggles fine mode and a second click turns it off', () => {
+test('an R1 press toggles fine mode and a second press turns it off', () => {
     const click = held({ fine: true });
     const ticks = run([held(), click, click, held(), click]);
     assert.deepEqual(ticks.map((t) => t.session.fine), [false, true, true, true, false]);
@@ -68,7 +87,8 @@ test('fine mode can be toggled while L1 is released', () => {
     assert.equal(tick.session.fine, true);
 });
 
-test('pressing L1 again restarts from where the gripper really is', () => {
-    const ticks = run([held({ reach: 1 }), held({ reach: 1 }), released, held()]);
+test('pressing L1 again restarts from where the gripper and wrist really are', () => {
+    const ticks = run([held({ forward: 1, pitch: 1 }), held({ forward: 1 }), released, held()]);
     assert.deepEqual(ticks[3].session.target, END_EFFECTOR);
+    assert.equal(ticks[3].session.pitch, -0.3);
 });

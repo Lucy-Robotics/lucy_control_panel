@@ -39,7 +39,7 @@ import { useEndEffector } from '../hooks/useEndEffector.ts';
 import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
 import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
 import { useJogTeleop } from '../hooks/useJogTeleop.ts';
-import { GRIP_JOINT, useGamepadTeleop } from '../hooks/useGamepadTeleop.ts';
+import { useGamepadTeleop } from '../hooks/useGamepadTeleop.ts';
 import { useGamepadConnected } from '../hooks/useGamepadConnected.ts';
 import { atOpenness, jointOpenness } from '../Utils/jointOpenness.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
@@ -722,17 +722,17 @@ export const RobotControlPanel: React.FC = () => {
         endEffector,
         {
             onSolution: handleIkSolution,
-            onClaw: (openness) => {
+            setOpenness: (name, openness) => {
                 if (!isSendingRef.current) return;
                 const next = jointsRef.current.map((joint) =>
-                    joint.name === GRIP_JOINT ? atOpenness(joint, openness, mappingOf(joint.name)) : joint);
+                    joint.name === name ? atOpenness(joint, openness, mappingOf(joint.name)) : joint);
                 jointsRef.current = next;
                 setJoints(next);
                 JointStateHandler.getInstance().publishJointStates(next);
             },
-            clawNow: () => {
-                const jaw = jointsRef.current.find((joint) => joint.name === GRIP_JOINT);
-                return jaw ? jointOpenness(jaw, mappingOf(jaw.name)) : 0;
+            opennessOf: (name) => {
+                const joint = jointsRef.current.find((candidate) => candidate.name === name);
+                return joint ? jointOpenness(joint, mappingOf(joint.name)) : 0;
             },
             overheated: motorOverheat.trippedJoints,
         },

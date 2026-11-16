@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import {
     FINE_SCALE,
     FINE_STEP_M,
+    MAX_PITCH_LEAD_RAD,
+    PITCH_RAD_PER_S,
+    ROLL_RANGE_PER_S,
     SLOWEST_SCALE,
     STEP_M,
-    stickDirection,
+    padDirection,
+    pitchedTarget,
+    rolledOpening,
     stickResponse,
     nudgeStep,
     steppedTarget,
@@ -16,15 +21,16 @@ import type { Vec3 } from '../src/Utils/phoneMotion.ts';
 
 const AT_REST: Vec3 = [0, -0.2, 0.2];
 const idle: PadInput = {
-    enable: true, swing: 0, reach: 0, lift: 0, squeeze: 0, slow: 0,
+    enable: true, right: 0, forward: 0, up: false, down: false, pitch: 0, roll: 0, squeeze: 0, slow: 0,
     nudge: { forward: 0, right: 0 }, open: false, close: false, fine: false,
 };
 const pad = (input: Partial<PadInput>): PadInput => ({ ...idle, ...input });
 const rounded = (v: Vec3) => v.map((x) => Math.round(x * 1e6) / 1e6 + 0);
+const close = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
 test('a resting stick inside the dead zone does not move the arm', () => {
     assert.equal(stickResponse(0.1), 0);
-    assert.deepEqual(rounded(stickDirection(pad({ swing: 0.1, reach: -0.12, lift: 0.14 }), AT_REST, false)), [0, 0, 0]);
+    assert.deepEqual(rounded(padDirection(pad({ right: 0.1, forward: -0.12 }), false)), [0, 0, 0]);
 });
 
 test('a small tilt crawls and a full tilt reaches full speed', () => {
@@ -33,34 +39,47 @@ test('a small tilt crawls and a full tilt reaches full speed', () => {
     assert.equal(stickResponse(-1), -1);
 });
 
-test('pushing the left stick forward reaches away from the base', () => {
-    assert.deepEqual(rounded(stickDirection(pad({ reach: 1 }), AT_REST, false)), [0, -1, 0]);
+test('the left stick moves in the fixed X Y plane like W A S D', () => {
+    assert.deepEqual(rounded(padDirection(pad({ forward: 1 }), false)), [0, -1, 0]);
+    assert.deepEqual(rounded(padDirection(pad({ right: 1 }), false)), [-1, 0, 0]);
 });
 
-test('reach follows the arm once it has swung to the side', () => {
-    assert.deepEqual(rounded(stickDirection(pad({ reach: 1 }), [0.2, 0, 0.2], false)), [1, 0, 0]);
-});
-
-test('the left stick to the right swings the arm right seen from behind it, like the D key', () => {
-    assert.deepEqual(rounded(stickDirection(pad({ swing: 1 }), AT_REST, false)), [-1, 0, 0]);
-});
-
-test('the right stick up lifts the gripper', () => {
-    assert.deepEqual(rounded(stickDirection(pad({ lift: 1 }), AT_REST, false)), [0, 0, 1]);
+test('Triangle lifts and Cross lowers the gripper', () => {
+    assert.deepEqual(rounded(padDirection(pad({ up: true }), false)), [0, 0, 1]);
+    assert.deepEqual(rounded(padDirection(pad({ down: true }), false)), [0, 0, -1]);
+    assert.deepEqual(rounded(padDirection(pad({ up: true, down: true }), false)), [0, 0, 0]);
 });
 
 test('a diagonal never goes faster than a straight push', () => {
-    assert.ok(Math.abs(Math.hypot(...stickDirection(pad({ reach: 1, swing: 1, lift: 1 }), AT_REST, false)) - 1) < 1e-9);
+    assert.ok(close(Math.hypot(...padDirection(pad({ forward: 1, right: 1, up: true }), false)), 1));
 });
 
-test('L2 fully pressed slows the sticks to the slowest speed', () => {
-    const [, y] = stickDirection(pad({ reach: 1, slow: 1 }), AT_REST, false);
-    assert.ok(Math.abs(y + SLOWEST_SCALE) < 1e-9);
+test('L2 fully pressed slows the gripper to the slowest speed', () => {
+    assert.ok(close(padDirection(pad({ forward: 1, slow: 1 }), false)[1], -SLOWEST_SCALE));
 });
 
-test('fine mode slows the sticks ten times', () => {
-    const [, y] = stickDirection(pad({ reach: 1 }), AT_REST, true);
-    assert.ok(Math.abs(y + FINE_SCALE) < 1e-9);
+test('fine mode slows the gripper ten times', () => {
+    assert.ok(close(padDirection(pad({ forward: 1 }), true)[1], -FINE_SCALE));
+});
+
+test('the right stick up raises the pitch at its full rate', () => {
+    assert.ok(close(pitchedTarget(0, pad({ pitch: 1 }), false, 0.1, 0), PITCH_RAD_PER_S * 0.1));
+});
+
+test('the pitch target never leads the wrist by more than its lead', () => {
+    let pitch = 0;
+    for (let i = 0; i < 50; i += 1) pitch = pitchedTarget(pitch, pad({ pitch: -1 }), false, 0.05, 0);
+    assert.ok(close(pitch, -MAX_PITCH_LEAD_RAD));
+});
+
+test('the pitch target stays between straight down and straight up', () => {
+    assert.ok(close(pitchedTarget(-Math.PI / 2, pad({ pitch: -1 }), false, 1, -Math.PI / 2), -Math.PI / 2));
+});
+
+test('the right stick sideways turns the roll at its rate and stops at its ends', () => {
+    assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * 0.2));
+    assert.equal(rolledOpening(0.99, pad({ roll: 1 }), false, 1), 1);
+    assert.equal(rolledOpening(0.01, pad({ roll: -1 }), false, 1), 0);
 });
 
 test('a D-pad press is one step, smaller in fine mode', () => {

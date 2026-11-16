@@ -25,9 +25,7 @@ export function stickResponse(value: number): number {
 export const speedScale = (slow: number, fine: boolean) =>
     (NORMAL_SCALE - slow * (NORMAL_SCALE - SLOWEST_SCALE)) * (fine ? FINE_SCALE : 1);
 
-export const PITCH_RAD_PER_S = 1;
-export const ROLL_RANGE_PER_S = 0.3;
-export const MAX_PITCH_LEAD_RAD = 0.4;
+export const WRIST_RANGE_PER_S = 0.3;
 
 export function padDirection(input: PadInput, fine: boolean): Vec3 {
     const [x, y] = deviceToBase([stickResponse(input.right), stickResponse(input.forward), 0]);
@@ -37,14 +35,8 @@ export function padDirection(input: PadInput, fine: boolean): Vec3 {
     return direction.map((d) => d * scale) as Vec3;
 }
 
-export function pitchedTarget(pitch: number, input: PadInput, fine: boolean, dt: number, pitchNow: number): number {
-    const next = pitch + stickResponse(input.pitch) * PITCH_RAD_PER_S * speedScale(input.slow, fine) * dt;
-    const led = Math.min(Math.max(next, pitchNow - MAX_PITCH_LEAD_RAD), pitchNow + MAX_PITCH_LEAD_RAD);
-    return Math.min(Math.max(led, -Math.PI / 2), Math.PI / 2);
-}
-
-export function rolledOpening(opening: number, input: PadInput, fine: boolean, dt: number): number {
-    const next = opening + stickResponse(input.roll) * ROLL_RANGE_PER_S * speedScale(input.slow, fine) * dt;
+export function turnedOpening(opening: number, push: number, input: PadInput, fine: boolean, dt: number): number {
+    const next = opening + stickResponse(push) * WRIST_RANGE_PER_S * speedScale(input.slow, fine) * dt;
     return Math.min(Math.max(next, 0), 1);
 }
 

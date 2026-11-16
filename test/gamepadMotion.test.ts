@@ -23,7 +23,7 @@ import type { Vec3 } from '../src/Utils/phoneMotion.ts';
 
 const AT_REST: Vec3 = [0, -0.2, 0.2];
 const idle: PadInput = {
-    enable: true, right: 0, forward: 0, up: false, down: false, pitch: 0, roll: 0, squeeze: 0, slow: 0,
+    enable: true, right: 0, forward: 0, lift: 0, pitch: 0, roll: 0, squeeze: 0, slow: 0,
     nudge: { forward: 0, right: 0 }, open: false, close: false, fine: false,
 };
 const pad = (input: Partial<PadInput>): PadInput => ({ ...idle, ...input });
@@ -54,14 +54,14 @@ test('a half tilt already gives a quarter of the speed', () => {
     assert.ok(stickResponse(0.5) > 0.25 && stickResponse(0.5) < 0.3);
 });
 
-test('Cross lifts and Triangle lowers the gripper', () => {
-    assert.deepEqual(rounded(padDirection(pad({ up: true }), false)), [0, 0, NORMAL_SCALE]);
-    assert.deepEqual(rounded(padDirection(pad({ down: true }), false)), [0, 0, -NORMAL_SCALE]);
-    assert.deepEqual(rounded(padDirection(pad({ up: true, down: true }), false)), [0, 0, 0]);
+test('the right stick up lifts and down lowers the gripper', () => {
+    assert.deepEqual(rounded(padDirection(pad({ lift: 1 }), false)), [0, 0, NORMAL_SCALE]);
+    assert.deepEqual(rounded(padDirection(pad({ lift: -1 }), false)), [0, 0, -NORMAL_SCALE]);
+    assert.deepEqual(rounded(padDirection(pad({ lift: 0.1 }), false)), [0, 0, 0]);
 });
 
 test('a diagonal never goes faster than a straight push', () => {
-    assert.ok(close(Math.hypot(...padDirection(pad({ forward: 1, right: 1, up: true }), false)), NORMAL_SCALE));
+    assert.ok(close(Math.hypot(...padDirection(pad({ forward: 1, right: 1, lift: 1 }), false)), NORMAL_SCALE));
 });
 
 test('L2 fully pressed still slows the gripper to the same slowest speed', () => {
@@ -86,7 +86,7 @@ test('the pitch target stays between straight down and straight up', () => {
     assert.ok(close(pitchedTarget(-Math.PI / 2, pad({ pitch: -1 }), false, 1, -Math.PI / 2), -Math.PI / 2));
 });
 
-test('the right stick up turns the roll at its rate and stops at its ends', () => {
+test('Square and Circle turn the roll at its rate and stop at its ends', () => {
     assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * NORMAL_SCALE * 0.2));
     assert.equal(rolledOpening(0.99, pad({ roll: 1 }), false, 1), 1);
     assert.equal(rolledOpening(0.01, pad({ roll: -1 }), false, 1), 0);

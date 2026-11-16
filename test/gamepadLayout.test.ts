@@ -29,11 +29,11 @@ test('a trigger never touched since plugging in reads as released, not half sque
     assert.equal(revolutionPro({}, [0, 0, 0, 0]).squeeze, 0);
 });
 
-test('the Revolution Pro right stick pitches up when pushed up and rolls back when pushed right', () => {
+test('the Revolution Pro right stick pitches up when pushed right and rolls when pushed up', () => {
     const centered = revolutionPro({});
     assert.ok(centered.pitch === 0 && centered.roll === 0);
     const tilted = revolutionPro({ 6: 1, 7: 0 });
-    assert.deepEqual([tilted.pitch, tilted.roll, tilted.squeeze], [1, -1, 0]);
+    assert.deepEqual([tilted.pitch, tilted.roll, tilted.squeeze], [1, 1, 0]);
 });
 
 test('the Revolution Pro lifts on Triangle and lowers on Square', () => {
@@ -51,6 +51,6 @@ test('a standard pad reads both sticks, the triggers, the face buttons and the D
     }, 17));
     assert.deepEqual(
         [input.enable, input.fine, input.right, input.forward, input.roll, input.pitch, input.up, input.open, input.slow, input.squeeze, input.nudge],
-        [true, true, 1, 1, 1, 1, true, false, 0.5, 1, { forward: 1, right: 1 }],
+        [true, true, 1, 1, 1, -1, true, false, 0.5, 1, { forward: 1, right: 1 }],
     );
 });

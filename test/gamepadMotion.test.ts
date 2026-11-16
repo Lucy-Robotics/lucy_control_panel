@@ -46,8 +46,8 @@ test('the left stick moves in the fixed X Y plane like W A S D, at the normal sp
     assert.deepEqual(rounded(padDirection(pad({ right: 1 }), false)), [-NORMAL_SCALE, 0, 0]);
 });
 
-test('the controller moves twice as fast as the keyboard jog', () => {
-    assert.equal(NORMAL_SCALE, 2);
+test('the controller moves three times as fast as the keyboard jog', () => {
+    assert.equal(NORMAL_SCALE, 3);
 });
 
 test('a half tilt already gives a quarter of the speed', () => {

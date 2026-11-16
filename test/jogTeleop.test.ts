@@ -56,3 +56,10 @@ test('the target stops at the table', () => {
     const low: Vec3 = [0, -0.2, SO101_MIN_END_EFFECTOR_Z_M];
     assert.equal(jogTarget(low, [0, 0, -1], 0.05, low)[2], SO101_MIN_END_EFFECTOR_Z_M);
 });
+
+test('a caller can give the target a longer lead than the keyboard jog', () => {
+    const endEffector: [number, number, number] = [0, -0.2, 0.2];
+    let target = endEffector;
+    for (let i = 0; i < 100; i += 1) target = jogTarget(target, [0, -1, 0], 0.05, endEffector, 0.08);
+    assert.ok(Math.abs(Math.hypot(...target.map((t, i) => t - endEffector[i])) - 0.08) < 1e-9);
+});

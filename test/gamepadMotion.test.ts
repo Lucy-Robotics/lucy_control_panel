@@ -4,6 +4,7 @@ import {
     FINE_SCALE,
     FINE_STEP_M,
     MAX_PITCH_LEAD_RAD,
+    NORMAL_SCALE,
     PITCH_RAD_PER_S,
     ROLL_RANGE_PER_S,
     SLOWEST_SCALE,
@@ -39,31 +40,35 @@ test('a small tilt crawls and a full tilt reaches full speed', () => {
     assert.equal(stickResponse(-1), -1);
 });
 
-test('the left stick moves in the fixed X Y plane like W A S D', () => {
-    assert.deepEqual(rounded(padDirection(pad({ forward: 1 }), false)), [0, -1, 0]);
-    assert.deepEqual(rounded(padDirection(pad({ right: 1 }), false)), [-1, 0, 0]);
+test('the left stick moves in the fixed X Y plane like W A S D, at the normal speed', () => {
+    assert.deepEqual(rounded(padDirection(pad({ forward: 1 }), false)), [0, -NORMAL_SCALE, 0]);
+    assert.deepEqual(rounded(padDirection(pad({ right: 1 }), false)), [-NORMAL_SCALE, 0, 0]);
+});
+
+test('the normal speed is 35 % faster than the keyboard jog', () => {
+    assert.equal(NORMAL_SCALE, 1.35);
 });
 
 test('Triangle lifts and Cross lowers the gripper', () => {
-    assert.deepEqual(rounded(padDirection(pad({ up: true }), false)), [0, 0, 1]);
-    assert.deepEqual(rounded(padDirection(pad({ down: true }), false)), [0, 0, -1]);
+    assert.deepEqual(rounded(padDirection(pad({ up: true }), false)), [0, 0, NORMAL_SCALE]);
+    assert.deepEqual(rounded(padDirection(pad({ down: true }), false)), [0, 0, -NORMAL_SCALE]);
     assert.deepEqual(rounded(padDirection(pad({ up: true, down: true }), false)), [0, 0, 0]);
 });
 
 test('a diagonal never goes faster than a straight push', () => {
-    assert.ok(close(Math.hypot(...padDirection(pad({ forward: 1, right: 1, up: true }), false)), 1));
+    assert.ok(close(Math.hypot(...padDirection(pad({ forward: 1, right: 1, up: true }), false)), NORMAL_SCALE));
 });
 
-test('L2 fully pressed slows the gripper to the slowest speed', () => {
+test('L2 fully pressed still slows the gripper to the same slowest speed', () => {
     assert.ok(close(padDirection(pad({ forward: 1, slow: 1 }), false)[1], -SLOWEST_SCALE));
 });
 
 test('fine mode slows the gripper ten times', () => {
-    assert.ok(close(padDirection(pad({ forward: 1 }), true)[1], -FINE_SCALE));
+    assert.ok(close(padDirection(pad({ forward: 1 }), true)[1], -NORMAL_SCALE * FINE_SCALE));
 });
 
 test('the right stick up raises the pitch at its full rate', () => {
-    assert.ok(close(pitchedTarget(0, pad({ pitch: 1 }), false, 0.1, 0), PITCH_RAD_PER_S * 0.1));
+    assert.ok(close(pitchedTarget(0, pad({ pitch: 1 }), false, 0.1, 0), PITCH_RAD_PER_S * NORMAL_SCALE * 0.1));
 });
 
 test('the pitch target never leads the wrist by more than its lead', () => {
@@ -77,7 +82,7 @@ test('the pitch target stays between straight down and straight up', () => {
 });
 
 test('the right stick sideways turns the roll at its rate and stops at its ends', () => {
-    assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * 0.2));
+    assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * NORMAL_SCALE * 0.2));
     assert.equal(rolledOpening(0.99, pad({ roll: 1 }), false, 1), 1);
     assert.equal(rolledOpening(0.01, pad({ roll: -1 }), false, 1), 0);
 });

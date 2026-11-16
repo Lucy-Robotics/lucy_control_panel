@@ -54,7 +54,7 @@ test('a half tilt already gives a quarter of the speed', () => {
     assert.ok(stickResponse(0.5) > 0.25 && stickResponse(0.5) < 0.3);
 });
 
-test('Triangle lifts and Square lowers the gripper', () => {
+test('Cross lifts and Triangle lowers the gripper', () => {
     assert.deepEqual(rounded(padDirection(pad({ up: true }), false)), [0, 0, NORMAL_SCALE]);
     assert.deepEqual(rounded(padDirection(pad({ down: true }), false)), [0, 0, -NORMAL_SCALE]);
     assert.deepEqual(rounded(padDirection(pad({ up: true, down: true }), false)), [0, 0, 0]);

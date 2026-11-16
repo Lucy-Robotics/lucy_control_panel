@@ -36,12 +36,12 @@ test('the Revolution Pro right stick pitches up when pushed right and rolls when
     assert.deepEqual([tilted.pitch, tilted.roll, tilted.squeeze], [1, 1, 0]);
 });
 
-test('the Revolution Pro lifts on Triangle and lowers on Square', () => {
-    assert.deepEqual([revolutionPro({ 3: 1 }).up, revolutionPro({ 0: 1 }).down], [true, true]);
+test('the Revolution Pro lifts on Cross and lowers on Triangle', () => {
+    assert.deepEqual([revolutionPro({ 1: 1 }).up, revolutionPro({ 3: 1 }).down], [true, true]);
 });
 
-test('the Revolution Pro opens the claw on Cross, closes it on Circle and toggles fine mode on R1', () => {
-    const input = revolutionPro({ 1: 1, 17: 1, 18: 1 });
+test('the Revolution Pro opens the claw on Square, closes it on Circle and toggles fine mode on R1', () => {
+    const input = revolutionPro({ 0: 1, 17: 1, 18: 1 });
     assert.deepEqual([input.open, input.close, input.fine], [true, true, true]);
 });
 
@@ -51,6 +51,6 @@ test('a standard pad reads both sticks, the triggers, the face buttons and the D
     }, 17));
     assert.deepEqual(
         [input.enable, input.fine, input.right, input.forward, input.roll, input.pitch, input.up, input.open, input.slow, input.squeeze, input.nudge],
-        [true, true, 1, 1, 1, -1, true, false, 0.5, 1, { forward: 1, right: 1 }],
+        [true, true, 1, 1, 1, -1, false, true, 0.5, 1, { forward: 1, right: 1 }],
     );
 });

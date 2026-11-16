@@ -45,7 +45,7 @@ test('holding L1 with the left stick forward moves the target', () => {
     assert.ok(ticks[1].publish![1] < END_EFFECTOR[1]);
 });
 
-test('the right stick up tilts the tip up by turning the wrist pitch motor, without moving the target', () => {
+test('the right stick to the right tilts the tip up by turning the wrist pitch motor, without moving the target', () => {
     const [tick] = run([held({ pitch: 1 })]);
     assert.equal(tick.publish, null);
     assert.ok(Math.sign(tick.pitch! - 0.5) === TIP_UP_LOWERS_WRIST_PITCH);

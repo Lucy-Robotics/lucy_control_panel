@@ -4,7 +4,7 @@
  */
 
 import { jogTarget } from './jogTeleop.ts';
-import { nudgeStep, padDirection, pitchedTarget, rolledOpening, steppedTarget } from './gamepadMotion.ts';
+import { PAD_MAX_LEAD_M, nudgeStep, padDirection, pitchedTarget, rolledOpening, steppedTarget } from './gamepadMotion.ts';
 import { clawMoved, clawOpenness, restOpening } from './gamepadClaw.ts';
 import type { PadInput } from './gamepadLayout.ts';
 import type { Vec3 } from './phoneMotion.ts';
@@ -64,7 +64,7 @@ export function gamepadTick(session: Session, input: PadInput, now: ArmNow, dt: 
     const direction = padDirection(input, fine);
     const step = nudgeStep(nudge, fine);
     let target = start;
-    if (!isStill(direction)) target = jogTarget(target, direction, dt, endEffector);
+    if (!isStill(direction)) target = jogTarget(target, direction, dt, endEffector, PAD_MAX_LEAD_M);
     if (!isStill(step)) target = steppedTarget(target, step, endEffector);
     const pitch = startPitch === null || now.pitch === null
         ? startPitch

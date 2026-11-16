@@ -8,7 +8,7 @@ import { SO101_MIN_END_EFFECTOR_Z_M } from './jogTeleop.ts';
 import type { PadInput } from './gamepadLayout.ts';
 
 export const STICK_DEADZONE = 0.15;
-export const NORMAL_SCALE = 2;
+export const NORMAL_SCALE = 1;
 export const PAD_MAX_LEAD_M = 0.08;
 export const SLOWEST_SCALE = 0.2;
 export const FINE_SCALE = 0.1;

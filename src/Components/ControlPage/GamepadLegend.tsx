@@ -18,11 +18,11 @@ export function GamepadLegend({ isHeld, isFine, mobileRailHeight }: GamepadLegen
         : { right: MOBILE_GAP_PX, bottom: mobileRailHeight + MOBILE_GAP_PX };
     const rows: Array<[string, string]> = [
         ['Left stick', 'move in X Y'],
-        ['× / △', 'up / down'],
+        ['Right stick ↕', 'up and down'],
         ['Right stick ↔', 'pitch'],
-        ['Right stick ↕', 'roll'],
+        ['□ / ○', 'roll'],
         ['R2', 'grip'],
-        ['□ / ○', 'open / close'],
+        ['△ / ×', 'open / close'],
         ['L2', 'slower'],
         ['R1', isFine ? 'fine mode off' : 'fine mode'],
     ];

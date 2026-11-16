@@ -31,7 +31,7 @@ export const MAX_PITCH_LEAD_RAD = 0.4;
 
 export function padDirection(input: PadInput, fine: boolean): Vec3 {
     const [x, y] = deviceToBase([stickResponse(input.right), stickResponse(input.forward), 0]);
-    const direction: Vec3 = [x, y, Number(input.up) - Number(input.down)];
+    const direction: Vec3 = [x, y, stickResponse(input.lift)];
     const length = Math.hypot(...direction);
     const scale = speedScale(input.slow, fine) * (length > 1 ? 1 / length : 1);
     return direction.map((d) => d * scale) as Vec3;

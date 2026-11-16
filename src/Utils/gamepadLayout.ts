@@ -7,8 +7,7 @@ export interface PadInput {
     enable: boolean;
     right: number;
     forward: number;
-    up: boolean;
-    down: boolean;
+    lift: number;
     pitch: number;
     roll: number;
     squeeze: number;
@@ -65,15 +64,14 @@ export function readPad(pad: Gamepad): PadInput {
         enable: pressed(pad, buttons.l1),
         right: axis(pad, 0),
         forward: -axis(pad, 1),
-        up: pressed(pad, buttons.cross),
-        down: pressed(pad, buttons.triangle),
+        lift: -layout.rightY(pad),
         pitch: layout.rightX(pad),
-        roll: -layout.rightY(pad),
+        roll: sign(pressed(pad, buttons.circle), pressed(pad, buttons.square)),
         squeeze: unit(layout.r2(pad)),
         slow: unit(layout.l2(pad)),
         nudge: layout.dpad(pad),
-        open: pressed(pad, buttons.square),
-        close: pressed(pad, buttons.circle),
+        open: pressed(pad, buttons.triangle),
+        close: pressed(pad, buttons.cross),
         fine: pressed(pad, buttons.r1),
     };
 }

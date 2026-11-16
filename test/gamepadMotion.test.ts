@@ -3,16 +3,13 @@ import assert from 'node:assert/strict';
 import {
     FINE_SCALE,
     FINE_STEP_M,
-    MAX_PITCH_LEAD_RAD,
     NORMAL_SCALE,
     PAD_MAX_LEAD_M,
-    PITCH_RAD_PER_S,
-    ROLL_RANGE_PER_S,
+    WRIST_RANGE_PER_S,
     SLOWEST_SCALE,
     STEP_M,
     padDirection,
-    pitchedTarget,
-    rolledOpening,
+    turnedOpening,
     stickResponse,
     nudgeStep,
     steppedTarget,
@@ -54,7 +51,7 @@ test('a half tilt already gives a quarter of the speed', () => {
     assert.ok(stickResponse(0.5) > 0.25 && stickResponse(0.5) < 0.3);
 });
 
-test('the right stick up lifts and down lowers the gripper', () => {
+test('a lift push raises and a negative one lowers the gripper', () => {
     assert.deepEqual(rounded(padDirection(pad({ lift: 1 }), false)), [0, 0, NORMAL_SCALE]);
     assert.deepEqual(rounded(padDirection(pad({ lift: -1 }), false)), [0, 0, -NORMAL_SCALE]);
     assert.deepEqual(rounded(padDirection(pad({ lift: 0.1 }), false)), [0, 0, 0]);
@@ -72,24 +69,14 @@ test('fine mode slows the gripper ten times', () => {
     assert.ok(close(padDirection(pad({ forward: 1 }), true)[1], -NORMAL_SCALE * FINE_SCALE));
 });
 
-test('the right stick to the right raises the pitch at its full rate', () => {
-    assert.ok(close(pitchedTarget(0, pad({ pitch: 1 }), false, 0.1, 0), PITCH_RAD_PER_S * NORMAL_SCALE * 0.1));
+test('a wrist push turns the motor at its rate and stops at its ends', () => {
+    assert.ok(close(turnedOpening(0.5, 1, pad({}), false, 0.2), 0.5 + WRIST_RANGE_PER_S * NORMAL_SCALE * 0.2));
+    assert.equal(turnedOpening(0.99, 1, pad({}), false, 1), 1);
+    assert.equal(turnedOpening(0.01, -1, pad({}), false, 1), 0);
 });
 
-test('the pitch target never leads the wrist by more than its lead', () => {
-    let pitch = 0;
-    for (let i = 0; i < 50; i += 1) pitch = pitchedTarget(pitch, pad({ pitch: -1 }), false, 0.05, 0);
-    assert.ok(close(pitch, -MAX_PITCH_LEAD_RAD));
-});
-
-test('the pitch target stays between straight down and straight up', () => {
-    assert.ok(close(pitchedTarget(-Math.PI / 2, pad({ pitch: -1 }), false, 1, -Math.PI / 2), -Math.PI / 2));
-});
-
-test('Square and Circle turn the roll at its rate and stop at its ends', () => {
-    assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * NORMAL_SCALE * 0.2));
-    assert.equal(rolledOpening(0.99, pad({ roll: 1 }), false, 1), 1);
-    assert.equal(rolledOpening(0.01, pad({ roll: -1 }), false, 1), 0);
+test('L2 and fine mode slow the wrist like the rest', () => {
+    assert.ok(turnedOpening(0.5, 1, pad({ slow: 1 }), true, 0.2) - 0.5 < turnedOpening(0.5, 1, pad({}), false, 0.2) - 0.5);
 });
 
 test('a D-pad press is one step, smaller in fine mode', () => {

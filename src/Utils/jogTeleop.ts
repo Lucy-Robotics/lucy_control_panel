@@ -23,10 +23,10 @@ export function jogDirection(pressed: ReadonlySet<string>): Vec3 {
     ]);
 }
 
-export function jogTarget(target: Vec3, direction: Vec3, dt: number, endEffector: Vec3): Vec3 {
+export function jogTarget(target: Vec3, direction: Vec3, dt: number, endEffector: Vec3, maxLead = MAX_LEAD_M): Vec3 {
     const lead = target.map((t, i) => t + direction[i] * JOG_SPEED_MPS * dt - endEffector[i]);
     const length = Math.hypot(...lead);
-    const scale = length > MAX_LEAD_M ? MAX_LEAD_M / length : 1;
+    const scale = length > maxLead ? maxLead / length : 1;
     const [x, y, z] = endEffector.map((e, i) => e + lead[i] * scale);
     return [x, y, Math.max(z, SO101_MIN_END_EFFECTOR_Z_M)];
 }

@@ -5,6 +5,7 @@ import {
     FINE_STEP_M,
     MAX_PITCH_LEAD_RAD,
     NORMAL_SCALE,
+    PAD_MAX_LEAD_M,
     PITCH_RAD_PER_S,
     ROLL_RANGE_PER_S,
     SLOWEST_SCALE,
@@ -16,7 +17,7 @@ import {
     nudgeStep,
     steppedTarget,
 } from '../src/Utils/gamepadMotion.ts';
-import { MAX_LEAD_M, SO101_MIN_END_EFFECTOR_Z_M } from '../src/Utils/jogTeleop.ts';
+import { SO101_MIN_END_EFFECTOR_Z_M } from '../src/Utils/jogTeleop.ts';
 import type { PadInput } from '../src/Utils/gamepadLayout.ts';
 import type { Vec3 } from '../src/Utils/phoneMotion.ts';
 
@@ -45,8 +46,12 @@ test('the left stick moves in the fixed X Y plane like W A S D, at the normal sp
     assert.deepEqual(rounded(padDirection(pad({ right: 1 }), false)), [-NORMAL_SCALE, 0, 0]);
 });
 
-test('the normal speed is 35 % faster than the keyboard jog', () => {
-    assert.equal(NORMAL_SCALE, 1.35);
+test('the controller moves twice as fast as the keyboard jog', () => {
+    assert.equal(NORMAL_SCALE, 2);
+});
+
+test('a half tilt already gives a quarter of the speed', () => {
+    assert.ok(stickResponse(0.5) > 0.25 && stickResponse(0.5) < 0.3);
 });
 
 test('Triangle lifts and Cross lowers the gripper', () => {
@@ -101,7 +106,7 @@ test('three steps move the target exactly three steps', () => {
 test('steps never take the target further ahead of the gripper than the lead', () => {
     let target = AT_REST;
     for (let i = 0; i < 100; i += 1) target = steppedTarget(target, [0, -STEP_M, 0], AT_REST);
-    assert.ok(Math.abs(Math.hypot(...target.map((t, i) => t - AT_REST[i])) - MAX_LEAD_M) < 1e-9);
+    assert.ok(Math.abs(Math.hypot(...target.map((t, i) => t - AT_REST[i])) - PAD_MAX_LEAD_M) < 1e-9);
 });
 
 test('steps stop at the table', () => {

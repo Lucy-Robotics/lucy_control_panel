@@ -8,7 +8,7 @@ import type { Vec3 } from '../src/Utils/phoneMotion.ts';
 const END_EFFECTOR: Vec3 = [0, -0.2, 0.2];
 const DT = 0.05;
 const released: PadInput = {
-    enable: false, right: 0, forward: 0, up: false, down: false, pitch: 0, roll: 0, squeeze: 0, slow: 0,
+    enable: false, right: 0, forward: 0, lift: 0, pitch: 0, roll: 0, squeeze: 0, slow: 0,
     nudge: { forward: 0, right: 0 }, open: false, close: false, fine: false,
 };
 const held = (input: Partial<PadInput> = {}): PadInput => ({ ...released, enable: true, ...input });
@@ -25,7 +25,7 @@ function run(inputs: PadInput[], now: ArmNow = arm(), session: Session = NEW_SES
 }
 
 test('nothing moves while L1 is released, whatever the sticks do', () => {
-    const [tick] = run([{ ...released, forward: 1, up: true, pitch: 1, roll: 1, squeeze: 1 }]);
+    const [tick] = run([{ ...released, forward: 1, lift: 1, pitch: 1, roll: 1, squeeze: 1 }]);
     assert.deepEqual([tick.publish, tick.claw, tick.roll], [null, null, null]);
 });
 

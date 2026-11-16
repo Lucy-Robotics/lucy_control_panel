@@ -710,7 +710,7 @@ export const RobotControlPanel: React.FC = () => {
         });
         jointsRef.current = next;
         setJoints(next);
-        JointStateHandler.getInstance().publishJointStates(next);
+        JointStateHandler.getInstance().streamJointStates(next);
     }, []);
 
     const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
@@ -728,7 +728,7 @@ export const RobotControlPanel: React.FC = () => {
                     joint.name === name ? atOpenness(joint, openness, mappingOf(joint.name)) : joint);
                 jointsRef.current = next;
                 setJoints(next);
-                JointStateHandler.getInstance().publishJointStates(next);
+                JointStateHandler.getInstance().streamJointStates(next);
             },
             opennessOf: (name) => {
                 const joint = jointsRef.current.find((candidate) => candidate.name === name);

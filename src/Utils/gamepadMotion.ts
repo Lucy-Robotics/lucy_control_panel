@@ -8,6 +8,7 @@ import { MAX_LEAD_M, SO101_MIN_END_EFFECTOR_Z_M } from './jogTeleop.ts';
 import type { PadInput } from './gamepadLayout.ts';
 
 export const STICK_DEADZONE = 0.15;
+export const NORMAL_SCALE = 1.35;
 export const SLOWEST_SCALE = 0.2;
 export const FINE_SCALE = 0.1;
 export const STEP_M = 0.005;
@@ -20,7 +21,8 @@ export function stickResponse(value: number): number {
     return Math.sign(value) * scaled * scaled;
 }
 
-export const speedScale = (slow: number, fine: boolean) => (1 - slow * (1 - SLOWEST_SCALE)) * (fine ? FINE_SCALE : 1);
+export const speedScale = (slow: number, fine: boolean) =>
+    (NORMAL_SCALE - slow * (NORMAL_SCALE - SLOWEST_SCALE)) * (fine ? FINE_SCALE : 1);
 
 export const PITCH_RAD_PER_S = 0.8;
 export const ROLL_RANGE_PER_S = 0.25;

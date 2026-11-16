@@ -10,42 +10,47 @@ function pad(id: string, axes: number[], values: Record<number, number>, count =
 }
 
 const REVOLUTION_PRO = '146b-0d01-Bigben Interactive Revolution Pro Controller';
-const CENTERED_RIGHT_STICK = { 6: 0.49, 7: 0.48 };
+const CENTERED_RIGHT_STICK = { 6: 0.5, 7: 0.5 };
+const revolutionPro = (values: Record<number, number>, axes = [0, 0, -1, -1]) =>
+    readPad(pad(REVOLUTION_PRO, axes, { ...CENTERED_RIGHT_STICK, ...values }));
 
 test('the Revolution Pro in Firefox holds L1 on button 2', () => {
-    assert.equal(readPad(pad(REVOLUTION_PRO, [0, 0, -1, -1], { ...CENTERED_RIGHT_STICK, 2: 1 })).enable, true);
-    assert.equal(readPad(pad(REVOLUTION_PRO, [0, 0, -1, -1], { ...CENTERED_RIGHT_STICK, 4: 1 })).enable, false);
+    assert.equal(revolutionPro({ 2: 1 }).enable, true);
+    assert.equal(revolutionPro({ 4: 1 }).enable, false);
 });
 
 test('the Revolution Pro in Firefox reads R2 from axis 3 and L2 from axis 2', () => {
-    const input = readPad(pad(REVOLUTION_PRO, [0, 0, 1, -0.5], CENTERED_RIGHT_STICK));
+    const input = revolutionPro({}, [0, 0, 1, -0.5]);
     assert.equal(input.slow, 1);
     assert.equal(input.squeeze, 0.25);
 });
 
 test('a trigger never touched since plugging in reads as released, not half squeezed', () => {
-    assert.equal(readPad(pad(REVOLUTION_PRO, [0, 0, 0, 0], CENTERED_RIGHT_STICK)).squeeze, 0);
+    assert.equal(revolutionPro({}, [0, 0, 0, 0]).squeeze, 0);
 });
 
-test('the Revolution Pro in Firefox reads the right stick from the trigger values', () => {
-    const centered = readPad(pad(REVOLUTION_PRO, [0, 0, -1, -1], CENTERED_RIGHT_STICK));
-    const up = readPad(pad(REVOLUTION_PRO, [0, 0, -1, -1], { 6: 0.5, 7: 0 }));
-    assert.ok(Math.abs(centered.lift) < 0.1);
-    assert.equal(up.lift, 1);
-    assert.equal(up.squeeze, 0);
+test('the Revolution Pro right stick pitches up when pushed up and rolls when pushed right', () => {
+    const centered = revolutionPro({});
+    assert.ok(centered.pitch === 0 && centered.roll === 0);
+    const tilted = revolutionPro({ 6: 1, 7: 0 });
+    assert.deepEqual([tilted.pitch, tilted.roll, tilted.squeeze], [1, 1, 0]);
 });
 
-test('the Revolution Pro in Firefox maps Triangle, Circle and Square', () => {
-    const input = readPad(pad(REVOLUTION_PRO, [0, 0, -1, -1], { ...CENTERED_RIGHT_STICK, 3: 1, 17: 1, 0: 1 }));
+test('the Revolution Pro lifts on Triangle and lowers on Cross', () => {
+    assert.deepEqual([revolutionPro({ 3: 1 }).up, revolutionPro({ 1: 1 }).down], [true, true]);
+});
+
+test('the Revolution Pro opens the claw on Square, closes it on Circle and toggles fine mode on R1', () => {
+    const input = revolutionPro({ 0: 1, 17: 1, 18: 1 });
     assert.deepEqual([input.open, input.close, input.fine], [true, true, true]);
 });
 
-test('a standard pad reads L1, the triggers, the right stick and the D-pad', () => {
-    const input = readPad(pad('Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)', [0, -1, 0, -1], {
-        4: 1, 6: 0.5, 7: 1, 12: 1, 15: 1,
+test('a standard pad reads both sticks, the triggers, the face buttons and the D-pad', () => {
+    const input = readPad(pad('Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)', [1, -1, -1, -1], {
+        4: 1, 5: 1, 3: 1, 2: 1, 6: 0.5, 7: 1, 12: 1, 15: 1,
     }, 17));
     assert.deepEqual(
-        [input.enable, input.reach, input.lift, input.slow, input.squeeze, input.nudge],
-        [true, 1, 1, 0.5, 1, { forward: 1, right: 1 }],
+        [input.enable, input.fine, input.right, input.forward, input.roll, input.pitch, input.up, input.open, input.slow, input.squeeze, input.nudge],
+        [true, true, 1, 1, -1, 1, true, true, 0.5, 1, { forward: 1, right: 1 }],
     );
 });

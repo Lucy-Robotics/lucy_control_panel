@@ -22,21 +22,27 @@ export function stickResponse(value: number): number {
 
 export const speedScale = (slow: number, fine: boolean) => (1 - slow * (1 - SLOWEST_SCALE)) * (fine ? FINE_SCALE : 1);
 
-export function stickDirection(input: PadInput, endEffector: Vec3, fine: boolean): Vec3 {
-    const [x, y] = endEffector;
-    const radius = Math.hypot(x, y);
-    const outward = radius > 1e-6 ? [x / radius, y / radius] : [0, 0];
-    const reach = stickResponse(input.reach);
-    const swing = -stickResponse(input.swing);
-    const direction: Vec3 = [
-        outward[0] * reach - outward[1] * swing,
-        outward[1] * reach + outward[0] * swing,
-        stickResponse(input.lift),
-    ];
+export const PITCH_RAD_PER_S = 0.8;
+export const ROLL_RANGE_PER_S = 0.25;
+export const MAX_PITCH_LEAD_RAD = 0.15;
+
+export function padDirection(input: PadInput, fine: boolean): Vec3 {
+    const [x, y] = deviceToBase([stickResponse(input.right), stickResponse(input.forward), 0]);
+    const direction: Vec3 = [x, y, Number(input.up) - Number(input.down)];
     const length = Math.hypot(...direction);
-    const limit = length > 1 ? 1 / length : 1;
-    const scale = speedScale(input.slow, fine) * limit;
+    const scale = speedScale(input.slow, fine) * (length > 1 ? 1 / length : 1);
     return direction.map((d) => d * scale) as Vec3;
+}
+
+export function pitchedTarget(pitch: number, input: PadInput, fine: boolean, dt: number, pitchNow: number): number {
+    const next = pitch + stickResponse(input.pitch) * PITCH_RAD_PER_S * speedScale(input.slow, fine) * dt;
+    const led = Math.min(Math.max(next, pitchNow - MAX_PITCH_LEAD_RAD), pitchNow + MAX_PITCH_LEAD_RAD);
+    return Math.min(Math.max(led, -Math.PI / 2), Math.PI / 2);
+}
+
+export function rolledOpening(opening: number, input: PadInput, fine: boolean, dt: number): number {
+    const next = opening + stickResponse(input.roll) * ROLL_RANGE_PER_S * speedScale(input.slow, fine) * dt;
+    return Math.min(Math.max(next, 0), 1);
 }
 
 export function nudgeStep(nudge: PadInput['nudge'], fine: boolean): Vec3 {

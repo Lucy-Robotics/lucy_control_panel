@@ -8,8 +8,8 @@ import { SO101_MIN_END_EFFECTOR_Z_M } from './jogTeleop.ts';
 import type { PadInput } from './gamepadLayout.ts';
 
 export const STICK_DEADZONE = 0.15;
-export const NORMAL_SCALE = 3;
-export const PAD_MAX_LEAD_M = 0.12;
+export const NORMAL_SCALE = 2;
+export const PAD_MAX_LEAD_M = 0.08;
 export const SLOWEST_SCALE = 0.2;
 export const FINE_SCALE = 0.1;
 export const STEP_M = 0.005;
@@ -26,8 +26,8 @@ export const speedScale = (slow: number, fine: boolean) =>
     (NORMAL_SCALE - slow * (NORMAL_SCALE - SLOWEST_SCALE)) * (fine ? FINE_SCALE : 1);
 
 export const PITCH_RAD_PER_S = 1;
-export const ROLL_RANGE_PER_S = 0.4;
-export const MAX_PITCH_LEAD_RAD = 0.6;
+export const ROLL_RANGE_PER_S = 0.3;
+export const MAX_PITCH_LEAD_RAD = 0.4;
 
 export function padDirection(input: PadInput, fine: boolean): Vec3 {
     const [x, y] = deviceToBase([stickResponse(input.right), stickResponse(input.forward), 0]);

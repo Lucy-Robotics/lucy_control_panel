@@ -19,8 +19,8 @@ export function GamepadLegend({ isHeld, isFine, mobileRailHeight }: GamepadLegen
     const rows: Array<[string, string]> = [
         ['Left stick', 'move in X Y'],
         ['△ / □', 'up / down'],
-        ['Right stick ↕', 'pitch'],
-        ['Right stick ↔', 'roll'],
+        ['Right stick ↔', 'pitch'],
+        ['Right stick ↕', 'roll'],
         ['R2', 'grip'],
         ['× / ○', 'open / close'],
         ['L2', 'slower'],

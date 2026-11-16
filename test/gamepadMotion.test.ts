@@ -72,7 +72,7 @@ test('fine mode slows the gripper ten times', () => {
     assert.ok(close(padDirection(pad({ forward: 1 }), true)[1], -NORMAL_SCALE * FINE_SCALE));
 });
 
-test('the right stick up raises the pitch at its full rate', () => {
+test('the right stick to the right raises the pitch at its full rate', () => {
     assert.ok(close(pitchedTarget(0, pad({ pitch: 1 }), false, 0.1, 0), PITCH_RAD_PER_S * NORMAL_SCALE * 0.1));
 });
 
@@ -86,7 +86,7 @@ test('the pitch target stays between straight down and straight up', () => {
     assert.ok(close(pitchedTarget(-Math.PI / 2, pad({ pitch: -1 }), false, 1, -Math.PI / 2), -Math.PI / 2));
 });
 
-test('the right stick sideways turns the roll at its rate and stops at its ends', () => {
+test('the right stick up turns the roll at its rate and stops at its ends', () => {
     assert.ok(close(rolledOpening(0.5, pad({ roll: 1 }), false, 0.2), 0.5 + ROLL_RANGE_PER_S * NORMAL_SCALE * 0.2));
     assert.equal(rolledOpening(0.99, pad({ roll: 1 }), false, 1), 1);
     assert.equal(rolledOpening(0.01, pad({ roll: -1 }), false, 1), 0);

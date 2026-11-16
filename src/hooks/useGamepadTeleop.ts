@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RosBridgeService } from '../Services/ros/ros.service';
-import { openIkTopics } from '../Services/ros/ikTopics';
+import { openIkTopics, subscribeToEndEffectorPitch } from '../Services/ros/ikTopics';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
 import { readPad } from '../Utils/gamepadLayout';
 import { NEW_SESSION, gamepadTick } from '../Utils/gamepadSession';
@@ -17,11 +17,12 @@ import type { Vec3 } from '../Utils/phoneMotion';
 const TICK_MS = 50;
 const RUMBLE_MS = 120;
 export const GRIP_JOINT = 'Jaw';
+export const ROLL_JOINT = 'Wrist_Roll';
 
 export interface GamepadTeleopHooks {
     onSolution: (positions: JointPositions) => void;
-    onClaw: (openness: number) => void;
-    clawNow: () => number;
+    setOpenness: (joint: string, openness: number) => void;
+    opennessOf: (joint: string) => number;
     overheated: ReadonlySet<string>;
 }
 
@@ -68,6 +69,8 @@ export function useGamepadTeleop(canRun: boolean, endEffector: Vec3 | null, hook
         const ik = openIkTopics(ros, (positions) => hooksRef.current.onSolution(positions));
         let loads: ReadonlyMap<string, number> = new Map();
         const stopLoads = subscribeToJointLoads((next) => { loads = next; });
+        let pitchNow: number | null = null;
+        const stopPitch = subscribeToEndEffectorPitch(ros, (pitch) => { pitchNow = pitch; });
         const pad = firstGamepad();
         let session = { ...NEW_SESSION, previous: pad ? readPad(pad) : null };
         let lastRumble = 0;
@@ -80,15 +83,24 @@ export function useGamepadTeleop(canRun: boolean, endEffector: Vec3 | null, hook
         const tick = setInterval(() => {
             const pad = firstGamepad();
             if (!pad) return stop();
-            const result = gamepadTick(session, readPad(pad), endEffectorRef.current, hooksRef.current.clawNow, TICK_MS / 1000);
+            const { opennessOf, setOpenness } = hooksRef.current;
+            const result = gamepadTick(session, readPad(pad), {
+                endEffector: endEffectorRef.current,
+                pitch: pitchNow,
+                claw: () => opennessOf(GRIP_JOINT),
+                roll: () => opennessOf(ROLL_JOINT),
+            }, TICK_MS / 1000);
             setIsHeld(result.session.target !== null);
             setIsFine(result.session.fine);
             session = result.session;
             if (result.publish) {
-                ik.publishTarget(result.publish);
-                setTarget(result.publish);
+                const { target, pitch } = result.publish;
+                if (pitch === null) ik.publishTarget(target);
+                else ik.publishPoseTarget(target, pitch);
+                setTarget(target);
             }
-            if (result.claw !== null) hooksRef.current.onClaw(result.claw);
+            if (result.claw !== null) setOpenness(GRIP_JOINT, result.claw);
+            if (result.roll !== null) setOpenness(ROLL_JOINT, result.roll);
             const now = performance.now();
             if (session.target && now - lastRumble >= RUMBLE_MS && rumble(pad, loads, hooksRef.current.overheated)) {
                 lastRumble = now;
@@ -103,6 +115,7 @@ export function useGamepadTeleop(canRun: boolean, endEffector: Vec3 | null, hook
             window.removeEventListener('blur', stop);
             document.removeEventListener('visibilitychange', onHidden);
             stopLoads();
+            stopPitch();
             ik.close();
             setTarget(null);
             setIsHeld(false);

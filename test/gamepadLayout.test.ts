@@ -29,7 +29,7 @@ test('a trigger never touched since plugging in reads as released, not half sque
     assert.equal(revolutionPro({}, [0, 0, 0, 0]).squeeze, 0);
 });
 
-test('the Revolution Pro right stick lifts when pushed up and pitches up when pushed right', () => {
+test('the Revolution Pro right stick pitches when pushed up and lifts when pushed right', () => {
     const centered = revolutionPro({});
     assert.ok(centered.lift === 0 && centered.pitch === 0);
     const tilted = revolutionPro({ 6: 1, 7: 0 });

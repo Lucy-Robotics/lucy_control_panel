@@ -10,11 +10,11 @@ import { URDFJoint, URDFLink, URDFRobot, URDFVisual } from 'urdf-loader/src/URDF
 
 const GREY = 0x555555;
 
-function visual(file: string, color: number): { visual: URDFVisual; mesh: THREE.Mesh } {
+function visual(file: string, color: number, joint?: string): { visual: URDFVisual; mesh: THREE.Mesh } {
     const node = new URDFVisual();
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color }));
     node.add(mesh);
-    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }) } });
+    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }), getAttribute: (name: string) => (name === 'joint' ? joint ?? null : null) } });
     return { visual: node, mesh };
 }
 
@@ -88,6 +88,28 @@ const meshCount = (root: THREE.Object3D) => {
         const glow = attachHoverGlow(scene, robot, 'shoulder', partNameOf, new THREE.MeshBasicMaterial());
         const glowing = scene.children.slice(1).map((shell) => (shell as THREE.Mesh).geometry);
         assert.deepEqual(new Set(glowing), new Set([rotationMotor.mesh.geometry, bracket.mesh.geometry]), 'hovering the shoulder glows its bracket and the base motor, not the Pitch motor');
+        glow.detach();
+    }
+
+    {
+        const { robot, shoulder: torso, upperArm: neck } = so101BaseAndShoulder();
+        Object.assign(torso, { name: 'torso', urdfName: 'torso' });
+        Object.assign(neck, { name: 'neck', urdfName: 'neck' });
+        Object.assign(torso.parent!, { name: 'Torso', urdfName: 'Torso' });
+        Object.assign(neck.parent!, { name: 'Neck', urdfName: 'Neck' });
+        const column = visual('meshes/neck_column.stl', 0xffffff, 'Neck');
+        const plate = visual('meshes/torso_plate.stl', 0xffffff);
+        const stray = visual('meshes/stray.stl', 0xffffff, 'Nope');
+        torso.add(column.visual, plate.visual, stray.visual);
+        Object.assign(robot, { joints: { Torso: torso.parent, Neck: neck.parent }, links: { torso, neck } });
+        assert.equal(robotPartNames(robot)(column.mesh), 'neck', 'hovering the neck column selects the neck');
+        assert.equal(robotPartNames(robot)(plate.mesh), 'torso', 'an untagged mesh keeps its own link');
+        assert.equal(robotPartNames(robot)(stray.mesh), 'torso', 'a tag naming an unknown joint is ignored');
+        assert.equal(robotPartNames(robot, new Set(['Torso']))(column.mesh), 'torso', 'a tag naming a non-actuated joint is ignored');
+        const scene = new THREE.Scene();
+        scene.add(robot);
+        const glow = attachHoverGlow(scene, robot, 'neck', robotPartNames(robot), new THREE.MeshBasicMaterial());
+        assert.ok(scene.children.some((c) => (c as THREE.Mesh).geometry === column.mesh.geometry), 'hovering the neck glows the tagged column');
         glow.detach();
     }
 

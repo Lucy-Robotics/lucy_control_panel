@@ -76,21 +76,19 @@ test('an unlit led gets no hover glow, so it stays invisible', () => {
     glow.detach();
 });
 
-test('the left eye tries one look per led pair, the right eye has them all but one shared spill light', async () => {
-    const { featuresOfLed } = await import('../src/Utils/eyeLedLooks.ts');
-    assert.deepEqual([...featuresOfLed('left', 0)], []);
-    assert.deepEqual([...featuresOfLed('left', 1)], []);
-    assert.deepEqual([...featuresOfLed('left', 2)], ['hotCore']);
-    assert.deepEqual([...featuresOfLed('left', 7)], ['spill']);
-    assert.deepEqual([...featuresOfLed('left', 11)], ['saturate']);
-    assert.deepEqual([...featuresOfLed('right', 5)].sort(), ['fade', 'halo', 'hotCore', 'saturate']);
+test('bright colors wash toward white, dark ones barely move', async () => {
+    const { whitened } = await import('../src/Utils/eyeLedView.ts');
+    const bright = whitened(0xff0000);
+    assert.ok(bright.g > 0.3 && bright.r === 1);
+    assert.ok(whitened(0x200000).g < 0.05);
 });
 
-test('bright colors wash toward white, dark ones barely move', async () => {
-    const { saturated } = await import('../src/Utils/eyeLedLooks.ts');
-    const bright = saturated(0xff0000);
-    assert.ok(bright.g > 0.3 && bright.r === 1);
-    assert.ok(saturated(0x200000).g < 0.05);
+test('an led disc is solid in the middle and fades out at its rim', async () => {
+    const { softEdgeAlpha } = await import('../src/Utils/eyeLedView.ts');
+    assert.equal(softEdgeAlpha(0), 1);
+    assert.equal(softEdgeAlpha(0.6), 1);
+    assert.ok(softEdgeAlpha(0.85) > 0 && softEdgeAlpha(0.85) < 1);
+    assert.equal(softEdgeAlpha(1), 0);
 });
 
 test('led links name their eye', () => {
@@ -111,18 +109,14 @@ test('a halo on an unlit led gets no hover glow either', () => {
     glow.detach();
 });
 
-test('setting an led up twice, as React dev mode does, still lights it once', async () => {
-    const { createLedView } = await import('../src/Utils/eyeLedLooks.ts');
-    const link = new THREE.Group();
+test('setting an led up twice, as React dev mode does, still lights it with one halo', async () => {
+    const { createLedView } = await import('../src/Utils/eyeLedView.ts');
     const led = new THREE.Mesh(new THREE.CylinderGeometry());
-    link.add(led);
-    const features = new Set(['halo', 'hotCore', 'spill'] as const);
-    createLedView(led, link, features).dispose();
-    const view = createLedView(led, link, features);
+    createLedView(led).dispose();
+    const view = createLedView(led);
     view.show(0x00ff00);
     assert.equal(led.visible, true);
-    assert.equal(led.children.length, 2, 'one core and one halo, not two of each');
-    assert.equal(link.children.filter(child => (child as THREE.PointLight).isPointLight).length, 1);
+    assert.equal(led.children.length, 1);
     view.dispose();
     assert.equal(led.visible, false);
     assert.equal(led.children.length, 0);

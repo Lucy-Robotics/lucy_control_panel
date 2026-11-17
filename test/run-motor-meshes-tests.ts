@@ -7,13 +7,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { motorMeshesOf } from '../src/Utils/motorMeshes.ts';
 
-function visual(file: string): { group: THREE.Group; mesh: THREE.Mesh } {
+function visual(file: string, name: string | null = null): { group: THREE.Group; mesh: THREE.Mesh } {
     const group = new THREE.Group();
     const mesh = new THREE.Mesh();
     group.add(mesh);
     Object.assign(group, {
         isURDFVisual: true,
-        urdfNode: { querySelector: () => ({ getAttribute: () => file }) },
+        urdfNode: { querySelector: () => ({ getAttribute: () => file }), getAttribute: () => name },
     });
     return { group, mesh };
 }
@@ -39,7 +39,15 @@ function aJointWithoutAMotorMeshHasNoMotor() {
     assert.equal(motorMeshesOf(joint).size, 0);
 }
 
-const checks = [theMotorInTheParentLinkIsTheJointsMotor, aJointWithoutAMotorMeshHasNoMotor];
+function aVisualNamedMotorIsTheJointsMotor() {
+    const housingLink = new THREE.Group();
+    const joint = new THREE.Group();
+    const housing = visual('stl/hip.stl', 'motor');
+    housingLink.add(housing.group, visual('stl/cover.stl', 'cover').group, joint);
+    assert.deepEqual([...motorMeshesOf(joint)], [housing.mesh]);
+}
+
+const checks = [theMotorInTheParentLinkIsTheJointsMotor, aJointWithoutAMotorMeshHasNoMotor, aVisualNamedMotorIsTheJointsMotor];
 
 for (const check of checks) check();
 console.log(`motor meshes: ${checks.length} checks passed`);

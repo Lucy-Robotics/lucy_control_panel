@@ -15,6 +15,7 @@ import { RosBridgeService } from '../ros.service.ts';
 import { Diagnostics } from '../../diagnostics.service.ts';
 
 export const COMMAND_DURATION_MS = 800;
+export const STREAM_DURATION_MS = 150;
 
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
 function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
@@ -209,7 +210,11 @@ export class JointStateHandler {
    * Positions are in radians.
    * Uses a small non-zero time_from_start (0.2s) so the controller accepts the goal (some drop points with t=0).
    */
-  publishJointStates(joints: JointControlState[], seedDurationMs?: number) {
+  streamJointStates(joints: JointControlState[]) {
+    this.publishJointStates(joints, undefined, STREAM_DURATION_MS);
+  }
+
+  publishJointStates(joints: JointControlState[], seedDurationMs?: number, durationMs = COMMAND_DURATION_MS) {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) {
       console.warn('Cannot publish joint states: ROS connection not available');
@@ -244,7 +249,7 @@ export class JointStateHandler {
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: (seedDurationMs ?? COMMAND_DURATION_MS) * 1e6 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: (seedDurationMs ?? durationMs) * 1e6 } }],
       });
       topic.publish(message);
       Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);

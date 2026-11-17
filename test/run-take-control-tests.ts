@@ -17,7 +17,7 @@ type FakeCall = { op: string; topic?: string; msg?: Record<string, unknown> };
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const { RosBridgeService } = await import('../src/Services/ros/ros.service.ts');
-const { JointStateHandler, COMMAND_DURATION_MS } = await import('../src/Services/ros/handlers/JointState.handler.ts');
+const { JointStateHandler, COMMAND_DURATION_MS, STREAM_DURATION_MS } = await import('../src/Services/ros/handlers/JointState.handler.ts');
 const { ControlModeHandler } = await import('../src/Services/ros/handlers/ControlMode.handler.ts');
 const { takeControlFromCurrentPose } = await import('../src/Services/ros/takeControlFromCurrentPose.ts');
 
@@ -41,6 +41,9 @@ handler.publishJointStates([pitch]);
 assert.equal(durationOfLastCommand().nanosec, COMMAND_DURATION_MS * 1e6, 'slider commands take the default duration');
 handler.publishJointStates([pitch], 100);
 assert.deepEqual(durationOfLastCommand(), { nanosec: 100e6, stampSec: 0 }, 'seed commands start now and take the seed duration');
+handler.streamJointStates([pitch]);
+assert.equal(durationOfLastCommand().nanosec, STREAM_DURATION_MS * 1e6, 'streamed teleop commands reach their target quickly');
+assert.ok(STREAM_DURATION_MS < COMMAND_DURATION_MS / 4, 'streaming keeps up with a controller that sends every 50 ms');
 
 const control = ControlModeHandler.getInstance();
 let takeControlCalls = 0;

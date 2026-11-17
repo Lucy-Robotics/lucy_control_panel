@@ -157,6 +157,8 @@ export function useActivateConfigureWorkflow({
     const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false, false));
     const [lastRunSucceeded, setLastRunSucceeded] = useState(false);
     const [lastRunDiff, setLastRunDiff] = useState<HardwareConfigDiff | null>(null);
+    /** Append-only step log for the modal (copyable). */
+    const [workflowLogLines, setWorkflowLogLines] = useState<string[]>([]);
     const abortRef = useRef<(() => void) | null>(null);
     const runIdRef = useRef(0);
     /** Snapshot of pre-run active doc, captured at the start of each run. */
@@ -176,11 +178,22 @@ export function useActivateConfigureWorkflow({
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
             setLastRunSucceeded(false);
             setLastRunDiff(null);
+            setWorkflowLogLines([]);
             preRunActiveDocRef.current = null;
             targetDocRef.current = null;
         },
         [],
     );
+
+    const appendWorkflowLog = useCallback((line: string) => {
+        const text = line.trim();
+        if (!text) return;
+        setWorkflowLogLines((prev) => {
+            if (prev.length > 0 && prev[prev.length - 1] === text) return prev;
+            const next = [...prev, text];
+            return next.length > 500 ? next.slice(-500) : next;
+        });
+    }, []);
 
     const computeAndStoreDiff = useCallback(() => {
         const before = preRunActiveDocRef.current;
@@ -231,7 +244,12 @@ export function useActivateConfigureWorkflow({
             setWorkflowRunning(true);
             setLastRunSucceeded(false);
             setLastRunDiff(null);
+            setWorkflowLogLines([]);
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
+            appendWorkflowLog(
+                `RUN target=${targetConfigName.trim()} boards=${boardsToFlash.join(',') || '(all)'} ` +
+                    `build_only=${buildOnly} activate_only=${activateOnly} simulation_only=${simulationOnly}`,
+            );
 
             // Snapshot the active doc the running system loaded so we can later
             // diff it against the target preset. Failing to capture either side
@@ -252,7 +270,8 @@ export function useActivateConfigureWorkflow({
             const failStep = (id: WorkflowStepId, msg: string) => {
                 if (!shouldContinue()) return;
                 patchStep(id, { status: 'error', fraction: 1, detail: msg });
-                // Toast keeps a short headline; full text is on the step card.
+                appendWorkflowLog(`[${id}] ERROR ${msg}`);
+                // Toast keeps a short headline; full text is on the step card / log.
                 const toast = msg.split('\n')[0]?.slice(0, 180) || msg;
                 messageApi.error(toast);
             };
@@ -302,11 +321,13 @@ export function useActivateConfigureWorkflow({
                     {
                         onFeedback: (f) => {
                             if (!shouldContinue()) return;
+                            const detail = f.detail || f.phase;
                             patchStep('validate', {
                                 status: 'running',
                                 fraction: fractionForValidateDryRun(f),
-                                detail: f.detail || f.phase,
+                                detail,
                             });
+                            appendWorkflowLog(`[validate] ${detail}`);
                         },
                     },
                 );
@@ -321,8 +342,10 @@ export function useActivateConfigureWorkflow({
                     return;
                 }
                 patchStep('validate', { status: 'done', fraction: 1, detail: 'OK' });
+                appendWorkflowLog('[validate] OK');
 
                 patchStep('activate', { status: 'running', fraction: 0.5, detail: '/config/activate…' });
+                appendWorkflowLog('[activate] /config/activate…');
 
                 const act = await HardwareConfigHandler.activateConfig(targetConfigName.trim(), rp);
                 if (!shouldContinue()) return;
@@ -336,6 +359,7 @@ export function useActivateConfigureWorkflow({
                     fraction: 1,
                     detail: backup ? `Backup: ${backup}` : 'OK',
                 });
+                appendWorkflowLog(backup ? `[activate] Backup: ${backup}` : '[activate] OK');
                 await params.refreshSavedConfigs();
                 await refetchActiveHardware();
 
@@ -394,6 +418,8 @@ export function useActivateConfigureWorkflow({
                         onFeedback: (f: ConfigurePipelineFeedbackNormalized) => {
                             if (!shouldContinue()) return;
                             const phase = (f.phase || '').toLowerCase();
+                            const detail = f.detail || phase;
+                            const boardBit = f.board ? ` ${f.board}` : '';
 
                             if (phase === 'reload') {
                                 sawReload = true;
@@ -413,8 +439,9 @@ export function useActivateConfigureWorkflow({
                                 patchStep('reload', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
-                                    detail: f.detail || phase,
+                                    detail,
                                 });
+                                appendWorkflowLog(`[reload]${boardBit} ${detail}`);
                             } else if (phase === 'flash') {
                                 sawFlash = true;
                                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
@@ -427,8 +454,9 @@ export function useActivateConfigureWorkflow({
                                 patchStep('flash', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
-                                    detail: f.detail || phase,
+                                    detail,
                                 });
+                                appendWorkflowLog(`[flash]${boardBit} ${detail}`);
                             } else if (phase === 'build') {
                                 sawBuild = true;
                                 patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
@@ -440,15 +468,19 @@ export function useActivateConfigureWorkflow({
                                 patchStep('build', {
                                     status: 'running',
                                     fraction: fractionForBuildPhase(f),
-                                    detail: f.detail || phase,
+                                    detail,
                                 });
+                                appendWorkflowLog(`[build]${boardBit} ${detail}`);
                             } else if (phase === 'generate') {
                                 sawGenerate = true;
                                 patchStep('generate', {
                                     status: 'running',
                                     fraction: fractionForGeneratePhase(f),
-                                    detail: f.detail || phase,
+                                    detail,
                                 });
+                                appendWorkflowLog(`[generate]${boardBit} ${detail}`);
+                            } else {
+                                appendWorkflowLog(`[${phase || 'pipeline'}]${boardBit} ${detail}`);
                             }
                         },
                     },
@@ -492,6 +524,7 @@ export function useActivateConfigureWorkflow({
                     }
                 }
                 patchStep('reload', { status: 'done', fraction: 1, detail: 'OK' });
+                appendWorkflowLog(`[reload] OK — ${wetRes.message || 'finished'}`);
                 await refetchActiveHardware();
                 messageApi.success(`Workflow finished: ${wetRes.message || 'OK'}`);
                 computeAndStoreDiff();
@@ -499,6 +532,7 @@ export function useActivateConfigureWorkflow({
             } catch (e) {
                 if (!shouldContinue()) return;
                 const msg = e instanceof Error ? e.message : 'Workflow failed';
+                appendWorkflowLog(`[error] ${msg}`);
                 messageApi.error(msg);
                 setSteps((prev) =>
                     prev.map((s) =>
@@ -514,6 +548,7 @@ export function useActivateConfigureWorkflow({
             isConnected,
             messageApi,
             patchStep,
+            appendWorkflowLog,
             refetchActiveHardware,
             robotPackageName,
             getPreRunActiveSnapshot,
@@ -527,6 +562,7 @@ export function useActivateConfigureWorkflow({
         workflowOverallPercent,
         workflowLastRunSucceeded: lastRunSucceeded,
         workflowLastRunDiff: lastRunDiff,
+        workflowLogLines,
         runActivateWorkflow,
         abortWorkflow,
         resetWorkflowPresentation,

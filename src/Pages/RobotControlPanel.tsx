@@ -23,6 +23,7 @@ import {
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 import { JointMoveContext, createJointMoveStore } from '../hooks/useJointMove';
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
+import { useControlRequest } from '../hooks/useControlRequest';
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
@@ -34,8 +35,19 @@ import { isJointAnglePose } from '../Utils/poseUnits.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useRobotSelection } from '../hooks/useRobotSelection.ts';
 import { useStackStatus } from '../hooks/useStackStatus.ts';
+import { useEndEffector } from '../hooks/useEndEffector.ts';
+import { useDeviceMotionAvailable } from '../hooks/useDeviceMotionAvailable.ts';
+import { usePhoneTeleop } from '../hooks/usePhoneTeleop.ts';
+import { useJogTeleop } from '../hooks/useJogTeleop.ts';
+import { useGamepadTeleop } from '../hooks/useGamepadTeleop.ts';
+import { useGamepadConnected } from '../hooks/useGamepadConnected.ts';
+import { atOpenness, jointOpenness } from '../Utils/jointOpenness.ts';
 import { usePublishTargetPose } from '../hooks/usePublishTargetPose.ts';
+import type { JointPositions } from '../Utils/jointStateMessage.ts';
+import { usePhoneOrientation } from '../hooks/usePhoneOrientation.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { useSyncDisabledJoints } from '../hooks/useDisabledJoints';
+import { useHardwareWarnings, useUnreachableBoards } from '../hooks/useHardwareWarnings';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -85,14 +97,20 @@ import { JoystickOutlined } from '../Components/ControlPage/JoystickIcon.tsx';
 import { ControlToggleButton } from '../Components/ControlPage/ControlToggleButton.tsx';
 import { RobotMenuButton } from '../Components/ControlPage/RobotMenuButton.tsx';
 import { switchBlockedReason } from '../Utils/robotSwitchRules.ts';
-import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
-import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/CommandRail.tsx';
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
+import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { jogTeleopRailItem } from '../Components/ControlPage/jogTeleopRailItem.tsx';
+import { JogPad } from '../Components/ControlPage/JogPad.tsx';
+import { gamepadTeleopRailItem } from '../Components/ControlPage/gamepadTeleopRailItem.tsx';
+import { GamepadLegend } from '../Components/ControlPage/GamepadLegend.tsx';
+import { RobotSwitchConfirmModal } from '../Components/ControlPage/RobotSwitchConfirmModal.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
+import { StackProgress } from '../Components/ControlPage/StackProgress.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -173,6 +191,8 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
     const stackStatus = useStackStatus(isConnected);
+    const endEffector = useEndEffector(isConnected);
+    const hasMotionSensors = useDeviceMotionAvailable();
     const { robots, switchingTo, switchTimedOut, selectRobot, dismissSwitch } = useRobotSelection(isConnected, stackStatus);
     const [robotToConfirm, setRobotToConfirm] = useState<string | null>(null);
     useCloseOnRosDisconnect(robotToConfirm !== null, () => setRobotToConfirm(null));
@@ -186,6 +206,9 @@ export const RobotControlPanel: React.FC = () => {
         serverRobotPackage,
     } = useActiveHardwareRos();
 
+    useSyncDisabledJoints(isConnected);
+    const hardwareWarnings = useHardwareWarnings(isConnected);
+    const unreachableBoards = useUnreachableBoards(isConnected);
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
     const slidersProductionModeRef = useRef(productionMode);
 
@@ -242,7 +265,6 @@ export const RobotControlPanel: React.FC = () => {
 
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
-    const isHandsOn = isWebcamActive;
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -285,6 +307,7 @@ export const RobotControlPanel: React.FC = () => {
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    board: c.boardId,
                     inverted,
                     ...(restValue !== undefined && { restValue }),
                 });
@@ -463,6 +486,7 @@ export const RobotControlPanel: React.FC = () => {
         return () => window.removeEventListener('beforeunload', confirmLeave);
     }, [isSending]);
 
+    const { start: startControlRequest, cancel: cancelControlRequest } = useControlRequest();
     useEffect(() => () => cancelPendingTakeControlRef.current(), []);
 
     const applyControlToggle = useCallback((shouldControl: boolean) => {
@@ -471,14 +495,17 @@ export const RobotControlPanel: React.FC = () => {
         cancelPendingTakeControlRef.current();
         setIsTakingControl(shouldControl);
         if (shouldControl) {
+            // Only for the timeout message: the button follows isTakingControl.
+            startControlRequest();
             cancelPendingTakeControlRef.current = takeControlFromCurrentPose(() => jointsRef.current.map((joint) => ({
                 ...joint,
                 currentValue: actualPositionsRef.current.get(joint.name) ?? joint.currentValue,
             })));
         } else {
+            cancelControlRequest();
             ControlModeHandler.getInstance().releaseControl();
         }
-    }, []);
+    }, [startControlRequest, cancelControlRequest]);
 
     const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
         const handler = ControlModeHandler.getInstance();
@@ -507,16 +534,7 @@ export const RobotControlPanel: React.FC = () => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
                 if (joint.name !== jointName) return joint;
-                const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
-                const a = servoRadToJointRad(joint.minValue, mapping);
-                const b = servoRadToJointRad(joint.maxValue, mapping);
-                const lo = Math.min(a, b);
-                const servo = clampServoRad(
-                    jointRadToServoRad(lo + y * (Math.max(a, b) - lo), mapping),
-                    joint.minValue,
-                    joint.maxValue,
-                );
-                return { ...joint, currentValue: servo, targetValue: servo };
+                return atOpenness(joint, y, actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING);
             })
         );
     }
@@ -573,10 +591,11 @@ export const RobotControlPanel: React.FC = () => {
             if (!categories[key]) {
                 categories[key] = [];
             }
-            categories[key].push(joint);
+            const reason = joint.board && unreachableBoards[joint.board];
+            categories[key].push(reason ? { ...joint, unreachable: `${joint.board} ${reason}` } : joint);
         });
         return categories;
-    }, [joints]);
+    }, [joints, unreachableBoards]);
 
     const poseJoints = useMemo(
         () => joints.map((joint) => ({
@@ -680,7 +699,55 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
+    const handleIkSolution = useCallback((positions: JointPositions) => {
+        if (!isSendingRef.current) return;
+        const next = jointsRef.current.map((joint) => {
+            const jointRad = positions[joint.name];
+            if (jointRad === undefined) return joint;
+            const mapping = actuatorMappingByJointRef.current.get(joint.name) ?? DEFAULT_ACTUATOR_MAPPING;
+            const value = clampServoRad(jointRadToServoRad(jointRad, mapping), joint.minValue, joint.maxValue);
+            return { ...joint, currentValue: value, targetValue: value };
+        });
+        jointsRef.current = next;
+        setJoints(next);
+        JointStateHandler.getInstance().streamJointStates(next);
+    }, []);
+
+    const phoneTeleop = usePhoneTeleop(isSending && endEffector !== null && hasMotionSensors, endEffector, handleIkSolution);
+    const jogTeleop = useJogTeleop(isSending && endEffector !== null && !phoneTeleop.isOn, endEffector, handleIkSolution);
+    const mappingOf = (name: string) => actuatorMappingByJointRef.current.get(name) ?? DEFAULT_ACTUATOR_MAPPING;
+    const isGamepadConnected = useGamepadConnected();
+    const gamepadTeleop = useGamepadTeleop(
+        isSending && endEffector !== null && isGamepadConnected && !phoneTeleop.isOn,
+        endEffector,
+        {
+            onSolution: handleIkSolution,
+            setOpenness: (name, openness) => {
+                if (!isSendingRef.current) return;
+                const next = jointsRef.current.map((joint) =>
+                    joint.name === name ? atOpenness(joint, openness, mappingOf(joint.name)) : joint);
+                jointsRef.current = next;
+                setJoints(next);
+                JointStateHandler.getInstance().streamJointStates(next);
+            },
+            opennessOf: (name) => {
+                const joint = jointsRef.current.find((candidate) => candidate.name === name);
+                return joint ? jointOpenness(joint, mappingOf(joint.name)) : 0;
+            },
+            overheated: motorOverheat.trippedJoints,
+        },
+    );
+    const toggleJogTeleop = () => {
+        if (gamepadTeleop.isOn) gamepadTeleop.toggle();
+        jogTeleop.toggle();
+    };
+    const toggleGamepadTeleop = () => {
+        if (jogTeleop.isOn) jogTeleop.toggle();
+        gamepadTeleop.toggle();
+    };
+    const teleopTarget = phoneTeleop.target ?? jogTeleop.target ?? gamepadTeleop.target;
     usePublishTargetPose(jointMoveStore, joints, isSending);
+    const phoneOrientation = usePhoneOrientation(phoneTeleop.isOn);
 
     if (switchingTo || !isConnected || stackStatus?.status === 'loading') {
         return (
@@ -765,7 +832,9 @@ export const RobotControlPanel: React.FC = () => {
             isControlOn={isSending}
             joints={joints}
             onJointValueChange={handleGizmoJointCommit}
-            isHandsOn={isHandsOn}
+            teleopTarget={teleopTarget}
+            phoneOrientation={phoneOrientation}
+            isHandsOn={isWebcamActive}
             hudLeft={serverRobotPackage
                 ? (
                     <RobotMenuButton
@@ -833,7 +902,8 @@ export const RobotControlPanel: React.FC = () => {
                     icon: <PoseOutlined />,
                     label: 'Manage poses & animations',
                     caption: 'POSES',
-                    onClick: () => setIsManagePosesVisible(true),
+                    onClick: () => setIsManagePosesVisible(v => !v),
+                    active: isManagePosesVisible,
                 },
             ],
         },
@@ -849,6 +919,28 @@ export const RobotControlPanel: React.FC = () => {
                     onClick: () => setIsWebcamActive(v => !v),
                     active: isWebcamActive,
                 },
+                phoneTeleopRailItem({
+                    isOn: phoneTeleop.isOn,
+                    onToggle: phoneTeleop.toggle,
+                    isSending,
+                    hasMotionSensors,
+                    hasEndEffector: endEffector !== null,
+                }),
+                jogTeleopRailItem({
+                    isOn: jogTeleop.isOn,
+                    onToggle: toggleJogTeleop,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    isPhoneTeleopOn: phoneTeleop.isOn,
+                }),
+                gamepadTeleopRailItem({
+                    isOn: gamepadTeleop.isOn,
+                    onToggle: toggleGamepadTeleop,
+                    isConnected: isGamepadConnected,
+                    isSending,
+                    hasEndEffector: endEffector !== null,
+                    otherTeleop: phoneTeleop.isOn ? 'phone Teleop' : null,
+                }),
                 {
                     key: 'stream',
                     icon: <VideoCameraOutlined />,
@@ -864,8 +956,8 @@ export const RobotControlPanel: React.FC = () => {
     ];
 
     return (
-        <MotorOverheatContext.Provider value={motorOverheat}>
         <JointMoveContext.Provider value={jointMoveStore}>
+        <MotorOverheatContext.Provider value={motorOverheat}>
             <MotorOverheatAlert />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
@@ -908,6 +1000,10 @@ export const RobotControlPanel: React.FC = () => {
                             className="command-rail-bottom"
                         />
                     )}
+
+                    {hardwareWarnings.map((warning) => (
+                        <Alert key={warning} type="warning" showIcon message={warning} style={{ marginBottom: 8 }} />
+                    ))}
 
                     {isMobile && isWebcamActive && (
                         <div
@@ -1054,6 +1150,24 @@ export const RobotControlPanel: React.FC = () => {
                 }}
             />
 
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
+
+            {jogTeleop.isOn && (
+                <JogPad
+                    onPress={jogTeleop.press}
+                    onRelease={jogTeleop.release}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
+
+            {gamepadTeleop.isOn && (
+                <GamepadLegend
+                    isHeld={gamepadTeleop.isHeld}
+                    isFine={gamepadTeleop.isFine}
+                    mobileRailHeight={isMobile ? railHeight : null}
+                />
+            )}
+
             <RobotSwitchConfirmModal
                 robotPackage={robotToConfirm}
                 onCancel={() => setRobotToConfirm(null)}
@@ -1109,7 +1223,7 @@ export const RobotControlPanel: React.FC = () => {
                 </Space>
             </MovableModal>
 
-        </JointMoveContext.Provider>
         </MotorOverheatContext.Provider>
+        </JointMoveContext.Provider>
     );
 };

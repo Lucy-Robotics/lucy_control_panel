@@ -10,11 +10,11 @@ import { URDFJoint, URDFLink, URDFRobot, URDFVisual } from 'urdf-loader/src/URDF
 
 const GREY = 0x555555;
 
-function visual(file: string, color: number): { visual: URDFVisual; mesh: THREE.Mesh } {
+function visual(file: string, color: number, joint?: string): { visual: URDFVisual; mesh: THREE.Mesh } {
     const node = new URDFVisual();
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color }));
     node.add(mesh);
-    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }) } });
+    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }), getAttribute: (name: string) => (name === 'joint' ? joint ?? null : null) } });
     return { visual: node, mesh };
 }
 
@@ -51,7 +51,7 @@ function so101BaseAndShoulder() {
     const rotation = revolute('Rotation', shoulder);
     shoulder.add(revolute('Pitch', upperArm));
     robot.add(rotation);
-    Object.assign(robot, { joints: { Rotation: rotation, Pitch: shoulder.children[0] } });
+    Object.assign(robot, { joints: { Rotation: rotation, Pitch: shoulder.children[0] }, links: { shoulder, upper_arm: upperArm } });
     return { robot, shoulder, upperArm };
 }
 
@@ -92,6 +92,28 @@ const meshCount = (root: THREE.Object3D) => {
     }
 
     {
+        const { robot, shoulder: torso, upperArm: neck } = so101BaseAndShoulder();
+        Object.assign(torso, { name: 'torso', urdfName: 'torso' });
+        Object.assign(neck, { name: 'neck', urdfName: 'neck' });
+        Object.assign(torso.parent!, { name: 'Torso', urdfName: 'Torso' });
+        Object.assign(neck.parent!, { name: 'Neck', urdfName: 'Neck' });
+        const column = visual('meshes/neck_column.stl', 0xffffff, 'Neck');
+        const plate = visual('meshes/torso_plate.stl', 0xffffff);
+        const stray = visual('meshes/stray.stl', 0xffffff, 'Nope');
+        torso.add(column.visual, plate.visual, stray.visual);
+        Object.assign(robot, { joints: { Torso: torso.parent, Neck: neck.parent }, links: { torso, neck } });
+        assert.equal(robotPartNames(robot)(column.mesh), 'neck', 'hovering the neck column selects the neck');
+        assert.equal(robotPartNames(robot)(plate.mesh), 'torso', 'an untagged mesh keeps its own link');
+        assert.equal(robotPartNames(robot)(stray.mesh), 'torso', 'a tag naming an unknown joint is ignored');
+        assert.equal(robotPartNames(robot, new Set(['Torso']))(column.mesh), 'torso', 'a tag naming a non-actuated joint is ignored');
+        const scene = new THREE.Scene();
+        scene.add(robot);
+        const glow = attachHoverGlow(scene, robot, 'neck', robotPartNames(robot), new THREE.MeshBasicMaterial());
+        assert.ok(scene.children.some((c) => (c as THREE.Mesh).geometry === column.mesh.geometry), 'hovering the neck glows the tagged column');
+        glow.detach();
+    }
+
+    {
         const { robot, joint, upperArmMesh } = so101Shoulder();
         const scene = new THREE.Scene();
         scene.add(robot);
@@ -105,6 +127,68 @@ const meshCount = (root: THREE.Object3D) => {
         assert.ok(shell.matrix.equals(upperArmMesh.matrixWorld), 'the glow follows the part as the joint moves');
         glow.detach();
         assert.equal(scene.children.length, 1, 'leaving the part removes its glow');
+    }
+
+    {
+        const { URDFMimicJoint } = await import('urdf-loader/src/URDFClasses.js');
+        const link = (name: string) => Object.assign(new URDFLink(), { name, urdfName: name });
+        const joint = (name: string, jointType: string, child: URDFLink, Cls = URDFJoint) => {
+            const node = Object.assign(new Cls(), { name, urdfName: name, jointType, axis: new THREE.Vector3(0, 0, 1) });
+            node.add(child);
+            return node;
+        };
+        const [jaw, mirror, tip, other] = [link('jaw'), link('jaw_mirror'), link('mirror_tip'), link('other')];
+        const meshes = [jaw, mirror, tip, other].map((l, i) => {
+            const v = visual(`meshes/${l.name}.stl`, GREY + i);
+            l.add(v.visual);
+            return v.mesh;
+        });
+        const jawJoint = joint('Jaw', 'revolute', jaw);
+        const mimic = joint('JawMimic', 'revolute', mirror, URDFMimicJoint);
+        Object.assign(mimic, { mimicJoint: 'Jaw' });
+        jawJoint.mimicJoints.push(mimic);
+        mirror.add(joint('MirrorTip', 'fixed', tip));
+        const robot = new URDFRobot();
+        const otherJoint = joint('Other', 'revolute', other);
+        robot.add(link('base'), jawJoint, mimic, otherJoint);
+        Object.assign(robot, { joints: { Jaw: jawJoint, JawMimic: mimic, Other: otherJoint }, links: { jaw, jaw_mirror: mirror, mirror_tip: tip, other } });
+        const glowing = (partName: string) => {
+            const scene = new THREE.Scene();
+            attachHoverGlow(scene, robot, partName, robotPartNames(robot), new THREE.MeshBasicMaterial());
+            return meshes.map((mesh) => scene.children.some((c) => (c as THREE.Mesh).geometry === mesh.geometry));
+        };
+        assert.deepEqual(glowing('jaw'), [true, true, true, false], 'hovering a joint also glows the joints that mimic it, with their sub-parts');
+        assert.deepEqual(glowing('other'), [false, false, false, true], 'hovering an unrelated joint does not glow the mimic joints');
+    }
+
+    {
+        const { URDFMimicJoint } = await import('urdf-loader/src/URDFClasses.js');
+        const link = (name: string) => Object.assign(new URDFLink(), { name, urdfName: name });
+        const joint = (name: string, jointType: string, child: URDFLink, Cls = URDFJoint) => {
+            const node = Object.assign(new Cls(), { name, urdfName: name, jointType, axis: new THREE.Vector3(0, 0, 1) });
+            node.add(child);
+            return node;
+        };
+        const [thigh, housing, twist] = [link('thigh'), link('knee_housing'), link('twist')];
+        const housingMesh = visual('meshes/knee.stl', GREY, 'Twist');
+        housing.add(housingMesh.visual);
+        thigh.add(visual('meshes/thigh.stl', GREY).visual);
+        twist.add(visual('meshes/twist.stl', GREY).visual);
+        const thighJoint = joint('Thigh', 'revolute', thigh);
+        const mimic = joint('KneeMimic', 'revolute', housing, URDFMimicJoint);
+        Object.assign(mimic, { mimicJoint: 'Thigh' });
+        thighJoint.mimicJoints.push(mimic);
+        const twistJoint = joint('Twist', 'revolute', twist);
+        const robot = new URDFRobot();
+        robot.add(link('base'), thighJoint, mimic, twistJoint);
+        Object.assign(robot, { joints: { Thigh: thighJoint, KneeMimic: mimic, Twist: twistJoint }, links: { thigh, knee_housing: housing, twist } });
+        const glowsHousing = (partName: string) => {
+            const scene = new THREE.Scene();
+            attachHoverGlow(scene, robot, partName, robotPartNames(robot), new THREE.MeshBasicMaterial());
+            return scene.children.some((c) => (c as THREE.Mesh).geometry === housingMesh.mesh.geometry);
+        };
+        assert.equal(glowsHousing('thigh'), false, 'a mimic part tagged with another joint does not glow with the joint it mimics');
+        assert.equal(glowsHousing('twist'), true, 'it glows with the joint it is tagged with');
     }
 
     {

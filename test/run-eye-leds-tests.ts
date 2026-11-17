@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { attachHoverGlow } from '../src/Utils/hoverGlow.ts';
-import { eyeColors, hasEyeLeds, hexToRgb, ledColorOf, ledIndexOf, ledSlotOf, rgbToHex } from '../src/Utils/eyeLeds.utils.ts';
+import { eyeColors, hasEyeLeds, hexToRgb, ledColorOf, ledEyeOf, ledIndexOf, ledSlotOf, rgbToHex } from '../src/Utils/eyeLeds.utils.ts';
 
 test('led index comes from the trailing _led_<n> of the link name', () => {
     assert.equal(ledIndexOf('eye_left_led_0'), 0);
@@ -73,5 +73,40 @@ test('an unlit led gets no hover glow, so it stays invisible', () => {
     const scene = new THREE.Scene();
     const glow = attachHoverGlow(scene, robot as never, 'eye', () => 'eye', new THREE.MeshBasicMaterial());
     assert.equal(scene.children.length, 1);
+    glow.detach();
+});
+
+test('the left eye tries one look per led pair, the right eye has them all but one shared spill light', async () => {
+    const { featuresOfLed } = await import('../src/Utils/eyeLedLooks.ts');
+    assert.deepEqual([...featuresOfLed('left', 0)], []);
+    assert.deepEqual([...featuresOfLed('left', 1)], []);
+    assert.deepEqual([...featuresOfLed('left', 2)], ['hotCore']);
+    assert.deepEqual([...featuresOfLed('left', 7)], ['spill']);
+    assert.deepEqual([...featuresOfLed('left', 11)], ['saturate']);
+    assert.deepEqual([...featuresOfLed('right', 5)].sort(), ['fade', 'halo', 'hotCore', 'saturate']);
+});
+
+test('bright colors wash toward white, dark ones barely move', async () => {
+    const { saturated } = await import('../src/Utils/eyeLedLooks.ts');
+    const bright = saturated(0xff0000);
+    assert.ok(bright.g > 0.3 && bright.r === 1);
+    assert.ok(saturated(0x200000).g < 0.05);
+});
+
+test('led links name their eye', () => {
+    assert.equal(ledEyeOf('eye_left_led_4'), 'left');
+    assert.equal(ledEyeOf('eye_right_led_0'), 'right');
+    assert.equal(ledEyeOf('eye_left'), null);
+});
+
+test('a halo on an unlit led gets no hover glow either', () => {
+    const robot = Object.assign(new THREE.Group(), { links: {} });
+    const unlitLed = new THREE.Mesh(new THREE.CircleGeometry());
+    unlitLed.visible = false;
+    unlitLed.add(new THREE.Mesh(new THREE.CircleGeometry()));
+    robot.add(unlitLed);
+    const scene = new THREE.Scene();
+    const glow = attachHoverGlow(scene, robot as never, 'eye', () => 'eye', new THREE.MeshBasicMaterial());
+    assert.equal(scene.children.length, 0);
     glow.detach();
 });

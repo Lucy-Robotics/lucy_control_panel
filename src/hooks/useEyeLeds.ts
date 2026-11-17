@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { EyeLedsHandler } from '../Services/ros/handlers/EyeLeds.handler';
-import { createEyeSpill, createLedView, featuresOfLed, type LedView } from '../Utils/eyeLedLooks';
+import { createEyeSpill, createLedView, featuresOfLed, isEyeLedOverlay, type LedView } from '../Utils/eyeLedLooks';
 import { ledColorOf, ledEyeOf, ledIndexOf, ledSlotOf } from '../Utils/eyeLeds.utils';
 
 interface Led {
@@ -24,7 +24,7 @@ function collectLeds(robot: URDFRobot): Led[] {
         if (eye === null || index === null) continue;
         link.traverse(child => {
             const mesh = child as THREE.Mesh;
-            if (mesh.isMesh && !mesh.userData.eyeLed) leds.push({ name, eye, view: createLedView(mesh, link, featuresOfLed(eye, index)) });
+            if (mesh.isMesh && !isEyeLedOverlay(mesh)) leds.push({ name, eye, view: createLedView(mesh, link, featuresOfLed(eye, index)) });
         });
     }
     return leds;
@@ -45,12 +45,12 @@ export function useEyeLeds(robot: URDFRobot | null) {
                 led.view.show(rgb);
                 if (led.eye === 'right' && rgb !== null) rightLit.push(rgb);
             }
-            rightSpill?.(rightLit);
+            rightSpill?.update(rightLit);
         });
         return () => {
             unsubscribe();
-            leds.forEach(led => led.view.show(null));
-            rightSpill?.([]);
+            leds.forEach(led => led.view.dispose());
+            rightSpill?.dispose();
         };
     }, [robot]);
 }

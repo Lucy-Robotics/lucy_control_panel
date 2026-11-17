@@ -110,3 +110,20 @@ test('a halo on an unlit led gets no hover glow either', () => {
     assert.equal(scene.children.length, 0);
     glow.detach();
 });
+
+test('setting an led up twice, as React dev mode does, still lights it once', async () => {
+    const { createLedView } = await import('../src/Utils/eyeLedLooks.ts');
+    const link = new THREE.Group();
+    const led = new THREE.Mesh(new THREE.CylinderGeometry());
+    link.add(led);
+    const features = new Set(['halo', 'hotCore', 'spill'] as const);
+    createLedView(led, link, features).dispose();
+    const view = createLedView(led, link, features);
+    view.show(0x00ff00);
+    assert.equal(led.visible, true);
+    assert.equal(led.children.length, 2, 'one core and one halo, not two of each');
+    assert.equal(link.children.filter(child => (child as THREE.PointLight).isPointLight).length, 1);
+    view.dispose();
+    assert.equal(led.visible, false);
+    assert.equal(led.children.length, 0);
+});

@@ -55,25 +55,30 @@ function overlay(led: THREE.Mesh, scale: number, opacity: number): THREE.Mesh {
     mesh.renderOrder = 1;
     mesh.raycast = () => {};
     mesh.userData.eyeLed = true;
+    mesh.userData.eyeLedOverlay = true;
     led.add(mesh);
     return mesh;
 }
 
 export interface LedView {
     show: (rgb: number | null) => void;
+    dispose: () => void;
 }
 
-export function createEyeSpill(eye: THREE.Object3D): (lit: readonly number[]) => void {
+export const isEyeLedOverlay = (mesh: THREE.Object3D): boolean => mesh.userData.eyeLedOverlay === true;
+
+export function createEyeSpill(eye: THREE.Object3D): { update: (lit: readonly number[]) => void; dispose: () => void } {
     const light = new THREE.PointLight(0xffffff, SPILL_CANDELA * 4, SPILL_REACH_M * 2, 2);
     light.position.set(SPILL_OFFSET_M, 0, 0);
     light.intensity = 0;
     eye.add(light);
-    return (lit) => {
+    const update = (lit: readonly number[]) => {
         light.intensity = lit.length > 0 ? SPILL_CANDELA * 4 : 0;
         if (lit.length === 0) return;
         const sum = lit.reduce((acc, rgb) => acc.add(new THREE.Color(rgb)), new THREE.Color(0, 0, 0));
         light.color.copy(sum.multiplyScalar(1 / lit.length));
     };
+    return { update, dispose: () => { light.removeFromParent(); light.dispose(); } };
 }
 
 export function createLedView(led: THREE.Mesh, link: THREE.Object3D, features: ReadonlySet<LedFeature>): LedView {
@@ -124,6 +129,14 @@ export function createLedView(led: THREE.Mesh, link: THREE.Object3D, features: R
             if (features.has('fade')) return fadeTo(rgb);
             if (rgb !== null) paint(rgb);
             setLit(rgb !== null);
+        },
+        dispose: () => {
+            if (frame) cancelAnimationFrame(frame);
+            core?.removeFromParent();
+            halo?.removeFromParent();
+            spill?.removeFromParent();
+            spill?.dispose();
+            led.visible = false;
         },
     };
 }

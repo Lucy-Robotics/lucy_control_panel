@@ -7,6 +7,8 @@ import ROSLIB from 'roslib';
 import { RosBridgeService } from '../ros.service.ts';
 
 const EYE_LEDS_TOPIC = '/eye_leds';
+const EYE_LEDS_STATE_TOPIC = '/eye_leds/state';
+const EYE_LEDS_TYPE = 'std_msgs/msg/UInt32MultiArray';
 
 type Listener = (colors: readonly number[]) => void;
 
@@ -14,6 +16,7 @@ export class EyeLedsHandler {
     private static _instance: EyeLedsHandler | null = null;
 
     private topic: ROSLIB.Topic | null = null;
+    private state: ROSLIB.Topic | null = null;
     private unsubscribeStatus: (() => void) | null = null;
     private listeners: Set<Listener> = new Set();
     private colors: readonly number[] = [];
@@ -23,7 +26,8 @@ export class EyeLedsHandler {
             if (status === 'connected') {
                 this.initTopic();
             } else if (status === 'disconnected') {
-                this.topic?.unsubscribe();
+                this.state?.unsubscribe();
+                this.state = null;
                 this.topic = null;
                 this.setColors([]);
             }
@@ -60,13 +64,10 @@ export class EyeLedsHandler {
     private initTopic() {
         const ros = RosBridgeService.getInstance().rosConnection;
         if (!ros) return;
-        this.topic?.unsubscribe();
-        this.topic = new ROSLIB.Topic({
-            ros,
-            name: EYE_LEDS_TOPIC,
-            messageType: 'std_msgs/msg/UInt32MultiArray',
-        });
-        this.topic.subscribe((msg: ROSLIB.Message) => {
+        this.state?.unsubscribe();
+        this.topic = new ROSLIB.Topic({ ros, name: EYE_LEDS_TOPIC, messageType: EYE_LEDS_TYPE });
+        this.state = new ROSLIB.Topic({ ros, name: EYE_LEDS_STATE_TOPIC, messageType: EYE_LEDS_TYPE });
+        this.state.subscribe((msg: ROSLIB.Message) => {
             const data = (msg as unknown as { data?: number[] }).data;
             this.setColors(Array.isArray(data) ? data : []);
         });
@@ -74,7 +75,7 @@ export class EyeLedsHandler {
 
     static cleanup() {
         if (EyeLedsHandler._instance) {
-            EyeLedsHandler._instance.topic?.unsubscribe();
+            EyeLedsHandler._instance.state?.unsubscribe();
             EyeLedsHandler._instance.unsubscribeStatus?.();
             EyeLedsHandler._instance = null;
         }

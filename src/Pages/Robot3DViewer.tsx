@@ -57,6 +57,7 @@ import {
 } from '../Utils/camera.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
+import { useEyeLeds } from '../hooks/useEyeLeds';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
@@ -523,6 +524,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
+    useEyeLeds(robot);
     const { isConnected } = useRosConnection();
     const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);

@@ -91,6 +91,22 @@ test('an led disc is solid in the middle and fades out at its rim', async () => 
     assert.equal(softEdgeAlpha(1), 0);
 });
 
+test('the halo stays off the led disc, so its middle keeps the softened color', async () => {
+    const { haloAlpha } = await import('../src/Utils/eyeLedView.ts');
+    assert.equal(haloAlpha(0), 0);
+    assert.equal(haloAlpha(0.2), 0);
+    assert.ok(haloAlpha(0.45) > 0.2);
+    assert.equal(haloAlpha(1), 0);
+});
+
+test('led and halo are flat discs, with no rim to catch the light', async () => {
+    const { createLedView } = await import('../src/Utils/eyeLedView.ts');
+    const led = new THREE.Mesh(new THREE.CylinderGeometry());
+    createLedView(led);
+    const halo = led.children[0] as THREE.Mesh;
+    for (const mesh of [led, halo]) assert.equal(mesh.geometry.type, 'CircleGeometry');
+});
+
 test('led links name their eye', () => {
     assert.equal(ledEyeOf('eye_left_led_4'), 'left');
     assert.equal(ledEyeOf('eye_right_led_0'), 'right');

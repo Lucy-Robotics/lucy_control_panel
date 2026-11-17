@@ -16,12 +16,18 @@ export function whitened(rgb: number): THREE.Color {
     return color.lerp(WHITE, 0.35 * Math.max(color.r, color.g, color.b));
 }
 
-export const softEdgeAlpha = (radius: number): number => {
-    const t = Math.min(1, Math.max(0, (1 - radius) / (1 - SOLID_UNTIL)));
+const smoothstep = (from: number, to: number, x: number): number => {
+    const t = Math.min(1, Math.max(0, (x - from) / (to - from)));
     return t * t * (3 - 2 * t);
 };
 
-const haloAlpha = (radius: number): number => Math.max(0, 1 - radius) ** 2;
+export const softEdgeAlpha = (radius: number): number => 1 - smoothstep(SOLID_UNTIL, 1, radius);
+
+const DISC_IN_HALO = 1 / HALO_SCALE;
+export const haloAlpha = (radius: number): number =>
+    Math.max(0, 1 - radius) ** 2 * smoothstep(DISC_IN_HALO * SOLID_UNTIL, DISC_IN_HALO, radius);
+
+const FLAT_DISC = new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2);
 
 function radialTexture(alphaAt: (radius: number) => number): THREE.DataTexture {
     const size = 64;
@@ -47,7 +53,7 @@ function addHalo(led: THREE.Mesh): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBa
         depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
         polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
     });
-    const halo = new THREE.Mesh(led.geometry, material);
+    const halo = new THREE.Mesh(FLAT_DISC, material);
     halo.scale.set(HALO_SCALE, 1, HALO_SCALE);
     halo.renderOrder = 1;
     halo.raycast = () => {};
@@ -69,6 +75,7 @@ export function createLedView(led: THREE.Mesh): LedView {
     material.map = sharedTextures().edge;
     material.transparent = true;
     material.depthWrite = false;
+    led.geometry = FLAT_DISC;
     led.material = material;
     led.userData.eyeLed = true;
     led.visible = false;

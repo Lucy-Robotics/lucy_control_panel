@@ -102,7 +102,6 @@ const PaginatedJointCategories = ({
 
     return (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <EyeColorControls disabled={disabled} />
             <div
                 style={{
                     flex: 1,
@@ -125,6 +124,7 @@ const PaginatedJointCategories = ({
                             onResetJoint={onResetJoint}
                             showDegrees={showDegrees}
                             disabled={disabled}
+                            leading={category === validCategories[0] ? <EyeColorControls disabled={disabled} /> : undefined}
                         />
                     </div>
                 ))}

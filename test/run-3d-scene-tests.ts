@@ -21,7 +21,7 @@ function visual(file: string, color: number) {
     const node = new URDFVisual();
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color }));
     node.add(mesh);
-    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }) } });
+    Object.assign(node, { urdfNode: { querySelector: () => ({ getAttribute: () => file }), getAttribute: () => null } });
     return { node, mesh };
 }
 

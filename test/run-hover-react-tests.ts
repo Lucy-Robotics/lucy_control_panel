@@ -162,6 +162,36 @@ const meshCount = (root: THREE.Object3D) => {
     }
 
     {
+        const { URDFMimicJoint } = await import('urdf-loader/src/URDFClasses.js');
+        const link = (name: string) => Object.assign(new URDFLink(), { name, urdfName: name });
+        const joint = (name: string, jointType: string, child: URDFLink, Cls = URDFJoint) => {
+            const node = Object.assign(new Cls(), { name, urdfName: name, jointType, axis: new THREE.Vector3(0, 0, 1) });
+            node.add(child);
+            return node;
+        };
+        const [thigh, housing, twist] = [link('thigh'), link('knee_housing'), link('twist')];
+        const housingMesh = visual('meshes/knee.stl', GREY, 'Twist');
+        housing.add(housingMesh.visual);
+        thigh.add(visual('meshes/thigh.stl', GREY).visual);
+        twist.add(visual('meshes/twist.stl', GREY).visual);
+        const thighJoint = joint('Thigh', 'revolute', thigh);
+        const mimic = joint('KneeMimic', 'revolute', housing, URDFMimicJoint);
+        Object.assign(mimic, { mimicJoint: 'Thigh' });
+        thighJoint.mimicJoints.push(mimic);
+        const twistJoint = joint('Twist', 'revolute', twist);
+        const robot = new URDFRobot();
+        robot.add(link('base'), thighJoint, mimic, twistJoint);
+        Object.assign(robot, { joints: { Thigh: thighJoint, KneeMimic: mimic, Twist: twistJoint }, links: { thigh, knee_housing: housing, twist } });
+        const glowsHousing = (partName: string) => {
+            const scene = new THREE.Scene();
+            attachHoverGlow(scene, robot, partName, robotPartNames(robot), new THREE.MeshBasicMaterial());
+            return scene.children.some((c) => (c as THREE.Mesh).geometry === housingMesh.mesh.geometry);
+        };
+        assert.equal(glowsHousing('thigh'), false, 'a mimic part tagged with another joint does not glow with the joint it mimics');
+        assert.equal(glowsHousing('twist'), true, 'it glows with the joint it is tagged with');
+    }
+
+    {
         const { robot, upperArmMesh } = so101Shoulder();
         const canvas = document.createElement('canvas');
         const hovers: (string | null)[] = [];

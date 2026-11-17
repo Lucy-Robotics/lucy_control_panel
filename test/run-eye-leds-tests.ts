@@ -65,7 +65,7 @@ test('color boxes round-trip through rgb', () => {
 });
 
 test('an unlit led gets no hover glow, so it stays invisible', () => {
-    const robot = new THREE.Group();
+    const robot = Object.assign(new THREE.Group(), { links: {} });
     const eye = new THREE.Mesh(new THREE.BoxGeometry());
     const unlitLed = new THREE.Mesh(new THREE.CircleGeometry());
     unlitLed.visible = false;

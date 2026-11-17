@@ -49,6 +49,7 @@ function overlay(led: THREE.Mesh, scale: number, opacity: number): THREE.Mesh {
     const material = new THREE.MeshBasicMaterial({
         map: falloff, transparent: true, opacity, blending: THREE.AdditiveBlending,
         depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
     });
     const mesh = new THREE.Mesh(led.geometry, material);
     mesh.scale.set(scale, 1, scale);

@@ -13,6 +13,10 @@ export function ledIndexOf(linkName: string): number | null {
     return match ? Number(match[2] ?? match[3]) : null;
 }
 
+export function ledEyeOf(linkName: string): 'left' | 'right' | null {
+    return (LED_LINK_NAME.exec(linkName)?.[1] as 'left' | 'right' | undefined) ?? null;
+}
+
 export function ledSlotOf(linkName: string, colorCount: number): number | null {
     const index = ledIndexOf(linkName);
     if (index === null) return null;

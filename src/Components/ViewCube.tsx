@@ -10,9 +10,8 @@ import * as THREE from 'three';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
 import { buildHoverPatches } from '../Utils/viewCubeHoverPatches';
+import { pickCubePiece } from '../Utils/viewCubePick';
 
-const HIT_HALF_PX = 45;
-const HIT_CHAMFER = 0.28;
 const CUBE_HALF_PX = 30;
 const CHAMFER = 0.4;
 const EDGE_GAP_PX = 10;
@@ -21,17 +20,7 @@ const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
 const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
 const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
-const HOVER_RADIUS_PX = HIT_HALF_PX * Math.sqrt(3);
 const HOVER_REFRESH_ANGLE = 1e-3;
-
-type Axis = 0 | 1 | 2;
-type Sign = 1 | -1;
-
-interface CubePiece {
-    key: string;
-    geometry: THREE.BufferGeometry;
-    direction: THREE.Vector3;
-}
 
 interface FaceLabel {
     text: string;
@@ -51,75 +40,6 @@ const FACE_LABELS: FaceLabel[] = [
     { text: '+Z', normal: v(0, 1, 0), right: v(0, 0, -1), up: v(-1, 0, 0) },
     { text: '−Z', normal: v(0, -1, 0), right: v(0, 0, -1), up: v(1, 0, 0) },
 ];
-
-const point = (coords: Record<Axis, number>) => v(coords[0], coords[1], coords[2]);
-
-function polygonGeometry(vertices: THREE.Vector3[], outward: THREE.Vector3): THREE.BufferGeometry {
-    const normal = new THREE.Vector3()
-        .subVectors(vertices[1], vertices[0])
-        .cross(new THREE.Vector3().subVectors(vertices[2], vertices[0]));
-    const ordered = normal.dot(outward) < 0 ? [...vertices].reverse() : vertices;
-    const positions: number[] = [];
-    for (let i = 1; i < ordered.length - 1; i++) {
-        for (const p of [ordered[0], ordered[i], ordered[i + 1]]) positions.push(p.x, p.y, p.z);
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
-    return geometry;
-}
-
-function buildViewCubePieces(chamfer: number): CubePiece[] {
-    const inner = 1 - chamfer;
-    const pieces: CubePiece[] = [];
-    const axes: Axis[] = [0, 1, 2];
-    const signs: Sign[] = [1, -1];
-    const others = (a: Axis): [Axis, Axis] => axes.filter(x => x !== a) as [Axis, Axis];
-
-    for (const i of axes) {
-        for (const s of signs) {
-            const [j, k] = others(i);
-            const corners: [number, number][] = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
-            const verts = corners.map(([a, b]) => point({ [i]: s, [j]: a * inner, [k]: b * inner } as Record<Axis, number>));
-            const direction = point({ [i]: s, [j]: 0, [k]: 0 } as Record<Axis, number>);
-            pieces.push({ key: `face-${i}${s}`, geometry: polygonGeometry(verts, direction), direction });
-        }
-    }
-
-    for (const [i, j] of [[0, 1], [0, 2], [1, 2]] as [Axis, Axis][]) {
-        const k = axes.find(x => x !== i && x !== j)!;
-        for (const si of signs) {
-            for (const sj of signs) {
-                const at = (onI: number, onJ: number, onK: number) =>
-                    point({ [i]: onI, [j]: onJ, [k]: onK } as Record<Axis, number>);
-                const verts = [
-                    at(si, sj * inner, -inner),
-                    at(si, sj * inner, inner),
-                    at(si * inner, sj, inner),
-                    at(si * inner, sj, -inner),
-                ];
-                const direction = at(si, sj, 0).normalize();
-                pieces.push({ key: `edge-${i}${si}-${j}${sj}`, geometry: polygonGeometry(verts, direction), direction });
-            }
-        }
-    }
-
-    for (const sx of signs) {
-        for (const sy of signs) {
-            for (const sz of signs) {
-                const verts = [
-                    v(sx, sy * inner, sz * inner),
-                    v(sx * inner, sy, sz * inner),
-                    v(sx * inner, sy * inner, sz),
-                ];
-                const direction = v(sx, sy, sz).normalize();
-                pieces.push({ key: `corner-${sx}${sy}${sz}`, geometry: polygonGeometry(verts, direction), direction });
-            }
-        }
-    }
-
-    return pieces;
-}
 
 function labelTexture(text: string, color: string): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
@@ -151,25 +71,21 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     const events = useThree(s => s.events);
     const pointer = useThree(s => s.pointer);
     const cubeRef = useRef<THREE.Group>(null);
-    const hitRef = useRef<THREE.Group>(null);
     const pointerInsideRef = useRef(false);
     const lastRefreshQuat = useMemo(() => new THREE.Quaternion(), []);
     const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
     const box = useMemo(() => new THREE.BoxGeometry(2, 2, 2), []);
     const hoverPatches = useMemo(() => buildHoverPatches(CHAMFER), []);
-    const hitPieces = useMemo(() => buildViewCubePieces(HIT_CHAMFER), []);
     useEffect(() => () => {
         box.dispose();
         hoverPatches.forEach(g => g.dispose());
-        hitPieces.forEach(p => p.geometry.dispose());
-    }, [box, hoverPatches, hitPieces]);
+    }, [box, hoverPatches]);
     const hoveredPatch = hoveredKey ? hoverPatches.get(hoveredKey) : undefined;
 
     const mats = useMemo(() => ({
         face: new THREE.MeshBasicMaterial({ toneMapped: false }),
         hover: new THREE.MeshBasicMaterial({ toneMapped: false }),
-        hit: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
     }), []);
     useEffect(() => () => Object.values(mats).forEach(m => m.dispose()), [mats]);
     useEffect(() => {
@@ -219,17 +135,15 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 
     useFrame(() => {
         const cube = cubeRef.current;
-        const hit = hitRef.current;
-        if (!cube || !hit) return;
+        if (!cube) return;
         cube.quaternion.copy(mainCamera.quaternion).invert();
-        hit.quaternion.copy(cube.quaternion);
 
         if (lastRefreshQuat.angleTo(cube.quaternion) < HOVER_REFRESH_ANGLE) return;
         lastRefreshQuat.copy(cube.quaternion);
         if (!pointerInsideRef.current) return;
         const dx = pointer.x * size.width / 2 - cubeCenter.x;
         const dy = pointer.y * size.height / 2 - cubeCenter.y;
-        if (Math.hypot(dx, dy) <= HOVER_RADIUS_PX) events.update?.();
+        if (Math.hypot(dx, dy) <= CUBE_RADIUS_PX) events.update?.();
     });
 
     useEffect(() => () => {
@@ -238,43 +152,40 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
 
     const stop = (e: ThreeEvent<MouseEvent | PointerEvent>) => e.stopPropagation();
 
-    const handleOver = (e: ThreeEvent<PointerEvent>, key: string) => {
+    const pieceUnder = (e: ThreeEvent<MouseEvent | PointerEvent>) =>
+        pickCubePiece(cubeRef.current!.worldToLocal(e.point.clone()), CHAMFER);
+
+    const handleMove = (e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();
-        setHoveredKey(key);
+        setHoveredKey(pieceUnder(e).key);
         gl.domElement.style.cursor = 'pointer';
     };
 
-    const handleOut = (key: string) => {
-        setHoveredKey(prev => (prev === key ? null : prev));
+    const handleOut = () => {
+        setHoveredKey(null);
         gl.domElement.style.cursor = 'auto';
     };
 
-    const handleClick = (e: ThreeEvent<MouseEvent>, direction: THREE.Vector3) => {
+    const handleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         if (e.delta > CLICK_DRAG_THRESHOLD_PX) return;
-        onSelectView(direction.clone());
+        onSelectView(pieceUnder(e).direction);
     };
 
     return (
         <>
             <OrthographicCamera makeDefault position={[0, 0, 200]} />
             <group position={[cubeCenter.x, cubeCenter.y, 0]}>
-                <group ref={hitRef} scale={HIT_HALF_PX}>
-                    {hitPieces.map(piece => (
-                        <mesh
-                            key={piece.key}
-                            geometry={piece.geometry}
-                            material={mats.hit}
-                            onPointerOver={e => handleOver(e, piece.key)}
-                            onPointerOut={() => handleOut(piece.key)}
-                            onPointerDown={stop}
-                            onClick={e => handleClick(e, piece.direction)}
-                            onDoubleClick={stop}
-                        />
-                    ))}
-                </group>
                 <group ref={cubeRef} scale={CUBE_HALF_PX}>
-                    <mesh geometry={box} material={mats.face} raycast={noRaycast}>
+                    <mesh
+                        geometry={box}
+                        material={mats.face}
+                        onPointerMove={handleMove}
+                        onPointerOut={handleOut}
+                        onPointerDown={stop}
+                        onClick={handleClick}
+                        onDoubleClick={stop}
+                    >
                         <Edges color={edgeColor} raycast={noRaycast} />
                     </mesh>
                     {hoveredPatch && <mesh geometry={hoveredPatch} material={mats.hover} raycast={noRaycast} />}

@@ -6,6 +6,7 @@
 import type * as THREE from 'three';
 import type { URDFJoint, URDFLink, URDFRobot } from 'urdf-loader';
 import { isMotorVisual } from './motorMeshes';
+import { jointTaggedPart } from './jointTaggedVisuals';
 import {
     findJointForLink,
     findLinkWithJoint,
@@ -36,6 +37,8 @@ export function robotPartNames(robot: URDFRobot, actuatedJointNames?: ActuatedJo
     return (object) => {
         const link = findParentLink(object, robot);
         if (!link) return null;
+        const taggedPart = jointTaggedPart(object, robot, actuatedJointNames);
+        if (taggedPart) return taggedPart;
         const motorPart = isInMotor(object, link) ? partDrivenFrom(link, actuatedJointNames) : null;
         if (motorPart) return motorPart;
         const movedLink = findLinkWithJoint(link, robot, actuatedJointNames);

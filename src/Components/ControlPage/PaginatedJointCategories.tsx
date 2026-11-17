@@ -8,6 +8,7 @@ import type React from 'react';
 import { Grid, Tooltip } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { JointCategory } from './JointCategory';
+import { EyeColorControls } from './EyeColorControls';
 import type { JointControlState } from '../../Constants/robotTypes';
 import { usePaginatedCategories } from '../../contexts/PaginatedCategoriesContext';
 
@@ -101,6 +102,7 @@ const PaginatedJointCategories = ({
 
     return (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <EyeColorControls disabled={disabled} />
             <div
                 style={{
                     flex: 1,

@@ -48,6 +48,10 @@ export class EyeLedsHandler {
         };
     }
 
+    publish(colors: readonly number[]) {
+        this.topic?.publish(new ROSLIB.Message({ layout: { dim: [], data_offset: 0 }, data: colors }));
+    }
+
     private setColors(colors: readonly number[]) {
         this.colors = colors;
         this.listeners.forEach((cb) => cb(colors));

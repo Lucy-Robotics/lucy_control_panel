@@ -31,6 +31,7 @@ import {
 import { motorMeshesOf } from '../Utils/motorMeshes';
 import { robotPartNames } from '../Utils/robotParts';
 import { useMotorTemperatureMaterials } from '../hooks/useMotorTemperatureMaterials';
+import { isEyeLed } from '../Utils/eyeLedGlow';
 import { useHoverGlow } from '../hooks/useHoverGlow';
 import { useRobotHover } from '../hooks/useRobotHover';
 import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
@@ -110,7 +111,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
-            if (!mesh.isMesh) return;
+            if (!mesh.isMesh || isEyeLed(mesh)) return;
 
             if (!originals.has(mesh)) {
                 originals.set(mesh, mesh.material);

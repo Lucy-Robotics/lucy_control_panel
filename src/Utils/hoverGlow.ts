@@ -24,7 +24,7 @@ export function attachHoverGlow(
     const hovered: THREE.Mesh[] = [];
     robot.traverse((child) => {
         const mesh = child as THREE.Mesh;
-        if (mesh.isMesh && partNameOf(mesh) === partName) hovered.push(mesh);
+        if (mesh.isMesh && mesh.visible && partNameOf(mesh) === partName) hovered.push(mesh);
     });
     const glows = hovered.map((mesh) => {
         const shell = new THREE.Mesh(mesh.geometry, material);

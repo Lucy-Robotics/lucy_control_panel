@@ -9,6 +9,7 @@ import { Edges, Hud, OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ThemeColors3D } from '../hooks/useThemeColors3D';
 import { CLICK_DRAG_THRESHOLD_PX } from '../Utils/robotModel.utils';
+import { buildHoverPatches } from '../Utils/viewCubeHoverPatches';
 
 const HIT_HALF_PX = 45;
 const HIT_CHAMFER = 0.28;
@@ -18,7 +19,7 @@ const EDGE_GAP_PX = 10;
 const LABEL_OFFSET = 0.01;
 const LABEL_TEXTURE_PX = 128;
 const INNER = 1 - CHAMFER;
-const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.hypot(1, INNER, INNER);
+const CUBE_RADIUS_PX = CUBE_HALF_PX * Math.sqrt(3);
 const CUBE_MARGIN_PX = EDGE_GAP_PX + CUBE_RADIUS_PX;
 const HOVER_RADIUS_PX = HIT_HALF_PX * Math.sqrt(3);
 const HOVER_REFRESH_ANGLE = 1e-3;
@@ -28,7 +29,6 @@ type Sign = 1 | -1;
 
 interface CubePiece {
     key: string;
-    kind: 'face' | 'edge' | 'corner';
     geometry: THREE.BufferGeometry;
     direction: THREE.Vector3;
 }
@@ -82,7 +82,7 @@ function buildViewCubePieces(chamfer: number): CubePiece[] {
             const corners: [number, number][] = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
             const verts = corners.map(([a, b]) => point({ [i]: s, [j]: a * inner, [k]: b * inner } as Record<Axis, number>));
             const direction = point({ [i]: s, [j]: 0, [k]: 0 } as Record<Axis, number>);
-            pieces.push({ key: `face-${i}${s}`, kind: 'face', geometry: polygonGeometry(verts, direction), direction });
+            pieces.push({ key: `face-${i}${s}`, geometry: polygonGeometry(verts, direction), direction });
         }
     }
 
@@ -99,7 +99,7 @@ function buildViewCubePieces(chamfer: number): CubePiece[] {
                     at(si * inner, sj, -inner),
                 ];
                 const direction = at(si, sj, 0).normalize();
-                pieces.push({ key: `edge-${i}${si}-${j}${sj}`, kind: 'edge', geometry: polygonGeometry(verts, direction), direction });
+                pieces.push({ key: `edge-${i}${si}-${j}${sj}`, geometry: polygonGeometry(verts, direction), direction });
             }
         }
     }
@@ -113,7 +113,7 @@ function buildViewCubePieces(chamfer: number): CubePiece[] {
                     v(sx * inner, sy * inner, sz),
                 ];
                 const direction = v(sx, sy, sz).normalize();
-                pieces.push({ key: `corner-${sx}${sy}${sz}`, kind: 'corner', geometry: polygonGeometry(verts, direction), direction });
+                pieces.push({ key: `corner-${sx}${sy}${sz}`, geometry: polygonGeometry(verts, direction), direction });
             }
         }
     }
@@ -156,20 +156,24 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
     const lastRefreshQuat = useMemo(() => new THREE.Quaternion(), []);
     const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
-    const pieces = useMemo(() => buildViewCubePieces(CHAMFER), []);
+    const box = useMemo(() => new THREE.BoxGeometry(2, 2, 2), []);
+    const hoverPatches = useMemo(() => buildHoverPatches(CHAMFER), []);
     const hitPieces = useMemo(() => buildViewCubePieces(HIT_CHAMFER), []);
-    useEffect(() => () => [...pieces, ...hitPieces].forEach(p => p.geometry.dispose()), [pieces, hitPieces]);
+    useEffect(() => () => {
+        box.dispose();
+        hoverPatches.forEach(g => g.dispose());
+        hitPieces.forEach(p => p.geometry.dispose());
+    }, [box, hoverPatches, hitPieces]);
+    const hoveredPatch = hoveredKey ? hoverPatches.get(hoveredKey) : undefined;
 
     const mats = useMemo(() => ({
         face: new THREE.MeshBasicMaterial({ toneMapped: false }),
-        chamfer: new THREE.MeshBasicMaterial({ toneMapped: false }),
         hover: new THREE.MeshBasicMaterial({ toneMapped: false }),
         hit: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
     }), []);
     useEffect(() => () => Object.values(mats).forEach(m => m.dispose()), [mats]);
     useEffect(() => {
         mats.face.color.set(colors.surface);
-        mats.chamfer.color.set(colors.border).lerp(new THREE.Color(colors.surface), 0.45);
         mats.hover.color.set(colors.accent);
     }, [mats, colors]);
 
@@ -270,16 +274,10 @@ const ViewCubeScene: React.FC<ViewCubeSceneProps> = ({ mainCamera, colors, onSel
                     ))}
                 </group>
                 <group ref={cubeRef} scale={CUBE_HALF_PX}>
-                    {pieces.map(piece => (
-                        <mesh
-                            key={piece.key}
-                            geometry={piece.geometry}
-                            material={hoveredKey === piece.key ? mats.hover : piece.kind === 'face' ? mats.face : mats.chamfer}
-                            raycast={noRaycast}
-                        >
-                            <Edges color={edgeColor} raycast={noRaycast} />
-                        </mesh>
-                    ))}
+                    <mesh geometry={box} material={mats.face} raycast={noRaycast}>
+                        <Edges color={edgeColor} raycast={noRaycast} />
+                    </mesh>
+                    {hoveredPatch && <mesh geometry={hoveredPatch} material={mats.hover} raycast={noRaycast} />}
                     {labels.map(label => (
                         <mesh
                             key={label.text}

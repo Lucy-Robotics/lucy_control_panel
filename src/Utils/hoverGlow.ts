@@ -28,7 +28,7 @@ export function attachHoverGlow(
     const taggedElsewhere = (mesh: THREE.Mesh) => ![null, partName].includes(jointTaggedPart(mesh, robot));
     robot.traverse((child) => {
         const mesh = child as THREE.Mesh;
-        if (mesh.isMesh && (partNameOf(mesh) === partName || (isMimic(mesh) && !taggedElsewhere(mesh)))) hovered.push(mesh);
+        if (mesh.isMesh && mesh.visible && (partNameOf(mesh) === partName || (isMimic(mesh) && !taggedElsewhere(mesh)))) hovered.push(mesh);
     });
     const glows = hovered.map((mesh) => {
         const shell = new THREE.Mesh(mesh.geometry, material);

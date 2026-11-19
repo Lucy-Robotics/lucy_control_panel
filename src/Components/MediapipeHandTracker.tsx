@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
+import { HAND_CONNECTIONS, Hands, type Results, type Landmark, type Handedness } from "@mediapipe/hands";
 import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
@@ -138,13 +138,15 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const now = Date.now();
         if (now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S) {
             lastProcessTimeRef.current = now;
-            processHands(results.multiHandLandmarks, results.multiHandedness);
+            // World landmarks are metric with one unit on every axis; the normalized ones above
+            // scale x by width and y by height, which skews angles and distances.
+            processHands(results.multiHandWorldLandmarks, results.multiHandedness);
         }
 
         ctx.restore();
     };
 
-    function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
+    function processHands(hands: Landmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
 
@@ -170,7 +172,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         });
     };
 
-    function processClaw(hand: NormalizedLandmark[]) {
+    function processClaw(hand: Landmark[]) {
         const thumbTip = hand[4];
         const fingerTips = [hand[8], hand[12], hand[16], hand[20]]; // index, middle, ring, pinky
 

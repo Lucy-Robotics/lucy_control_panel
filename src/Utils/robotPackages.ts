@@ -12,6 +12,9 @@ const ROBOT_LABELS: Record<string, string> = {
     inmoov_urdf: 'InMoov',
     inmoov_i2_urdf: 'InMoov i2',
     marty_urdf: 'Marty',
+    reachy_mini_so101_humanoid_urdf: 'Reachy Humanoid',
+    unitree_g1_urdf: 'Unitree G1',
+    unitree_r1_urdf: 'Unitree R1',
     so_arm101_urdf: 'SO-ARM101',
 };
 

@@ -149,6 +149,8 @@ export class JointStateHandler {
       ros,
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
+      throttle_rate: 33,
+      queue_length: 1,
     });
     let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {

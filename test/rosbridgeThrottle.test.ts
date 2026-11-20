@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../src/Services/ros/ros.service.ts';
 import { subscribeToJointVoltages } from '../src/Services/ros/handlers/DynamicJointState.handler.ts';
+import { JointStateHandler } from '../src/Services/ros/handlers/JointState.handler.ts';
 
 function subscribeRequest(topic: string, subscribe: () => () => void) {
     const sent: Record<string, unknown>[] = [];
@@ -22,5 +23,11 @@ function subscribeRequest(topic: string, subscribe: () => () => void) {
 test('rosbridge sends /dynamic_joint_states at 10 Hz at most, latest message only', () => {
     const request = subscribeRequest('/dynamic_joint_states', () => subscribeToJointVoltages(() => {}));
     assert.equal(request?.throttle_rate, 100);
+    assert.equal(request?.queue_length, 1);
+});
+
+test('rosbridge sends /joint_states at 30 Hz at most, latest message only', () => {
+    const request = subscribeRequest('/joint_states', () => JointStateHandler.getInstance().subscribeToJointStates(() => {}));
+    assert.equal(request?.throttle_rate, 33);
     assert.equal(request?.queue_length, 1);
 });

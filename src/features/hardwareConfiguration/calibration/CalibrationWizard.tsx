@@ -15,6 +15,7 @@ import { blockingChecks, calibrationBlocked } from './calibrationGate.ts';
 import { CalibrationBlockedNotice } from './CalibrationBlockedNotice.tsx';
 import { CalibrationHealthChecks } from './CalibrationHealthChecks.tsx';
 import { CalibrationRobotPreview } from './CalibrationRobotPreview.tsx';
+import { EnterKeyHint } from './EnterKeyHint.tsx';
 import { JointRangeBar } from './JointRangeBar.tsx';
 import type { useCalibrationSession } from './useCalibrationSession.ts';
 import { useKeyboardAccept } from './useKeyboardAccept.ts';
@@ -290,8 +291,14 @@ export const CalibrationWizard: React.FC<CalibrationWizardProps> = ({ session })
                                 <Button disabled={busy || blocked} onClick={() => void send('begin_joint', joint.name)}>
                                     Start over
                                 </Button>
-                                <Button type="primary" disabled={!canAccept} onClick={() => void send('accept_joint')}>
+                                <Button
+                                    type="primary"
+                                    disabled={!canAccept}
+                                    title="Enter"
+                                    onClick={() => void send('accept_joint')}
+                                >
                                     Accept and continue
+                                    <EnterKeyHint />
                                 </Button>
                             </>
                         )}

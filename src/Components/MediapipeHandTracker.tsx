@@ -125,8 +125,12 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
         const videoWidth = webcamRef.current.video.videoWidth;
         const videoHeight = webcamRef.current.video.videoHeight;
-        canvasRef.current.width = videoWidth;
-        canvasRef.current.height = videoHeight;
+        // Assigning width/height reallocates and wipes the canvas even when the value is unchanged,
+        // so only do it when the video size actually changes.
+        if (canvasRef.current.width !== videoWidth || canvasRef.current.height !== videoHeight) {
+            canvasRef.current.width = videoWidth;
+            canvasRef.current.height = videoHeight;
+        }
 
         if (videoWidth && videoHeight) {
             const ratio = videoWidth / videoHeight;
@@ -167,27 +171,28 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     };
 
     function processHands(hands: Point3D[][], handedness: Handedness[]) {
+        if (hands.length === 0) return;
+
+        // The mode is a per-frame decision. The claw follows a single hand: the first one
+        // detected, so a second hand (e.g. right after a robot swap, before maxNumHands drops
+        // to 1) can't fight it for the Jaw.
+        if (controlModeRef.current === ControlMode.Claw) {
+            processClaw(hands[0]);
+            return;
+        }
+
         hands.forEach((hand, handIndex) => {
-            for (let i = 0; i < 5; i++) {
+            const side = handedness[handIndex]?.label === "Left" ? "leftHand" : "rightHand";
 
-                const label: string =
-                    handedness[handIndex].label === "Left"
-                        ? "leftHand"
-                        : "rightHand";
-
-                if (controlModeRef.current === ControlMode.Claw) {
-                    processClaw(hand);
-                    return;
-                }
-
+            for (const finger of Fingers) {
                 processFinger({
-                    tip: hand[Fingers[i].idx.TIP],
-                    dip: hand[Fingers[i].idx.DIP],
-                    pip: hand[Fingers[i].idx.PIP],
-                    mcp: hand[Fingers[i].idx.MCP],
+                    tip: hand[finger.idx.TIP],
+                    dip: hand[finger.idx.DIP],
+                    pip: hand[finger.idx.PIP],
+                    mcp: hand[finger.idx.MCP],
                     wrist: hand[0],
-                    jointNames: Fingers[i].names.map((name) => name.replace("side", label)),
-                    limits: Fingers[i].limits,
+                    jointNames: finger.names.map((name) => name.replace("side", side)),
+                    limits: finger.limits,
                 });
             }
         });

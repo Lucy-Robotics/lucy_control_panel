@@ -149,6 +149,9 @@ export class JointStateHandler {
       ros,
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
+      // Unthrottled joint states flood rosbridge and starve the /mesh/get replies of the 3D view.
+      throttle_rate: 33,
+      queue_length: 1,
     });
     let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {

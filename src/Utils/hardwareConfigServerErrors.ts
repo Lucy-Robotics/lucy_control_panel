@@ -1,6 +1,10 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { CSSProperties } from 'react';
 import type { StructuredValidationLine } from '../Constants/hardwareConfigTypes.ts';
-import { uiErrorRgba } from '../Constants/uiTheme.ts';
 
 /** Lines that are not JSON structured errors from `format_error_lines`. */
 export const UNPARSED_VALIDATION_KEY = '_unparsed';
@@ -86,11 +90,11 @@ export function cellOutlineStyle(
 ): CSSProperties {
     const ef = opts.exactFieldKey;
     if (ef && (server.get(ef)?.length ?? 0) > 0) {
-        return { border: borders.exact, boxShadow: `0 0 6px ${uiErrorRgba(0.35)}` };
+        return { border: borders.exact };
     }
     const rp = opts.rowPrefix;
     if (rp && hasIssueUnderPrefix(server, rp)) {
-        return { border: borders.row, boxShadow: `0 0 4px ${uiErrorRgba(0.22)}` };
+        return { border: borders.row };
     }
     return { border: borders.ok };
 }

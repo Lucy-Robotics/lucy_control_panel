@@ -1,16 +1,1788 @@
-/* ─── Ant Design Slider: kill the rectangular focus ring on mouse click ─────
-   rc-slider places a focusable div *inside* the handle that can't be reached
-   via the `styles` prop. `:focus:not(:focus-visible)` targets mouse/touch
-   focus only, leaving keyboard navigation outlines intact.                  */
-.ant-slider *:focus:not(:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+@property --frame {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
 }
 
-/* ─── Ant Design Slider: clean click feedback ────────────────────────────
-   The ::after disk (generated from colorPrimary) is replaced by a simple
-   scale-up of the solid handle dot on :active.                             */
+@property --fill {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --hud {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+/* ─── Baseline ────────────────────────────────────────────────────────────── */
+:root {
+  /* 75% Dominant: Dark Canvas & Surface */
+  --color-main: #141414;
+  --color-bg: #141414;
+  --color-surface-1: #1c1c1c;
+  --color-surface-2: #232323;
+  --color-surface-3: #2e2e2e;
+  --color-main-surface: #1c1c1c;
+  --color-main-elevated: #232323;
+  --color-main-deep: #0a0a0a;
+
+  /* 10% Secondary: Borders & Framing only */
+  --color-secondary: #2B3E50;
+  --color-secondary-border: #2B3E50;
+  --color-secondary-subtle: rgba(43, 62, 80, 0.4);
+  --color-secondary-hover: #4e6175;
+  --color-secondary-dark: #1b2834;
+  --color-secondary-text: #6C7D8E;
+  --color-line: rgba(43, 62, 80, 0.45);
+  --color-line-strong: #2B3E50;
+
+  /* 15% Highlight: Brand Identifier & Active Cues */
+  --color-highlight: #00FF41;
+  --color-highlight-light: #26ff67;
+  --color-highlight-dark: #00d91a;
+  --color-highlight-soft: rgba(0, 255, 65, 0.1);
+  --color-highlight-glow: rgba(0, 255, 65, 0.25);
+  --color-highlight-glow-strong: rgba(0, 255, 65, 0.55);
+  --color-highlight-glow-subtle: rgba(0, 255, 65, 0.12);
+
+  /* Text & Content (Warm parchment #F7F1E5, not white!) */
+  --color-text-primary: #F7F1E5;
+  --color-text-secondary: #6C7D8E;
+  --color-text-muted: #52677F;
+  --color-text-on-highlight: #141414;
+
+  /* Status Colors */
+  --color-status-error: #FF4343;
+  --color-status-warning: #FFAA00;
+  --color-status-info: #00D8FF;
+  --color-status-active: #00FF41;
+
+  --color-grid-dot: rgba(247, 241, 229, 0.2);
+  --color-grid-line: rgba(247, 241, 229, 0.09);
+
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-toolbar: 0 -8px 24px rgba(0, 0, 0, 0.45);
+
+  /* Typography */
+  --font-graphical: 'Orbitron', sans-serif;
+  --font-title: 'IBM Plex Mono', monospace;
+  --font-content: 'IBM Plex Mono', monospace;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --font-size-graphical: 50px;
+  --font-size-title-36: 36px;
+  --font-size-title-web: 32px;
+  --font-size-content-20: 20px;
+  --font-size-content-web: 16px;
+  --font-size-small-web: 12px;
+
+  /* Layout Spacing */
+  --spacing-screen: 30px;
+  --spacing-standard: 20px;
+  --spacing-large: 40px;
+  --spacing-small: 12px;
+
+  /* Border & Chamfer Geometric Tokens */
+  --border-width: 1px;
+  --chamfer-xs: 4px;
+  --chamfer-sm: 6px;
+  --chamfer: 8px;
+  --chamfer-md: 10px;
+  --chamfer-lg: 12px;
+  --chamfer-modal: 14px;
+  --hud-length: 10px;
+  --hud-width: 2px;
+
+  --motion-fast: 0.14s;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* Backward Compatibility Variables */
+  --ui-accent-green: var(--color-highlight);
+  --ui-text-on-accent: var(--color-text-on-highlight);
+  --ui-switch-disabled-bg: #334455;
+  --ui-switch-disabled-border: var(--color-secondary);
+}
+
+/* ─── Global Reset & Body ─────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--color-surface-3) transparent;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-content);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-content);
+  font-size: var(--font-size-content-web);
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-highlight-glow);
+  color: var(--color-text-primary);
+}
+
+.ant-layout,
+.ant-layout-content {
+  background: transparent !important;
+}
+
+.lucy-grid-bg,
+.ant-layout.lucy-grid-bg {
+  background-color: var(--color-bg) !important;
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--color-grid-dot) 1.2px, transparent 1.2px),
+    radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px),
+    radial-gradient(circle at 1px 1px, var(--color-grid-line) 0.75px, transparent 0.75px) !important;
+  background-size: 48px 48px, 8px 48px, 48px 8px !important;
+  background-position: 0 0, 0 0, 0 0 !important;
+  background-repeat: repeat !important;
+  background-attachment: fixed !important;
+}
+
+.ant-layout.lucy-plain-bg {
+  background-color: var(--color-bg) !important;
+}
+
+.ant-layout-header.lucy-page-header {
+  background: color-mix(in srgb, var(--color-surface-1) 82%, transparent) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-1);
+}
+
+/* ─── Custom Cybernetic Scrollbars ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-highlight-fill, var(--color-highlight));
+}
+
+/* ─── Brand Titles & Sub-titles ───────────────────────────────────────────── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-text-primary);
+  font-family: var(--font-title);
+  margin-top: 0;
+}
+
+.font-graphical {
+  font-family: var(--font-graphical) !important;
+  font-weight: 700 !important;
+  font-size: var(--font-size-graphical) !important;
+  letter-spacing: 2px !important;
+}
+
+.font-title {
+  font-family: var(--font-title) !important;
+  font-weight: 700 !important;
+  font-size: var(--font-size-title-web) !important;
+}
+
+.font-content {
+  font-family: var(--font-content) !important;
+  font-weight: 300 !important;
+  font-size: var(--font-size-content-web) !important;
+}
+
+.font-subtitle,
+.sub-title {
+  text-transform: uppercase !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--color-highlight) !important;
+  letter-spacing: 1px !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Terminal Title Styling */
+.terminal-title-container {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--font-title);
+  color: var(--color-text-primary);
+}
+
+.terminal-title-prefix {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+  margin-right: 4px;
+  user-select: none;
+}
+
+.terminal-title-separator {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+  margin: 0 6px;
+  user-select: none;
+}
+
+.terminal-title-subtitle {
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-color: var(--color-highlight);
+  color: var(--color-text-primary);
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.section-label::before {
+  content: "// ";
+  color: var(--color-highlight);
+}
+
+/* ─── Ant Design Core Overrides (Strict 75-10-15 & 0px Radius) ─────────────── */
+.ant-btn,
+.ant-switch,
+.ant-slider,
+.ant-slider-rail,
+.ant-slider-track,
+.ant-input,
+.ant-input-number,
+.ant-select-selector,
+.ant-card,
+.ant-alert,
+.ant-modal-content,
+.ant-modal-header,
+.ant-spin-container,
+.ant-layout-header,
+.ant-layout-content,
+.ant-tag,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.ant-popover-inner,
+.ant-table,
+.ant-table-container,
+.ant-col,
+.ant-row {
+  border-radius: 0 !important;
+}
+
+.chamfer-box,
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.lucy-movable-modal,
+.ant-alert,
+.ant-table,
+.ant-popover-inner,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector,
+.ant-input-number-group-addon,
+.ant-input-group-addon,
+.ant-tag,
+.ant-tooltip-inner,
+.command-rail,
+.rail-btn,
+.category-strip,
+.category-tab {
+  border: var(--border-width) solid var(--frame) !important;
+  border-radius: 0 !important;
+  background-color: var(--fill) !important;
+  clip-path: polygon(-1px -1px,
+      calc(100% - var(--chamfer) - 1px) -1px,
+      calc(100% + 1px) calc(var(--chamfer) + 1px),
+      calc(100% + 1px) calc(100% + 1px),
+      calc(var(--chamfer) + 1px) calc(100% + 1px),
+      -1px calc(100% - var(--chamfer) - 1px)) !important;
+  transition:
+    --frame var(--motion-fast) var(--motion-ease),
+    --fill var(--motion-fast) var(--motion-ease),
+    --hud var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease) !important;
+}
+
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector,
+.ant-input-number-group-addon,
+.ant-input-group-addon,
+.ant-tooltip-inner,
+.ant-popover-inner,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.chamfer-box.chamfer-scroll,
+.command-rail {
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - var(--border-width)), var(--frame) calc(50% - var(--border-width))),
+    linear-gradient(to top right, var(--frame) calc(50% + var(--border-width)), transparent calc(50% + var(--border-width))) !important;
+  background-size: var(--chamfer) var(--chamfer) !important;
+  background-position: top right, bottom left !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+  box-shadow: none !important;
+}
+
+.chamfer-box:not(.chamfer-scroll),
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.lucy-movable-modal,
+.ant-alert,
+.ant-table,
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-tag,
+.rail-btn,
+.category-strip,
+.category-tab {
+  --hud: transparent;
+  isolation: isolate;
+  border-color: transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: none !important;
+}
+
+.chamfer-box,
+.tui-container,
+.tui-container-dark,
+.ant-card,
+.ant-modal-content,
+.ant-alert,
+.ant-table,
+.tui-toggle,
+.ant-btn,
+.nav-item-btn,
+.header-status-box,
+.ant-tag,
+.rail-btn,
+.category-strip,
+.category-tab {
+  position: relative;
+}
+
+.chamfer-box:not(.chamfer-scroll)::after,
+.tui-container::after,
+.tui-container-dark::after,
+.ant-card::after,
+.ant-modal-content::after,
+.lucy-movable-modal::after,
+.ant-alert::after,
+.ant-table::after,
+.tui-toggle::after,
+.ant-btn::after,
+.nav-item-btn::after,
+.header-status-box::after,
+.ant-tag::after,
+.rail-btn::after,
+.category-strip::after,
+.category-tab::after {
+  --b: var(--border-width);
+  --ci: calc(var(--chamfer) - 0.5858 * var(--b));
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--b));
+  z-index: 3;
+  pointer-events: none;
+  background: var(--frame);
+  clip-path: polygon(evenodd,
+      0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      var(--chamfer) 100%,
+      0 calc(100% - var(--chamfer)),
+      0 0,
+      var(--b) var(--b),
+      var(--b) calc(100% - var(--b) - var(--ci)),
+      calc(var(--b) + var(--ci)) calc(100% - var(--b)),
+      calc(100% - var(--b)) calc(100% - var(--b)),
+      calc(100% - var(--b)) calc(var(--b) + var(--ci)),
+      calc(100% - var(--b) - var(--ci)) var(--b),
+      var(--b) var(--b));
+}
+
+.chamfer-box:not(.chamfer-scroll)::before,
+.tui-container::before,
+.tui-container-dark::before,
+.ant-card::before,
+.ant-modal-content::before,
+.lucy-movable-modal::before,
+.ant-alert::before,
+.ant-table::before,
+.tui-toggle::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--border-width));
+  z-index: 4;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud)),
+    linear-gradient(var(--hud), var(--hud));
+  background-size:
+    var(--hud-length) var(--hud-width),
+    var(--hud-width) var(--hud-length),
+    var(--hud-length) var(--hud-width),
+    var(--hud-width) var(--hud-length);
+  background-position: top left, top left, bottom right, bottom right;
+  background-repeat: no-repeat;
+}
+
+.chamfer-box-xs {
+  --chamfer: var(--chamfer-xs);
+}
+
+.chamfer-box-sm {
+  --chamfer: var(--chamfer-sm);
+}
+
+.chamfer-box-md {
+  --chamfer: var(--chamfer-md);
+}
+
+.chamfer-box-lg {
+  --chamfer: var(--chamfer-lg);
+}
+
+.chamfer-box-modal {
+  --chamfer: var(--chamfer-modal);
+}
+
+.hud-corners,
+.hud-corners-hover:hover {
+  --hud: var(--color-highlight) !important;
+}
+
+/* ─── Universal Cybernetic Chamfer Utility ────────────────────────────────── */
+.chamfer-box {
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
+}
+
+/* ─── Ant Design Tabs ──────────────────────────────────────────────────────── */
+.ant-tabs {
+  color: var(--color-text-primary);
+}
+
+.ant-tabs-nav {
+  margin-bottom: 16px !important;
+}
+
+.ant-tabs-nav::before {
+  border-bottom: none !important;
+}
+
+.ant-tabs-nav-wrap {
+  overflow: visible !important;
+}
+
+.ant-tabs-tab {
+  font-family: var(--font-title) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.5px !important;
+  color: var(--color-text-secondary) !important;
+  padding: 8px 14px !important;
+  margin: 0 4px !important;
+  transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease !important;
+  border-radius: 0 !important;
+}
+
+.ant-tabs-tab:hover {
+  color: var(--color-accent-2, var(--color-highlight)) !important;
+  background-color: var(--color-accent-2-soft, var(--color-highlight-soft));
+}
+
+.ant-tabs-tab.ant-tabs-tab-active {
+  background-color: var(--color-active-fill, transparent);
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-highlight) !important;
+  font-weight: bold !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--color-highlight-fill, var(--color-highlight)) !important;
+  height: 2px !important;
+}
+
+/* Buttons */
+.ant-btn {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+
+  font-family: var(--font-title) !important;
+  letter-spacing: 0.5px !important;
+  position: relative !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ant-btn:not(:disabled):hover {
+  --frame: var(--color-accent-2, var(--color-highlight));
+  --fill: var(--color-accent-2-soft, var(--color-surface-3));
+  color: var(--color-accent-2, var(--color-highlight)) !important;
+  transform: translateY(-1px);
+}
+
+.ant-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.ant-btn-primary {
+  --frame: var(--color-highlight-fill, var(--color-highlight));
+  --fill: var(--color-highlight-fill, var(--color-highlight));
+  color: var(--color-text-on-highlight) !important;
+  font-weight: 700 !important;
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  --frame: var(--color-highlight-fill-hover, var(--color-highlight-light));
+  --fill: var(--color-highlight-fill-hover, var(--color-highlight-light));
+  color: var(--color-text-on-highlight) !important;
+}
+
+.ant-btn-dangerous {
+  --frame: var(--color-status-error);
+  color: var(--color-status-error) !important;
+}
+
+.ant-btn-dangerous:not(:disabled):hover {
+  --frame: var(--color-status-error);
+  color: var(--color-status-error) !important;
+}
+
+.ant-btn-dangerous.ant-btn-primary {
+  --frame: var(--color-error-fill, var(--color-status-error));
+  --fill: var(--color-error-fill, var(--color-status-error));
+  color: var(--color-text-on-error, var(--color-text-primary)) !important;
+}
+
+.ant-btn-text,
+.ant-btn-link {
+  --frame: transparent;
+  --fill: transparent;
+}
+
+.ant-btn-text:not(:disabled):hover,
+.ant-btn-link:not(:disabled):hover {
+  --frame: transparent;
+  --fill: var(--color-highlight-soft);
+  transform: none;
+}
+
+.ant-btn:disabled {
+  --frame: var(--color-line);
+  --fill: transparent;
+  color: var(--color-text-muted) !important;
+  opacity: 0.6;
+}
+
+/* ─── Cards with Chamfered Corners ────────────────────────────────────────── */
+.ant-card {
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
+  color: var(--color-text-primary) !important;
+}
+
+.ant-card-head {
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  letter-spacing: 1px;
+  background: var(--color-header-fill, var(--color-surface-2)) !important;
+  box-shadow: inset 0 -1px 0 var(--color-header-divider, transparent);
+}
+
+.ant-card-head-title {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+}
+
+.ant-card-head-title::before,
+.ant-modal-title::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  margin-right: 10px;
+  vertical-align: -2px;
+  background: var(--color-highlight-fill, var(--color-highlight));
+}
+
+.ant-card-body {
+  background: transparent !important;
+}
+
+.ant-card-hoverable:hover {
+  --frame: var(--color-highlight) !important;
+  --hud: var(--color-highlight) !important;
+}
+
+/* Control Page Joint Category Card */
+.joint-category-card {
+  --chamfer: var(--chamfer-lg);
+  height: 100%;
+}
+
+.joint-category-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  bottom: var(--chamfer);
+  background: var(--color-highlight-fill, var(--color-highlight));
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Control Page Joint Control Card */
+.joint-control-card {
+  --chamfer: 7px;
+  --fill: var(--color-surface-2);
+}
+
+.joint-control-card:hover {
+  --frame: var(--color-highlight) !important;
+}
+
+/* Theme Modal Preset Card */
+.preset-card {
+  --chamfer: 8px;
+}
+
+.preset-card:hover {
+  --frame: var(--color-highlight) !important;
+}
+
+.preset-card.preset-card-active {
+  --frame: var(--color-highlight) !important;
+  --hud: var(--color-highlight) !important;
+  --fill: color-mix(in srgb, var(--color-highlight) 6%, var(--color-surface-1));
+}
+
+/* Inputs & Numbers */
+.ant-input-outlined,
+.ant-input-number-outlined,
+.ant-picker-outlined,
+.ant-select-outlined .ant-select-selector {
+  --chamfer: 5px;
+  --frame: var(--color-line-strong);
+  --fill: var(--color-main-deep);
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-input-affix-wrapper > .ant-input,
+.ant-input-number-outlined .ant-input-number-input {
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-input-outlined:not(.ant-input-disabled):hover,
+.ant-input-number-outlined:not(.ant-input-number-disabled):hover,
+.ant-picker-outlined:not(.ant-picker-disabled):hover,
+.ant-select-outlined:not(.ant-select-disabled):hover .ant-select-selector {
+  --frame: var(--color-secondary-hover);
+}
+
+.ant-input-outlined:focus,
+.ant-input-outlined:focus-within,
+.ant-input-outlined.ant-input-affix-wrapper-focused,
+.ant-input-number-outlined.ant-input-number-focused,
+.ant-input-number-outlined:focus-within,
+.ant-picker-outlined.ant-picker-focused,
+.ant-select-outlined.ant-select-focused .ant-select-selector {
+  --frame: var(--color-highlight) !important;
+}
+
+.ant-input-outlined.ant-input-disabled,
+.ant-input-number-outlined.ant-input-number-disabled,
+.ant-picker-outlined.ant-picker-disabled,
+.ant-select-outlined.ant-select-disabled .ant-select-selector,
+:is(.ant-input-number-group, .ant-input-group):has(.ant-input-number-disabled, .ant-input-disabled) > :is(.ant-input-number-group-addon, .ant-input-group-addon) {
+  --frame: var(--color-line);
+  --fill: var(--color-surface-3);
+  color: var(--color-text-muted) !important;
+  cursor: not-allowed;
+}
+
+.ant-input-outlined.ant-input-disabled > .ant-input,
+.ant-input-number-outlined.ant-input-number-disabled .ant-input-number-input {
+  color: var(--color-text-muted) !important;
+  cursor: not-allowed;
+}
+
+.ant-input-outlined.ant-input-status-error,
+.ant-input-number-outlined.ant-input-number-status-error,
+.ant-select-outlined.ant-select-status-error .ant-select-selector {
+  --frame: var(--color-status-error) !important;
+}
+
+.ant-input-number-handler-wrap {
+  background-color: transparent !important;
+  border-left: 1px solid var(--color-line) !important;
+}
+
+.ant-input-number-handler {
+  border-color: var(--color-line) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+.ant-input-number-handler:hover {
+  color: var(--color-highlight) !important;
+  background-color: var(--color-highlight-soft) !important;
+}
+
+.ant-input-number-group-addon,
+.ant-input-group-addon {
+  --chamfer: 5px;
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+  color: var(--color-text-secondary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :first-child:not(:last-child) {
+  border-right-width: 0 !important;
+  clip-path: polygon(-1px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% + 1px),
+      calc(var(--chamfer) + 1px) calc(100% + 1px), -1px calc(100% - var(--chamfer) - 1px)) !important;
+  background-size: 0 0, var(--chamfer) var(--chamfer) !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :last-child:not(:first-child) {
+  clip-path: polygon(-1px -1px, calc(100% - var(--chamfer) - 1px) -1px, calc(100% + 1px) calc(var(--chamfer) + 1px),
+      calc(100% + 1px) calc(100% + 1px), -1px calc(100% + 1px)) !important;
+  background-size: var(--chamfer) var(--chamfer), 0 0 !important;
+}
+
+:is(.ant-input-number-group, .ant-input-group) > :not(:first-child):not(:last-child) {
+  border-right-width: 0 !important;
+  clip-path: none !important;
+  background-size: 0 0, 0 0 !important;
+}
+
+.ant-select-dropdown,
+.ant-dropdown-menu,
+.ant-popover-inner {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.ant-dropdown-menu-item:hover {
+  background-color: var(--color-surface-3) !important;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled),
+.ant-dropdown-menu-item-selected {
+  background-color: var(--color-highlight-soft) !important;
+  color: var(--color-highlight) !important;
+}
+
+/* Slider */
+.ant-slider-rail {
+  background-color: color-mix(in srgb, var(--color-text-primary) 24%, transparent) !important;
+}
+
+.ant-slider-disabled .ant-slider-rail {
+  background-color: var(--color-surface-3) !important;
+}
+
+.ant-slider-track {
+  background-color: var(--color-highlight-fill, var(--color-highlight)) !important;
+}
+
+.ant-slider-handle {
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+
+.joint-control-card .ant-slider-handle {
+  z-index: 2;
+}
+
+.joint-control-card .ant-slider-handle::after {
+  width: 6px !important;
+  height: 6px !important;
+  inset-inline-start: 2px !important;
+  inset-block-start: 2px !important;
+}
+
+.joint-control-card .ant-slider-handle:hover::after,
+.joint-control-card .ant-slider-handle:active::after,
+.joint-control-card .ant-slider-handle:focus::after,
+.joint-control-card .ant-slider-handle-dragging::after {
+  width: 8px !important;
+  height: 8px !important;
+  inset-inline-start: 1px !important;
+  inset-block-start: 1px !important;
+}
+
+.ant-slider-handle::after {
+  background-color: var(--color-text-primary) !important;
+  box-shadow: 0 0 0 2px var(--color-highlight-fill, var(--color-highlight)) !important;
+}
+
+.joint-slider-moving .ant-slider-track {
+  background-color: var(--color-ghost, var(--color-text-primary)) !important;
+  box-shadow: none;
+}
+
+.joint-slider-moving .ant-slider-handle::after {
+  box-shadow: 0 0 0 2px var(--color-ghost, var(--color-text-primary)) !important;
+}
+
+.ant-slider-disabled .ant-slider-handle::after {
+  background-color: var(--color-surface-3) !important;
+  box-shadow: 0 0 0 2px var(--color-text-muted) !important;
+}
+
+.ant-slider *:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .ant-slider-handle:active {
-    transform: translateX(-50%) scale(1.2) !important;
-    transition: transform 0.08s ease !important;
+  transform: translateX(-50%) scale(1.2) !important;
+  transition: transform 0.08s ease !important;
+}
+
+/* Tables */
+.ant-table {
+  --chamfer: 8px;
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
+  color: var(--color-text-primary) !important;
+}
+
+.ant-table-thead > tr > th {
+  background: var(--color-surface-2) !important;
+  color: var(--color-text-secondary) !important;
+  border-bottom: none !important;
+  font-family: var(--font-title) !important;
+  font-size: 12px;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.ant-table-thead > tr > th::before {
+  background-color: var(--color-line) !important;
+}
+
+.ant-table-tbody > tr > td {
+  background: transparent !important;
+  border-bottom: none !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-table-tbody > tr:nth-child(even) > td {
+  background: color-mix(in srgb, var(--color-surface-2) 55%, transparent) !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: var(--color-highlight-soft) !important;
+}
+
+/* ─── Modals with Chamfered Corners ───────────────────────────────────────── */
+.ant-modal {
+  filter: drop-shadow(var(--shadow-modal));
+}
+
+.ant-modal-mask {
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.ant-modal-content {
+  --chamfer: var(--chamfer-modal);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-1);
+  --hud: var(--color-highlight) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: none !important;
+}
+
+.ant-modal-header {
+  background-color: transparent !important;
+  border-bottom: none !important;
+}
+
+.ant-modal-title {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  letter-spacing: 1px;
+}
+
+.ant-modal-body {
+  background-color: transparent !important;
+}
+
+.ant-modal-footer {
+  background-color: transparent !important;
+  border-top: none !important;
+}
+
+/* Movable Modal (Floating Control Panel Tools) */
+.lucy-movable-modal {
+  --chamfer: var(--chamfer-modal);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-1);
+  --hud: var(--color-highlight) !important;
+}
+
+.lucy-movable-modal-header {
+  background-color: var(--color-header-fill, var(--color-surface-2)) !important;
+  box-shadow: inset 0 -1px 0 var(--color-header-divider, transparent);
+}
+
+/* Tags */
+.ant-tag {
+  --chamfer: var(--chamfer-xs);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-2);
+  font-family: var(--font-mono) !important;
+  padding: 2px 8px !important;
+}
+
+.ant-tag:not(.ant-tag-has-color):not(:is(.ant-tag-green, .ant-tag-orange, .ant-tag-purple, .ant-tag-blue,
+  .ant-tag-red, .ant-tag-gold, .ant-tag-cyan, .ant-tag-magenta, .ant-tag-volcano, .ant-tag-lime,
+  .ant-tag-geekblue, .ant-tag-success, .ant-tag-error, .ant-tag-warning, .ant-tag-processing)) {
+  color: var(--color-text-primary) !important;
+}
+
+.ant-tag:is(.ant-tag-green, .ant-tag-orange, .ant-tag-purple, .ant-tag-blue, .ant-tag-red,
+  .ant-tag-gold, .ant-tag-cyan, .ant-tag-magenta, .ant-tag-volcano, .ant-tag-lime, .ant-tag-geekblue,
+  .ant-tag-success, .ant-tag-error, .ant-tag-warning, .ant-tag-processing) {
+  --frame: currentColor;
+  --fill: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+[data-tone="light"] .ant-tag:is(.ant-tag-green, .ant-tag-success, .ant-tag-lime) {
+  color: var(--color-status-active) !important;
+}
+
+[data-tone="light"] .ant-tag:is(.ant-tag-orange, .ant-tag-gold, .ant-tag-warning, .ant-tag-volcano) {
+  color: var(--color-status-warning) !important;
+}
+
+[data-tone="light"] .ant-tag:is(.ant-tag-red, .ant-tag-error) {
+  color: var(--color-status-error) !important;
+}
+
+[data-tone="light"] .ant-tag:is(.ant-tag-blue, .ant-tag-processing, .ant-tag-cyan, .ant-tag-geekblue) {
+  color: var(--color-status-info) !important;
+}
+
+/* Tooltips & Popovers */
+.ant-tooltip-inner {
+  --chamfer: var(--chamfer-xs);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-surface-3);
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+}
+
+.ant-tooltip-arrow {
+  display: none !important;
+}
+
+/* ─── Alerts with Chamfered Corners ───────────────────────────────────────── */
+.ant-alert {
+  --chamfer: var(--chamfer-sm);
+  --alert-color: var(--color-line-strong);
+  --frame: color-mix(in srgb, var(--alert-color) 70%, transparent);
+  --fill: color-mix(in srgb, var(--alert-color) var(--color-status-tint, 8%), var(--color-surface-1));
+  color: var(--color-text-primary) !important;
+}
+
+.ant-alert-error {
+  --alert-color: var(--color-status-error);
+}
+
+.ant-alert-warning {
+  --alert-color: var(--color-status-warning);
+}
+
+.ant-alert-info {
+  --alert-color: var(--color-status-info);
+}
+
+.ant-alert-success {
+  --alert-color: var(--color-highlight);
+}
+
+.ant-alert-message {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-title) !important;
+  font-weight: 700 !important;
+}
+
+.ant-alert-description {
+  color: var(--color-text-secondary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-divider {
+  border-color: var(--color-line) !important;
+}
+
+/* ─── TUI Utility Classes & Chamfer Containers ────────────────────────────── */
+.tui-container,
+.tui-container-dark {
+  --chamfer: var(--chamfer-md);
+  --frame: var(--color-line);
+  --fill: var(--color-surface-1);
+  padding: var(--spacing-standard);
+}
+
+.tui-container-dark {
+  --fill: var(--color-main-deep);
+}
+
+/* Floating overlay panels in 3D viewer & pagination */
+.viewer-overlay-box {
+  --chamfer: 6px;
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 86%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Collapsible overlay panels: collapsed to their title, expand on click */
+.viewer-overlay-box.collapsible {
+  transition: transform 0.2s ease;
+}
+
+.viewer-overlay-box.collapsible:not(.expanded) {
+  cursor: pointer;
+}
+
+.viewer-overlay-box.collapsible:hover {
+  --frame: var(--color-highlight);
+  transform: translateY(-1px);
+}
+
+.viewer-overlay-box .collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: padding-top 0.25s ease;
+}
+
+.viewer-overlay-box.expanded .collapsible-header {
+  padding-top: 6px;
+}
+
+.viewer-overlay-box .collapsible-title {
+  color: var(--color-highlight);
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: filter 0.2s ease;
+}
+
+.viewer-overlay-box.collapsible:hover .collapsible-title,
+.viewer-overlay-box .collapsible-header:focus-visible .collapsible-title {
+  filter: brightness(1.3);
+}
+
+/* SVG rather than ▸: its fallback font draws it off-centre. */
+.viewer-overlay-box .collapsible-chevron {
+  flex: none;
+  width: 0.75em;
+  height: 0.75em;
+  color: var(--color-highlight);
+  transition: transform 0.25s ease;
+}
+
+.viewer-overlay-box .collapsible-chevron svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.viewer-overlay-box.expanded .collapsible-chevron {
+  transform: rotate(-90deg);
+}
+
+.viewer-overlay-box.collapsible:not(.expanded):hover .collapsible-chevron {
+  animation: overlayChevronNudge 0.9s ease-in-out infinite;
+}
+
+@keyframes overlayChevronNudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.viewer-overlay-box .collapsible-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
+}
+
+/* `.narrow` is set once the collapse transition has finished. */
+.viewer-overlay-box.collapsible.narrow .collapsible-body {
+  width: 0;
+}
+
+.viewer-overlay-box.expanded .collapsible-body {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease 0.05s, visibility 0s;
+}
+
+.viewer-overlay-box .collapsible-body-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+  transition: padding-top 0.25s ease;
+}
+
+.viewer-overlay-box.expanded .collapsible-body-inner {
+  padding-top: 8px;
+}
+
+.category-strip {
+  --chamfer: 8px;
+  --frame: var(--color-line);
+  --fill: color-mix(in srgb, var(--color-surface-1) 90%, transparent);
+
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.category-strip > .rail-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.category-tabs {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.category-tab:first-child {
+  margin-left: auto;
+}
+
+.category-tab:last-child {
+  margin-right: auto;
+}
+
+.category-tab {
+  --chamfer: var(--chamfer-sm);
+  --frame: transparent;
+  --fill: transparent;
+
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  height: 32px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.category-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.category-tab:hover {
+  --fill: var(--color-surface-3);
+  color: var(--color-text-primary);
+}
+
+.category-tab[aria-selected="true"] {
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight-soft);
+  color: var(--color-highlight);
+}
+
+.category-tab:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
+}
+
+/* ─── Nav Buttons Chamfer ─────────────────────────────────────────────────── */
+.nav-item-btn {
+  --chamfer: 6px;
+  --frame: var(--color-line);
+  --fill: transparent;
+
+  position: relative !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+  font-weight: bold !important;
+  font-size: 11px !important;
+  letter-spacing: 0.5px !important;
+  height: 32px !important;
+  padding: 4px 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.nav-item-btn:hover:not(:disabled) {
+  --frame: var(--color-accent-2, var(--color-highlight)) !important;
+  --fill: var(--color-accent-2-soft, var(--color-highlight-soft)) !important;
+  color: var(--color-accent-2, var(--color-highlight)) !important;
+  transform: translateY(-1px);
+}
+
+.nav-item-btn.active {
+  --frame: var(--color-highlight-fill, var(--color-highlight)) !important;
+  --fill: var(--color-highlight-fill, var(--color-highlight)) !important;
+  color: var(--color-text-on-highlight) !important;
+}
+
+.nav-item-btn.active:hover {
+  --frame: var(--color-highlight-fill-hover, var(--color-highlight-light)) !important;
+  --fill: var(--color-highlight-fill-hover, var(--color-highlight-light)) !important;
+  color: var(--color-text-on-highlight) !important;
+}
+
+/* Header Status Indicators */
+.header-status-box {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line);
+  --fill: color-mix(in srgb, var(--status-color, transparent) var(--color-status-tint, 0%), var(--color-surface-2));
+  height: 32px;
+  line-height: 1;
+}
+
+.remote-control-border {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  box-sizing: border-box;
+  border: 3px solid var(--color-highlight-fill, var(--color-highlight));
+  pointer-events: none;
+}
+
+.command-rail {
+  --chamfer: var(--chamfer-lg);
+  --frame: var(--color-line);
+  --fill: color-mix(in srgb, var(--color-surface-1) 90%, transparent);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.command-rail[data-orientation="horizontal"] {
+  --chamfer: var(--chamfer-sm);
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px;
+}
+
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.command-rail.command-rail-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-toolbar);
+}
+
+.command-rail[data-orientation="horizontal"] .rail-group {
+  flex-direction: row;
+  gap: 2px;
+}
+
+.rail-divider {
+  flex: none;
+  width: 36px;
+  height: 1px;
+  background: var(--color-line);
+}
+
+.command-rail[data-orientation="vertical"] {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.command-rail[data-orientation="vertical"]::-webkit-scrollbar {
+  display: none;
+}
+
+.command-rail[data-orientation="vertical"] .rail-divider-end {
+  margin-top: auto;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-divider {
+  width: 1px;
+  height: 24px;
+}
+
+.rail-slot {
+  display: inline-flex;
+}
+
+.rail-btn {
+  --chamfer: var(--chamfer-sm);
+  --frame: transparent;
+  --fill: transparent;
+
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 60px;
+  min-height: 48px;
+  padding: 6px 2px;
+  font-size: 17px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.rail-icon {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.rail-caption,
+.rail-detail {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.rail-caption {
+  color: var(--color-text-secondary);
+}
+
+.rail-btn:not(:disabled):hover .rail-caption,
+.rail-btn[aria-pressed="true"] .rail-caption,
+.rail-btn-danger .rail-caption {
+  color: inherit;
+}
+
+.rail-detail {
+  padding: 2px 4px;
+  color: var(--color-highlight);
+  background: var(--color-highlight-soft);
+}
+
+.rail-btn:not(:disabled):hover {
+  --frame: var(--color-line-strong);
+  --fill: var(--color-accent-2-soft, var(--color-surface-3));
+  color: var(--color-accent-2, var(--color-highlight));
+}
+
+.rail-btn[aria-pressed="true"] {
+  --frame: var(--color-highlight);
+  --fill: var(--color-highlight-soft);
+  color: var(--color-highlight);
+}
+
+.rail-btn:disabled {
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.rail-slot:has(.rail-btn:disabled) {
+  cursor: help;
+}
+
+.rail-btn-danger,
+.rail-btn-danger:not(:disabled):hover {
+  --frame: var(--color-status-error);
+  --fill: color-mix(in srgb, var(--color-status-error) 14%, transparent);
+  color: var(--color-status-error);
+}
+
+.rail-btn:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
+}
+
+/* ─── Viewer HUD ──────────────────────────────────────────────────────────── */
+.viewer-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.viewer-hud-slot {
+  display: flex;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.no-servo-power {
+  --frame: var(--color-status-error);
+  --fill: color-mix(in srgb, var(--color-status-error) 14%, var(--color-surface-1));
+  padding: 8px 14px;
+  color: var(--color-status-error);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.control-toggle,
+.robot-menu-btn {
+  --chamfer: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.control-toggle {
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  --chamfer: 8px;
+  --tone: var(--color-status-error);
+  --frame: color-mix(in srgb, var(--tone) 70%, transparent);
+  --fill: color-mix(in srgb, var(--tone) 14%, var(--color-surface-1));
+  color: var(--tone);
+  cursor: pointer;
+}
+
+.control-toggle:hover {
+  --frame: var(--tone);
+  --fill: color-mix(in srgb, var(--tone) 24%, var(--color-surface-1));
+}
+
+.control-toggle.is-on,
+.control-toggle.is-on:hover {
+  --tone: var(--color-highlight-fill, var(--color-highlight));
+  --frame: var(--tone);
+  --fill: var(--tone);
+  color: var(--color-text-on-highlight);
+}
+
+.control-toggle:focus-visible,
+.robot-menu-btn:focus-visible {
+  outline: 2px solid var(--color-highlight);
+  outline-offset: 2px;
+}
+
+.control-toggle-icon {
+  font-size: 22px;
+}
+
+.control-toggle:disabled {
+  cursor: wait;
+}
+
+.control-toggle-label {
+  display: grid;
+}
+
+.control-toggle-label > span {
+  grid-area: 1 / 1;
+  text-align: center;
+  visibility: hidden;
+}
+
+.control-toggle-label > span.is-current {
+  visibility: visible;
+}
+
+.robot-menu-btn {
+  --frame: var(--color-line-strong);
+  --fill: color-mix(in srgb, var(--color-surface-1) 92%, transparent);
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.robot-menu-btn:disabled {
+  --frame: var(--color-line);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.robot-menu-icon {
+  font-size: 15px;
+  color: var(--color-highlight);
+}
+
+.robot-menu-caret {
+  font-size: 9px;
+  color: var(--color-text-secondary);
+}
+
+.robot-menu-btn:disabled .robot-menu-icon,
+.robot-menu-btn:disabled .robot-menu-caret {
+  color: var(--color-text-muted);
+}
+
+.robot-menu-slot {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-btn {
+  width: 35px;
+  min-height: 40px;
+  padding: 4px 1px;
+  gap: 3px;
+  font-size: 14px;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-caption {
+  font-size: 7px;
+  letter-spacing: 0;
+}
+
+.command-rail[data-orientation="horizontal"] .rail-detail {
+  display: none;
+}
+
+.tui-toggle {
+  --chamfer: var(--chamfer-sm);
+  --frame: var(--color-line-strong);
+  --fill: var(--color-main-deep);
+
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.tui-toggle:hover {
+  --frame: var(--color-accent-2, var(--color-highlight));
+}
+
+.tui-toggle-button {
+  padding: 4px 12px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease;
+  position: relative;
+  z-index: 2;
+}
+
+.tui-toggle-button:hover {
+  color: var(--color-accent-2, var(--color-highlight));
+}
+
+.tui-toggle-button.off {
+  background-color: var(--color-error-fill, var(--color-status-error));
+  color: var(--color-text-on-error, var(--color-text-primary));
+}
+
+.tui-toggle-button.on {
+  background-color: var(--color-highlight-fill, var(--color-highlight));
+  color: var(--color-text-on-highlight);
+}
+
+.tui-toggle-divider {
+  width: 1px;
+  background-color: var(--color-line);
+}
+
+/* ─── Joint Category Scrollbar Styling with Spacing ───────────────────────── */
+.joint-category-scroll {
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-3) transparent;
+}
+
+.joint-category-scroll::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+
+.joint-category-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.joint-category-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 0;
+}
+
+.joint-category-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-highlight-fill, var(--color-highlight));
+}
+
+:where(a, button, [role="button"], [tabindex]:not([tabindex="-1"]), summary):focus-visible {
+  outline: 2px solid var(--color-highlight);
+  outline-offset: 2px;
+}
+
+.ant-btn:focus-visible,
+.nav-item-btn:focus-visible,
+.tui-toggle-button:focus-visible,
+.chamfer-box:focus-visible,
+.ant-card:focus-visible {
+  --frame: var(--color-highlight) !important;
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px var(--color-highlight) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ant-btn:hover,
+  .nav-item-btn:hover,
+  .viewer-overlay-box.collapsible:hover {
+    transform: none !important;
+  }
 }

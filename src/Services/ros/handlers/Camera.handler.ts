@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
 import type { StreamSource } from "../../../Constants/rosConfig.ts";
@@ -66,7 +71,7 @@ export class CameraHandler {
             this.fpsStartTime = now;
         }
         this.frameCount++;
-        
+
         // Update FPS every second
         const timeElapsed = now - this.fpsStartTime;
         if (timeElapsed >= 1000) {
@@ -134,7 +139,8 @@ export class CameraHandler {
             throttle_rate: 0,
         });
 
-        this.imageTopic.subscribe((message: any) => {
+        this.imageTopic.subscribe((rawMessage: ROSLIB.Message) => {
+            const message = rawMessage as unknown as { data?: string };
             const now = Date.now();
             this.updateFpsMetrics(now);
 
@@ -166,7 +172,7 @@ export class CameraHandler {
         }
 
         this.currentStreamSource = streamSource;
-        
+
         // If we have subscribers and ROS is connected, reinitialize with new topic
         if (this.subscribers.length > 0 && this.ros) {
             this.initializeTopic(streamSource);

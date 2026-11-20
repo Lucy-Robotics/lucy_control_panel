@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { CameraHandler } from "../Services/ros/handlers/Camera.handler";
 import type { StreamSource } from "../Constants/rosConfig";
@@ -71,7 +76,7 @@ export const StreamPlayer: React.FC<StreamPlayerProps> = ({ onFrameDelayChange, 
 
         return () => {
             cameraHandler.unsubscribeFromCamera(handleImageData);
-            cameraHandler.setEmptyDataWarningCallback(() => {});
+            cameraHandler.setEmptyDataWarningCallback(() => { });
         };
     }, [streamSource, onFrameDelayChange, onFpsChange, onEmptyDataWarning, handleImageError, handleImageLoad]);
 

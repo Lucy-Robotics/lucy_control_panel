@@ -1,0 +1,22 @@
+coverage:
+  status:
+    project:
+      default:
+        # Informational only: the only tests here are two narrow node scripts
+        # (CSS security + theme-accessibility checks), not component tests —
+        # most of src/ (the actual React UI) is never executed by them, so a
+        # real line-coverage % would be near-zero and not mean "untested".
+        # Report it, don't gate on it, until this repo has UI test coverage
+        # worth enforcing.
+        target: auto
+        threshold: 1%
+        informational: true
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+
+comment:
+  layout: "diff, flags, files"
+  require_changes: true

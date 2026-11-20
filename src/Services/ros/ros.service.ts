@@ -1,8 +1,14 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import ROSLIB from 'roslib';
 import { logger } from "../../Utils/logger.utils.ts";
 import { Diagnostics } from "../diagnostics.service.ts";
+import { rosBridgeReachable } from './rosBridgeProbe.ts';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -62,6 +68,7 @@ class RosBridgeService {
     private connectionTimeout: NodeJS.Timeout | null = null;
     private statusListeners: ((status: ConnectionStatus) => void)[] = [];
     private pendingConnectReject: ((reason: Error) => void) | null = null;
+    private pendingProbe: Promise<boolean> | null = null;
     static readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
 
     private constructor() {
@@ -101,6 +108,7 @@ class RosBridgeService {
             Diagnostics.record('connection', 'socket', 'error', 'connection closed');
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
+            if (this.ros === ros) this.pendingConnectReject?.(new Error(describeRosBridgeFailure('connection closed', this.url)));
         });
 
         return ros;
@@ -218,6 +226,13 @@ class RosBridgeService {
     }
 
     async connect(url: string): Promise<void> {
+        if (this._connectionStatus === 'disconnected') {
+            this.pendingProbe ??= rosBridgeReachable(url).finally(() => { this.pendingProbe = null; });
+            if (!(await this.pendingProbe)) {
+                Diagnostics.record('connection', 'socket', 'pending', 'waiting for the ROS bridge');
+                throw new Error(describeRosBridgeFailure('not reachable yet', url));
+            }
+        }
         return new Promise((resolve, reject) => {
             logger(`Attempting to connect to ROS Bridge at ${url}...`);
             if (this._connectionStatus === 'connecting' || this._connectionStatus === 'connected') {

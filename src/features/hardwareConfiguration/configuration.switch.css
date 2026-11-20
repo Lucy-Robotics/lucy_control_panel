@@ -7,8 +7,8 @@
     color: var(--ui-text-on-accent) !important;
 }
 .hardware-config-add-btn.ant-btn:not(:disabled):not(.ant-btn-disabled) {
-    background-color: var(--ui-accent-green) !important;
-    border-color: var(--ui-accent-green) !important;
+    background-color: var(--color-highlight-fill, var(--ui-accent-green)) !important;
+    border-color: var(--color-highlight-fill, var(--ui-accent-green)) !important;
     color: var(--ui-text-on-accent) !important;
 }
 .hardware-config-add-btn.ant-btn:disabled,

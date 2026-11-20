@@ -1,4 +1,4 @@
-# Lucy Control Panel — Documentation
+# Lucy Control Panel - Documentation
 
 Technical reference for the Lucy Control Panel frontend application.
 
@@ -6,8 +6,13 @@ Technical reference for the Lucy Control Panel frontend application.
 
 ## Navigation
 
-### [Architecture](./architecture/overview.md)
-High-level module map and data-flow diagram across the full stack.
+### Architecture
+
+| Document | Description |
+|---|---|
+| [UI architecture](./architecture/overview.md) | Control Panel module map and UI-container diagrams |
+| [Architecture index](../../../docs/architecture/README.md) | Schematics index + conventions guide |
+| [System overview](../../../docs/architecture/overview.md) | Full Lucy schematic (packages, MCU, peripherals) |
 
 ### Services
 
@@ -15,6 +20,15 @@ High-level module map and data-flow diagram across the full stack.
 |---|---|
 | [RosBridgeService](./services/ros/ros.service.md) | WebSocket connection lifecycle, status events |
 | [JointStateHandler](./services/ros/handlers/JointState.handler.md) | Joint command publication via `trajectory_msgs/JointTrajectory` |
+| [ThemeService](./services/theme.service.md) | Runtime CSS theme engine, preset switcher, and DOM injection |
+| [CssSecurityService](./services/cssSecurity.service.md) | Static CSS security scanner, SSRF validator, and sanitization pipeline |
+
+### Theming & accessibility
+
+| Document | Description |
+|---|---|
+| [Theming guide](./THEMING.md) | 75-10-15 colour system, CSS variables, custom themes |
+| [Colour accessibility report](./color_accessibility.md) | WCAG contrast and colour-vision (CVD) verification of every preset, with method and references |
 
 ### [Components](./components/README.md)
 Shared UI components reference table.
@@ -27,5 +41,6 @@ Route-level views and their responsibilities.
 ## Conventions
 
 - Each module doc follows the template: **Purpose → API → Data flow → Dependencies → Notes**.
+- Architecture schematics follow the workspace [GUIDE](../../../docs/architecture/GUIDE.md) (UML caption + Mermaid).
 - Code snippets use TypeScript.
 - ROS topic names and message types are written in `monospace`.

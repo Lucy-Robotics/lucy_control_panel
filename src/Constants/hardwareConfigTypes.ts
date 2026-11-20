@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** Parsed backend validation line (`lucy_config_pipeline` → `format_error_lines`). */
 export interface StructuredValidationLine {
     field: string;
@@ -17,6 +22,8 @@ export interface GetConfigResponse {
     flashed_config_name: string;
     /** ISO-8601 UTC from server; empty if none. */
     flashed_at: string;
+    /** Specs of the motors the config's actuators use, keyed by motor ref; absent on older servers. */
+    motors_yaml?: string;
 }
 
 export interface SaveConfigResponse {

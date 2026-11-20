@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import ROSLIB from 'roslib';
 import { ROS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
 import type { JointControlState } from '../../../Constants/robotTypes.ts';
@@ -5,9 +10,11 @@ import {
   jointConfigMetaFromControllers,
   type JointConfigMeta,
 } from '../../../Utils/jointConfigLookup.ts';
-import { actuatorDegToJointRad } from '../../../Utils/actuatorJointMapping.ts';
+import { servoRadToJointRad } from '../../../Utils/actuatorJointMapping.ts';
 import { RosBridgeService } from '../ros.service.ts';
 import { Diagnostics } from '../../diagnostics.service.ts';
+
+export const COMMAND_DURATION_MS = 800;
 
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
 function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
@@ -82,6 +89,10 @@ export class JointStateHandler {
     this.initializeTopics();
   }
 
+  getJointMeta(name: string): JointConfigMeta | undefined {
+    return this.jointMetaByName.get(name);
+  }
+
   /** Return current actuated joints as JointControlState[] (from controller config). Used by Configuration page. */
   getJoints(): JointControlState[] {
     const defaultMin = 0;
@@ -125,26 +136,33 @@ export class JointStateHandler {
   /**
    * Subscribe to /joint_states (sensor_msgs/msg/JointState) to get actual motor positions.
    * Values are URDF radians (single source of truth for FK / 3D viewer / RViz).
-   * Slider consumers convert to actuator deg at the call site via
-   * `jointRadToActuatorDeg`. Returns a cleanup function.
+   * Slider consumers convert to servo rad at the call site via
+   * `jointRadToServoRad`. Returns a cleanup function.
    */
   subscribeToJointStates(
     callback: (positions: { name: string; value: number }[]) => void
   ): () => void {
     const ros = RosBridgeService.getInstance().rosConnection;
-    if (!ros) return () => {};
+    if (!ros) return () => { };
 
     const sub = new ROSLIB.Topic({
       ros,
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
     });
+    let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {
       const js = msg as unknown as { name: string[]; position: number[] };
       if (!js.name?.length || !js.position?.length) return;
       const positions = js.name.map((name, i) => ({ name, value: js.position[i] }));
-      Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`, true);
-      Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`, true);
+      if (positions.length !== lastJointCount) {
+        lastJointCount = positions.length;
+        Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`);
+        Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`);
+      } else {
+        Diagnostics.touch('connection', 'jointstates');
+        Diagnostics.touch('command', 'echoed');
+      }
       callback(positions);
     });
     return () => sub.unsubscribe();
@@ -159,7 +177,7 @@ export class JointStateHandler {
     callback: (updates: { name: string; value: number }[]) => void
   ): () => void {
     const ros = RosBridgeService.getInstance().rosConnection;
-    if (!ros || this.controllerConfigs.length === 0) return () => {};
+    if (!ros || this.controllerConfigs.length === 0) return () => { };
 
     const subs: ROSLIB.Topic[] = [];
     for (const cfg of this.controllerConfigs) {
@@ -191,7 +209,7 @@ export class JointStateHandler {
    * Positions are in radians.
    * Uses a small non-zero time_from_start (0.2s) so the controller accepts the goal (some drop points with t=0).
    */
-  publishJointStates(joints: JointControlState[]) {
+  publishJointStates(joints: JointControlState[], seedDurationMs?: number) {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) {
       console.warn('Cannot publish joint states: ROS connection not available');
@@ -213,7 +231,7 @@ export class JointStateHandler {
         names.push(name);
         const meta = this.jointMetaByName.get(name);
         const jointRad = meta
-          ? actuatorDegToJointRad(j.currentValue, meta.mapping)
+          ? servoRadToJointRad(j.currentValue, meta.mapping)
           : j.currentValue;
         positions.push(jointRad);
       }
@@ -221,15 +239,15 @@ export class JointStateHandler {
       const topic = this.topicByTopicName.get(cfg.topic);
       if (!topic) continue;
       Diagnostics.record('command', 'slider', 'ok', `${names.length} joint(s) on ${cfg.defaultCategory}`);
-      Diagnostics.record('command', 'converted', 'ok', 'actuator deg -> URDF rad');
-      const stamp = getRosTimeNow(this.lastClock);
+      Diagnostics.record('command', 'converted', 'ok', 'servo rad -> URDF rad');
+      const stamp = seedDurationMs === undefined ? getRosTimeNow(this.lastClock) : { sec: 0, nanosec: 0 };
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: (seedDurationMs ?? COMMAND_DURATION_MS) * 1e6 } }],
       });
       topic.publish(message);
-      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`, true);
+      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);
     }
   }
 }

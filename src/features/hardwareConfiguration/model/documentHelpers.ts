@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { CellErrorOpts } from '../../../Utils/hardwareConfigServerErrors.ts';
 import {
     DEFAULT_ACTUATOR_TYPE_FALLBACK,
@@ -192,7 +197,7 @@ function collectSensorIds(doc: Record<string, unknown>): Set<string> {
 }
 
 function uniqueActuatorId(doc: Record<string, unknown>, boardId: string, virtualPin: number): string {
-    const short = boardId.replace(/^rp2040_/, '');
+    const short = boardId.replace(/^(rp2040|linux)_/, '');
     const base = `act_${short}_${virtualPin}`;
     const existing = collectActuatorIds(doc);
     let candidate = base;
@@ -205,7 +210,7 @@ function uniqueActuatorId(doc: Record<string, unknown>, boardId: string, virtual
 }
 
 function uniquePressureSensorId(doc: Record<string, unknown>, boardId: string, virtualPin: number): string {
-    const short = boardId.replace(/^rp2040_/, '');
+    const short = boardId.replace(/^(rp2040|linux)_/, '');
     const base = `pressure_${short}_${virtualPin}`;
     const existing = collectSensorIds(doc);
     let candidate = base;

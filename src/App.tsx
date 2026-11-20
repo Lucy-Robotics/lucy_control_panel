@@ -1,107 +1,108 @@
-import { ConfigProvider, theme, Layout, Grid } from 'antd';
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/* Layout */
+import { ConfigProvider, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
+import { useBootRouting } from './features/hardwareConfiguration/calibration/useBootRouting.ts';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import type { CSSProperties, FC } from 'react';
+import type { ComponentType } from 'react';
+
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
-import { Navigation } from './Components/Navigation';
+const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
 import { NotFound } from './Pages/NotFound';
+
+/* Contexts */
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
-import { GettingStartedModal } from './Components/GettingStartedModal';
+import { PaginatedCategoriesProvider } from './contexts/PaginatedCategoriesContext';
+import { useTheme } from './contexts/ThemeContext';
+
 /* Components */
 import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
 import { Page } from './Components/Page';
+import { GettingStartedModal } from './Components/GettingStartedModal';
+import { RemoteControlBorder } from './Components/RemoteControlBorder';
+
+/* Constants */
 import { ROUTES } from './Constants/routes.ts';
-import {
-    PAGE_CONTENT_STYLE,
-    UI_ACCENT_GREEN,
-    UI_BG_BLACK,
-    UI_BORDER_STRONG,
-    UI_COLOR_TRANSPARENT,
-    UI_PANEL_BG,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SUBTLE,
-} from './Constants/uiTheme.ts';
 
 const { useBreakpoint } = Grid;
 
-const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
-const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
+const PAGE_CONFIG: Record<string, {
+    component: ComponentType;
+    removeScrollbars: boolean;
+    loadingLabel: string;
+    loadingDetail: string;
+}> = {
+    [ROUTES.control]: {
+        component: RobotControlPanel,
+        removeScrollbars: true,
+        loadingLabel: 'LOADING CONTROL PANEL',
+        loadingDetail: 'Preparing the robot control panel.',
+    },
+    [ROUTES.robotConfiguration]: {
+        component: Configuration,
+        removeScrollbars: false,
+        loadingLabel: 'LOADING ROBOT CONFIGURATION',
+        loadingDetail: 'Preparing the robot configuration page.',
+    },
+    [ROUTES.sensors]: {
+        component: SensorDisplay,
+        removeScrollbars: false,
+        loadingLabel: 'LOADING SENSORS',
+        loadingDetail: 'Preparing the sensor display.',
+    },
+};
 
-const KNOWN_PATHS = new Set<string>([
-    ROUTES.control,
-    ROUTES.robotConfiguration,
-    ROUTES.sensors,
-]);
-
-/**
- * Render all main pages once and toggle visibility with `display: none`.
- * Keeps page-local state (sliders, edits, expanded panels) alive when the
- * user switches between CONTROL / ROBOT CONFIGURATION. Lazy pages are only mounted
- * after their first visit so the initial chunk stays small.
- */
-const PersistentPages: FC = () => {
+const RoutedPage = () => {
     const { pathname } = useLocation();
-    const [configVisited, setConfigVisited] = useState(false);
-    const [sensorsVisited, setSensorsVisited] = useState(false);
+    useBootRouting();
+    const screens = useBreakpoint();
+    const page = PAGE_CONFIG[pathname];
+    const PageComponent = page?.component ?? NotFound;
+    let removeScrollbars = page?.removeScrollbars ?? false;
 
-    useEffect(() => {
-        if (pathname === ROUTES.robotConfiguration) setConfigVisited(true);
-        if (pathname === ROUTES.sensors) setSensorsVisited(true);
-    }, [pathname]);
-
-    const isKnown = KNOWN_PATHS.has(pathname);
-
-    const pageStyle = (active: boolean): CSSProperties => ({
-        display: active ? 'block' : 'none',
-    });
+    if (!page?.component) {
+        removeScrollbars = true;
+    } else if (!screens.md) {
+        removeScrollbars = false;
+    }
 
     return (
-        <>
-            <div style={pageStyle(pathname === ROUTES.control)}>
-                <RobotControlPanel />
-            </div>
-            {configVisited ? (
-                <div style={pageStyle(pathname === ROUTES.robotConfiguration)}>
-                    <Suspense
-                        fallback={
-                            <LucyLoader
-                                label="LOADING ROBOT CONFIGURATION"
-                                detail="Preparing the robot configuration page."
-                            />
-                        }
-                    >
-                        <Configuration />
-                    </Suspense>
-                </div>
-            ) : null}
-            {sensorsVisited ? (
-                <div style={pageStyle(pathname === ROUTES.sensors)}>
-                    <Suspense
-                        fallback={
-                            <LucyLoader
-                                label="LOADING SENSORS"
-                                detail="Preparing the sensor display."
-                            />
-                        }
-                    >
-                        <SensorDisplay />
-                    </Suspense>
-                </div>
-            ) : null}
-            {!isKnown ? <NotFound /> : null}
-        </>
+        <Page
+            showHeader
+            title
+            removeScrollbars={removeScrollbars}
+        >
+            {page ? (
+                <Suspense
+                    fallback={
+                        <LucyLoader
+                            label={page.loadingLabel}
+                            detail={page.loadingDetail}
+                        />
+                    }
+                >
+                    <PageComponent />
+                </Suspense>
+            ) : (
+                <PageComponent />
+            )}
+        </Page>
     );
 };
 
 function App() {
+    const { antdThemeConfig } = useTheme();
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
-    const screens = useBreakpoint();
-    const isMobile = !screens.md;
 
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
@@ -134,70 +135,24 @@ function App() {
 
     if (localPassword && localUsername && !isAuthenticated) {
         return (
-            <ConfigProvider
-                theme={{
-                    algorithm: theme.darkAlgorithm,
-                    token: {
-                        colorPrimary: UI_ACCENT_GREEN,
-                        colorBgBase: UI_BG_BLACK,
-                        colorBgContainer: UI_PANEL_BG,
-                        colorBorder: UI_BORDER_STRONG,
-                        colorText: UI_TEXT_PRIMARY_ON_DARK,
-                        colorTextSecondary: UI_TEXT_SUBTLE,
-                        fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
-                    },
-                }}
-            >
+            <ConfigProvider theme={antdThemeConfig}>
                 <AuthForm onLogin={handleLogin} error={authError} />
             </ConfigProvider>
         );
     }
 
     return (
-        <ConfigProvider
-            theme={{
-                algorithm: theme.darkAlgorithm,
-                token: {
-                    colorPrimary: UI_ACCENT_GREEN,
-                    colorBgBase: UI_BG_BLACK,
-                    colorBgContainer: UI_PANEL_BG,
-                    colorBorder: UI_BORDER_STRONG,
-                    colorText: UI_TEXT_PRIMARY_ON_DARK,
-                    colorTextSecondary: UI_TEXT_SUBTLE,
-                    fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
-                },
-                components: {
-                    Layout: {
-                        bodyBg: UI_BG_BLACK,
-                        headerBg: UI_PANEL_BG,
-                    },
-                    Card: {
-                        colorBgContainer: UI_PANEL_BG,
-                    },
-                    Button: {
-                        colorBgContainer: UI_COLOR_TRANSPARENT,
-                    },
-                },
-            }}
-        >
+        <ConfigProvider theme={antdThemeConfig}>
             <Router>
-                <ActiveHardwareRosProvider>
-                    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
-                        <Page
-                            showHeader
-                            title
-                            removeScrollbars={false}
-                            contentStyle={{
-                                ...PAGE_CONTENT_STYLE,
-                                paddingBottom: isMobile ? 72 : PAGE_CONTENT_STYLE.padding,
-                            }}
-                        >
-                            <PersistentPages />
-                        </Page>
-                        <Navigation />
-                        <GettingStartedModal />
-                    </Layout>
-                </ActiveHardwareRosProvider>
+                <PaginatedCategoriesProvider>
+                    <ActiveHardwareRosProvider>
+                        <Layout style={{ minHeight: '100vh' }}>
+                            <RoutedPage />
+                            <GettingStartedModal />
+                            <RemoteControlBorder />
+                        </Layout>
+                    </ActiveHardwareRosProvider>
+                </PaginatedCategoriesProvider>
             </Router>
         </ConfigProvider>
     );

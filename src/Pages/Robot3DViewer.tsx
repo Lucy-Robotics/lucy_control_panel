@@ -1,56 +1,132 @@
-import React, { useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback, useContext } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { OrbitControls, Grid, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { Typography } from 'antd';
+import * as THREE from 'three';
+import type { URDFRobot } from 'urdf-loader';
+import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
+import { JointRotationGizmo } from '../Components/JointRotationGizmo';
+import { JointEffortGauges } from '../Components/JointEffortGauges';
+import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
+import { JointEffortDebug } from '../Components/JointEffortDebug';
+import { overheatMock } from '../Services/overheatMock';
+import { JointReadingsLine } from '../Components/JointReadingsLine';
+import { RobotGhost } from '../Components/RobotGhost';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
+import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
+import { useGhostOpacity } from '../hooks/useGhostOpacity';
+import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
+import { useTargetPose } from '../hooks/useTargetPose';
+import { ViewCube } from '../Components/ViewCube';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
+import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
+import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
+import { useThemeColors3D } from '../hooks/useThemeColors3D';
+import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
+import {
+    findJointForLink,
+    getActuatedJointNames,
+    getLinkBoundingBox,
+    isURDFVisual,
+    resolveActuatedLinkName,
+    urdfNameOf,
+} from '../Utils/robotModel.utils';
+import {
+    CAMERA_FOV,
+    DEFAULT_CAMERA,
+    DEFAULT_VIEW_DIRECTION,
+    MAX_CAMERA_DISTANCE,
+    type Vec3,
+    MIN_CAMERA_DISTANCE,
+    distanceForZoom,
+    getRobotBoundingBox,
+    zoomForDistance,
+} from '../Utils/camera.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
+import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
+import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
+import { createEffortHeatMap } from '../Utils/effortHeatMap';
+import { hasEffortFeedback } from '../Utils/robotCapabilities';
+import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
+import type { JointControlState } from '../Constants/robotTypes';
 import {
-    UI_ACCENT_GREEN,
-    UI_BG_BLACK,
-    UI_BORDER_MUTED,
-    UI_MODAL_MASK_BG,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
-/** Width of the bottom-left settings box. Switches sit flush right, the
- *  opacity slider stretches to fill — both react to this single value. */
-const SETTINGS_BOX_WIDTH = 150;
+const STORAGE_KEY_UNSELECTED_OPACITY = 'lucy_3d_unselected_opacity';
+const STORAGE_KEY_ORTHOGRAPHIC = 'lucy_3d_orthographic';
 
-const MOUSE_HINTS = ['L-drag · rotate', 'scroll · zoom', 'R-drag · pan'];
-
-type Vec3 = [number, number, number];
-
-const savedCamera: { position: Vec3; target: Vec3 } = {
-    position: [0, 2, 3],
-    target: [0, 1, 0],
+const getInitialUnselectedOpacity = (): number => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_UNSELECTED_OPACITY);
+        if (saved !== null) {
+            const parsed = parseFloat(saved);
+            if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+                return parsed;
+            }
+        }
+    } catch {
+        // Fallback to default
+    }
+    return 0.25;
 };
+
+const OVERLAY_MARGIN_PX = 10;
+const SETTINGS_BOX_WIDTH = 165;
+const VIEW_CUBE_GAP_PX = 6;
+const FOCUS_COLOR = 'var(--color-highlight)';
+const MOUSE_HINTS = [
+    'L-drag · rotate',
+    'scroll · zoom',
+    'R-drag · pan',
+    'dbl-click part · focus & follow',
+    'dbl-click space · unfocus',
+    'click part · joint gizmo (control on)',
+    'click space · hide gizmo',
+    'drag ring · set joint target',
+    'click cube · snap view',
+];
+
+const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
+    position: [...DEFAULT_CAMERA.position],
+    target: [...DEFAULT_CAMERA.target],
+};
+let framedRobot: URDFRobot | null = null;
+
+const isEditableTarget = (target: EventTarget | null): boolean =>
+    target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center',
-    gap: 8, background: UI_BG_BLACK,
+    gap: 8, background: 'var(--color-main)',
 };
 
 /** Shared chrome for the floating overlay panels (each adds its own position). */
 const OVERLAY_BOX: React.CSSProperties = {
     position: 'absolute',
-    left: 10,
-    backgroundColor: UI_MODAL_MASK_BG,
-    border: `1px solid ${UI_BORDER_MUTED}`,
-    padding: '8px 12px',
+    bottom: OVERLAY_MARGIN_PX,
+    left: OVERLAY_MARGIN_PX,
     fontFamily: 'monospace',
-    fontSize: 10,
+    fontSize: 11,
     color: UI_TEXT_PRIMARY_ON_DARK,
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column-reverse',
 };
 
 const SWITCH_ROW: React.CSSProperties = {
@@ -59,31 +135,163 @@ const SWITCH_ROW: React.CSSProperties = {
 
 const SwitchRow: React.FC<{
     label: string;
+    /** What the switch does: the label alone is a terse all-caps keyword. */
+    tooltip: string;
     value: boolean;
     onChange: (value: boolean) => void;
-}> = ({ label, value, onChange }) => (
-    <div style={SWITCH_ROW}>
-        <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>{label}</span>
-        <StreamSwitch value={value} onChange={onChange} />
+}> = ({ label, tooltip, value, onChange }) => (
+    <Tooltip title={tooltip} placement="left">
+        <div style={SWITCH_ROW}>
+            <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>{label}</span>
+            <StreamSwitch value={value} onChange={onChange} />
+        </div>
+    </Tooltip>
+);
+
+/** Matches the `.collapsible-body` transition in index.css. */
+const COLLAPSE_DURATION_MS = 250;
+
+const isFullyCollapsed = (box: HTMLElement) => box.classList.contains('narrow');
+
+const CollapsibleOverlay: React.FC<{
+    title: string;
+    style?: React.CSSProperties;
+    gap?: number;
+    boxRef?: React.Ref<HTMLDivElement>;
+    children: React.ReactNode;
+}> = ({ title, style, gap = 4, boxRef, children }) => {
+    const [expanded, setExpanded] = useState(false);
+    const [narrow, setNarrow] = useState(true);
+    const narrowTimerRef = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(narrowTimerRef.current), []);
+
+    const toggle = () => {
+        window.clearTimeout(narrowTimerRef.current);
+        if (expanded) {
+            setExpanded(false);
+            narrowTimerRef.current = window.setTimeout(() => setNarrow(true), COLLAPSE_DURATION_MS);
+        } else {
+            setNarrow(false);
+            setExpanded(true);
+        }
+    };
+
+    return (
+        <div
+            ref={boxRef}
+            className={`chamfer-box viewer-overlay-box collapsible${expanded ? ' expanded' : ''}${narrow ? ' narrow' : ''}`}
+            style={{ ...OVERLAY_BOX, ...style }}
+            onClick={expanded ? undefined : toggle}
+        >
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
+                className="collapsible-header"
+                onClick={e => {
+                    e.stopPropagation();
+                    toggle();
+                }}
+                onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggle();
+                    }
+                }}
+                title={expanded ? `Collapse ${title.toLowerCase()}` : `Expand ${title.toLowerCase()}`}
+            >
+                <span className="collapsible-chevron" aria-hidden>
+                    <svg viewBox="0 0 10 10"><path d="M1.5 0L10 5L1.5 10Z" fill="currentColor" /></svg>
+                </span>
+                <span className="collapsible-title">{title}</span>
+            </div>
+            <div className="collapsible-body">
+                <div className="collapsible-body-inner" style={{ gap }}>
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BADGE_ROW: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' };
+
+const InfoBadge: React.FC<{
+    label: string;
+    partName: string;
+    jointName?: string;
+    onUnfocus?: () => void;
+    children?: React.ReactNode;
+    details?: React.ReactNode;
+}> = ({ label, partName, jointName, onUnfocus, children, details }) => (
+    <div
+        className="chamfer-box viewer-overlay-box"
+        style={{
+            position: 'absolute',
+            bottom: 56,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '6px 14px',
+            fontFamily: 'monospace',
+            fontSize: 11,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            zIndex: 10,
+            pointerEvents: 'none',
+            // chamfer-box draws its border from this variable
+            '--frame': FOCUS_COLOR,
+        } as React.CSSProperties}
+    >
+        <div style={BADGE_ROW}>
+        <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>{label}</span>
+        <span style={{ color: FOCUS_COLOR, fontWeight: 'bold' }}>{partName}</span>
+        {jointName && (
+            <>
+                <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, marginLeft: 6 }}>JOINT:</span>
+                <span style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>{jointName}</span>
+            </>
+        )}
+        {children}
+        {onUnfocus && (
+            <button
+                onClick={onUnfocus}
+                style={{
+                    marginLeft: 6,
+                    padding: '1px 6px',
+                    background: 'transparent',
+                    border: `1px solid ${FOCUS_COLOR}`,
+                    color: FOCUS_COLOR,
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    borderRadius: 2,
+                    pointerEvents: 'auto',
+                }}
+                title="Stop following this part"
+            >
+                UNFOCUS
+            </button>
+        )}
+        </div>
+        {details && <div style={BADGE_ROW}>{details}</div>}
     </div>
 );
 
-/** Green load bar overlaid at the top of the view: indeterminate slide until
- *  mesh progress is known, then fills left-to-right. */
 const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     const indeterminate = progress <= 0;
     return (
         <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-            background: UI_BORDER_MUTED, overflow: 'hidden', zIndex: 10,
+            background: 'var(--color-secondary)', overflow: 'hidden', zIndex: 3,
         }}>
             <div
                 style={{
                     position: 'absolute',
                     top: 0,
                     bottom: 0,
-                    background: UI_ACCENT_GREEN,
-                    boxShadow: `0 0 8px ${UI_ACCENT_GREEN}`,
+                    background: 'var(--color-highlight-fill, var(--color-highlight))',
                     ...(indeterminate
                         ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
                         : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
@@ -94,27 +302,399 @@ const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     );
 };
 
-const Robot3DViewer: React.FC = () => {
+interface CameraFollowControllerProps {
+    robot: URDFRobot | null;
+    selectedPartName: string | null;
+    controlsRef: React.RefObject<OrbitControlsImpl | null>;
+}
+
+const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
+    robot,
+    selectedPartName,
+    controlsRef,
+}) => {
+    const get = useThree(s => s.get);
+    const orbitControls = useThree(s => s.controls);
+    const viewportHeight = useThree(s => s.size.height);
+    const startZoomRef = useRef<number>(1);
+    const targetZoomRef = useRef<number | null>(null);
+    const localCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
+    const lastWorldCenterRef = useRef<THREE.Vector3>(new THREE.Vector3());
+    const isTransitioningRef = useRef<boolean>(false);
+    const transitionProgressRef = useRef<number>(0);
+    const startCamPosRef = useRef<THREE.Vector3>(new THREE.Vector3());
+    const startTargetRef = useRef<THREE.Vector3>(new THREE.Vector3());
+    const desiredOffsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
+
+    const isUserInteractingRef = useRef<boolean>(false);
+
+    useEffect(() => {
+        const controls = controlsRef.current;
+        if (!controls) return;
+
+        const handleStart = () => {
+            isUserInteractingRef.current = true;
+        };
+        const handleEnd = () => {
+            isUserInteractingRef.current = false;
+        };
+
+        controls.addEventListener('start', handleStart);
+        controls.addEventListener('end', handleEnd);
+        return () => {
+            controls.removeEventListener('start', handleStart);
+            controls.removeEventListener('end', handleEnd);
+        };
+    }, [controlsRef, orbitControls]);
+
+    useEffect(() => {
+        if (!robot || !selectedPartName) {
+            isTransitioningRef.current = false;
+            return;
+        }
+
+        const link = robot.links[selectedPartName];
+        if (!link) return;
+
+        robot.updateMatrixWorld(true);
+        link.updateWorldMatrix(true, false);
+
+        const box = getLinkBoundingBox(link);
+        const worldCenter = box.getCenter(new THREE.Vector3());
+        localCenterRef.current = link.worldToLocal(worldCenter.clone());
+        lastWorldCenterRef.current.copy(worldCenter);
+
+        const controls = controlsRef.current;
+        const camera = get().camera;
+        if (controls) {
+            startTargetRef.current.copy(controls.target);
+            startCamPosRef.current.copy(camera.position);
+
+            const size = box.getSize(new THREE.Vector3());
+            const radius = Math.max(size.x, size.y, size.z, 0.05) / 2;
+            const framingDist = THREE.MathUtils.clamp(radius * 3.5, 0.35, 3.0);
+
+            const rawDir = camera.position.clone().sub(controls.target);
+            const dir = rawDir.lengthSq() < 0.0001
+                ? new THREE.Vector3(0, 0.5, 1).normalize()
+                : rawDir.normalize();
+
+            desiredOffsetRef.current.copy(dir.multiplyScalar(framingDist));
+            // Ortho size doesn't depend on distance, so frame the part through zoom
+            if (camera instanceof THREE.OrthographicCamera) {
+                startZoomRef.current = camera.zoom;
+                targetZoomRef.current = zoomForDistance(framingDist, viewportHeight);
+            } else {
+                targetZoomRef.current = null;
+            }
+            isTransitioningRef.current = true;
+            transitionProgressRef.current = 0;
+        }
+        // Resizing must not re-trigger the framing transition
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [robot, selectedPartName, get, controlsRef]);
+
+    useFrame(({ camera }, delta) => {
+        const controls = controlsRef.current;
+        if (!controls || !selectedPartName || !robot) return;
+
+        const link = robot.links[selectedPartName];
+        if (!link) return;
+
+        link.updateWorldMatrix(true, false);
+        const currentWorldCenter = link.localToWorld(localCenterRef.current.clone());
+
+        if (isTransitioningRef.current) {
+            const DURATION = 0.45;
+            transitionProgressRef.current += delta / DURATION;
+            const rawT = Math.min(1, transitionProgressRef.current);
+            const ease = 1 - Math.pow(1 - rawT, 3);
+
+            const targetCamPos = currentWorldCenter.clone().add(desiredOffsetRef.current);
+            controls.target.lerpVectors(startTargetRef.current, currentWorldCenter, ease);
+            camera.position.lerpVectors(startCamPosRef.current, targetCamPos, ease);
+            if (targetZoomRef.current !== null && camera instanceof THREE.OrthographicCamera) {
+                camera.zoom = THREE.MathUtils.lerp(startZoomRef.current, targetZoomRef.current, ease);
+                camera.updateProjectionMatrix();
+            }
+            controls.update();
+
+            if (rawT >= 1) {
+                isTransitioningRef.current = false;
+                lastWorldCenterRef.current.copy(currentWorldCenter);
+            }
+        } else {
+            if (isUserInteractingRef.current) {
+                lastWorldCenterRef.current.copy(currentWorldCenter);
+                return;
+            }
+
+            const displacement = currentWorldCenter.clone().sub(lastWorldCenterRef.current);
+            if (displacement.lengthSq() > 0.000001) {
+                controls.target.copy(currentWorldCenter);
+                camera.position.add(displacement);
+                controls.update();
+            }
+            lastWorldCenterRef.current.copy(currentWorldCenter);
+        }
+    });
+
+    return null;
+};
+
+const ProjectionSync: React.FC<{ controlsRef: React.RefObject<OrbitControlsImpl | null> }> = ({ controlsRef }) => {
+    const camera = useThree(s => s.camera);
+    const viewportHeight = useThree(s => s.size.height);
+    const prevCameraRef = useRef<THREE.Camera | null>(null);
+    const lastTargetRef = useRef(new THREE.Vector3(...savedCamera.target));
+
+    useFrame(() => {
+        const controls = controlsRef.current;
+        if (controls) lastTargetRef.current.copy(controls.target);
+    });
+
+    useLayoutEffect(() => {
+        const prev = prevCameraRef.current;
+        prevCameraRef.current = camera;
+        if (prev === camera) return;
+
+        const target = lastTargetRef.current.clone();
+        const fromPosition = prev ? prev.position.clone() : new THREE.Vector3(...savedCamera.position);
+        const offset = fromPosition.clone().sub(target);
+        const distance = Math.max(offset.length(), MIN_CAMERA_DISTANCE);
+        const dir = offset.lengthSq() > 1e-12 ? offset.normalize() : new THREE.Vector3(0, 0, 1);
+
+        if (camera instanceof THREE.OrthographicCamera) {
+            camera.zoom = !prev && savedCamera.zoom !== undefined
+                ? savedCamera.zoom
+                : zoomForDistance(distance, viewportHeight);
+            camera.position.copy(target).addScaledVector(dir, distance);
+        } else {
+            const perspectiveDistance = prev instanceof THREE.OrthographicCamera
+                ? THREE.MathUtils.clamp(distanceForZoom(prev.zoom, viewportHeight), MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE)
+                : distance;
+            camera.position.copy(target).addScaledVector(dir, perspectiveDistance);
+        }
+        camera.lookAt(target);
+        if (camera instanceof THREE.OrthographicCamera || camera instanceof THREE.PerspectiveCamera) {
+            camera.updateProjectionMatrix();
+        }
+
+        const controls = controlsRef.current;
+        if (controls) {
+            controls.target.copy(target);
+            controls.update();
+        }
+    }, [camera, controlsRef, viewportHeight]);
+
+    useEffect(() => {
+        const controls = controlsRef.current;
+        if (!controls) return;
+        controls.minZoom = zoomForDistance(MAX_CAMERA_DISTANCE, viewportHeight);
+        controls.maxZoom = zoomForDistance(MIN_CAMERA_DISTANCE, viewportHeight);
+    }, [camera, controlsRef, viewportHeight]);
+
+    return null;
+};
+
+export interface Robot3DViewerProps {
+    isControlOn?: boolean;
+    joints?: JointControlState[];
+    onJointValueChange?: (name: string, value: number) => void;
+    hudLeft?: React.ReactNode;
+    hudRight?: React.ReactNode;
+    hudCenter?: React.ReactNode;
+    isHandsOn?: boolean;
+}
+
+const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
+    isControlOn: isControlOnProp,
+    joints,
+    hudLeft,
+    hudRight,
+    hudCenter,
+    onJointValueChange,
+    isHandsOn = false,
+}) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
+    const themeColors = useThemeColors3D();
+    const motorOverheat = useContext(MotorOverheatContext);
+    const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
+    const targetPose = useTargetPose(isConnected);
+    const isGhostVisible = useGhostVisible();
+    const isTeleopGhostVisible = useTeleopGhostVisible();
+    const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
+    const isMobile = !AntGrid.useBreakpoint().md;
 
-    // Default to DAE — matches the urdf-loader initial state before any material override
-    const [useOriginalTexture, setUseOriginalTexture] = useState(true);
+    const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
+        const handler = ControlModeHandler.getInstance();
+        return handler.currentControllerId !== '' && handler.currentControllerId === handler.clientId;
+    });
+
+    useEffect(() => {
+        const handler = ControlModeHandler.getInstance();
+        return handler.onControllerChanged((activeClientId) => {
+            setHasRosControl(activeClientId !== '' && activeClientId === handler.clientId);
+        });
+    }, []);
+
+    const effectiveControlOn = isControlOnProp !== undefined ? isControlOnProp : hasRosControl;
+
     const [showGrid, setShowGrid] = useState(true);
-    const [opacity, setOpacity] = useState(0.85);
     const [wireframe, setWireframe] = useState(false);
+    const [showHeatMap, setShowHeatMap] = useState(false);
+    const [showArrows, setShowArrows] = useState(false);
+    const [debugMode, setDebugMode] = useState(false);
+    const effortSupported = useMemo(() => hasEffortFeedback(robot?.urdfRobotNode), [robot]);
+    const heatMapOn = showHeatMap && effortSupported;
+    const arrowsOn = showArrows && effortSupported;
+    const showEffort = heatMapOn || arrowsOn;
+    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
+    const heatMap = useMemo(createEffortHeatMap, []);
+    useEffect(() => () => heatMap.material.dispose(), [heatMap]);
+    const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
+    const [viewRequest, setViewRequest] = useState<ViewRequest | null>(null);
+    const [settingsRef, settingsHeight] = useMeasuredHeight<HTMLDivElement>(isFullyCollapsed);
+
+    const handleSelectView = useCallback((direction: THREE.Vector3, instant = false) => {
+        setViewRequest(prev => ({ id: (prev?.id ?? 0) + 1, direction, instant }));
+    }, []);
+    const [selectedPartName, setSelectedPartName] = useState<string | null>(null);
+
+    const getFramingBox = useCallback((): THREE.Box3 | null => {
+        if (!robot) return null;
+        const link = selectedPartName ? robot.links[selectedPartName] : undefined;
+        if (!link) return getRobotBoundingBox(robot);
+        link.updateWorldMatrix(true, true);
+        return getLinkBoundingBox(link);
+    }, [robot, selectedPartName]);
+
+    const loadedOnMountRef = useRef(robot !== null && !loading);
+    const userMovedCameraRef = useRef(false);
+    useEffect(() => {
+        if (!robot || loading || framedRobot === robot) return;
+        framedRobot = robot;
+        if (userMovedCameraRef.current) return;
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
+    }, [robot, loading, handleSelectView]);
+
+    const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
+
+    const handleUnselectedOpacityChange = (val: number) => {
+        setUnselectedOpacity(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_UNSELECTED_OPACITY, String(val));
+        } catch {
+            // Ignore localStorage errors
+        }
+    };
+
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
+
+    const [hoveredPartName, setHoveredPartName] = useState<string | null>(null);
+    const [gizmoPartName, setGizmoPartName] = useState<string | null>(null);
+
+    const handlePartClick = useCallback((name: string) => {
+        if (!effectiveControlOn) return;
+        setGizmoPartName(prev => (prev === name ? null : name));
+    }, [effectiveControlOn]);
+
+    useEffect(() => {
+        if (effectiveControlOn) return;
+        setGizmoPartName(null);
+    }, [effectiveControlOn]);
+
     const initialCamera = useRef({
         position: [...savedCamera.position] as Vec3,
         target: [...savedCamera.target] as Vec3,
     }).current;
+
+    const actuatedJointNames = useMemo(() => getActuatedJointNames(joints), [joints]);
+
+    const availableParts = useMemo(() => {
+        if (!robot) return [];
+        return Object.keys(robot.links).filter(linkName => {
+            const link = robot.links[linkName];
+            return link && link.children.some(isURDFVisual);
+        });
+    }, [robot]);
+
+    const focusedJoint = useMemo(() => {
+        if (!robot || !selectedPartName) return null;
+        const link = robot.links[selectedPartName];
+        if (!link) return null;
+        return findJointForLink(link, robot, actuatedJointNames);
+    }, [robot, selectedPartName, actuatedJointNames]);
+
+    const gizmoJoint = useMemo(() => {
+        if (!robot || !gizmoPartName) return null;
+        const link = robot.links[gizmoPartName];
+        if (!link) return null;
+        const joint = findJointForLink(link, robot, actuatedJointNames);
+        return joint && (joint.jointType === 'revolute' || joint.jointType === 'continuous') ? joint : null;
+    }, [robot, gizmoPartName, actuatedJointNames]);
+
+    const hoveredJoint = useMemo(() => {
+        if (!robot || !hoveredPartName) return null;
+        const link = robot.links[hoveredPartName];
+        if (!link) return null;
+        return findJointForLink(link, robot, actuatedJointNames);
+    }, [robot, hoveredPartName, actuatedJointNames]);
+
+    const isPointerInsideRef = useRef(false);
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isPointerInsideRef.current && !isEditableTarget(e.target)) {
+                setSelectedPartName(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const handleControlsChange = () => {
         const controls = controlsRef.current;
         if (!controls) { return; }
         savedCamera.position = controls.object.position.toArray() as Vec3;
         savedCamera.target = controls.target.toArray() as Vec3;
+        savedCamera.zoom = controls.object instanceof THREE.OrthographicCamera ? controls.object.zoom : undefined;
+    };
+
+    const handlePartSelect = (linkName: string) => {
+        const link = linkName && robot ? robot.links[linkName] : undefined;
+        setSelectedPartName(link && robot ? resolveActuatedLinkName(link, robot, actuatedJointNames) : linkName || null);
+    };
+
+    const handlePartDoubleClick = (partName: string) => {
+        setSelectedPartName(prev => (prev === partName ? null : partName));
+    };
+
+    const handlePointerMissed = (e: MouseEvent) => {
+        if (e.type === 'dblclick') {
+            setSelectedPartName(null);
+        } else if (e.type === 'click' && e.detail <= 1) {
+            setGizmoPartName(null);
+        }
+    };
+
+    const handleResetCamera = () => {
+        setSelectedPartName(null);
+        if (robot) {
+            handleSelectView(DEFAULT_VIEW_DIRECTION.clone());
+            return;
+        }
+        const controls = controlsRef.current;
+        if (!controls) return;
+        controls.target.set(...DEFAULT_CAMERA.target);
+        controls.object.position.set(...DEFAULT_CAMERA.position);
+        if (controls.object instanceof THREE.OrthographicCamera) {
+            const distance = new THREE.Vector3(...DEFAULT_CAMERA.position).distanceTo(new THREE.Vector3(...DEFAULT_CAMERA.target));
+            controls.object.zoom = zoomForDistance(distance, controls.domElement?.clientHeight ?? window.innerHeight);
+            controls.object.updateProjectionMatrix();
+        }
+        controls.update();
     };
 
     if (error) {
@@ -130,28 +710,39 @@ const Robot3DViewer: React.FC = () => {
         );
     }
 
-    const isGreenMode = !useOriginalTexture;
-
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div
+            style={{ width: '100%', height: '100%', position: 'relative', border: '1px solid var(--color-line)' }}
+            onPointerEnter={() => { isPointerInsideRef.current = true; }}
+            onPointerLeave={() => { isPointerInsideRef.current = false; }}
+        >
             {loading && <LoadingBar progress={progress} />}
+            <div className="viewer-hud">
+                <div className="viewer-hud-slot">{hudLeft}</div>
+                <div className="viewer-hud-slot">{hudCenter}</div>
+                <div className="viewer-hud-slot">{hudRight}</div>
+            </div>
             <Canvas
-                camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
-                style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
+                style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
+                onPointerMissed={handlePointerMissed}
             >
+                {orthographic ? (
+                    <OrthographicCamera makeDefault position={initialCamera.position} near={-50} far={500} />
+                ) : (
+                    <PerspectiveCamera makeDefault position={initialCamera.position} fov={CAMERA_FOV} near={0.1} far={500} />
+                )}
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color={themeColors.accent} />
 
                 {showGrid && (
                     <Grid
                         args={[30, 30]}
                         cellSize={1}
-                        cellThickness={1}
-                        cellColor={UI_ACCENT_GREEN}
+                        cellThickness={0}
                         sectionSize={2}
                         sectionThickness={1}
-                        sectionColor={UI_TEXT_PRIMARY_ON_DARK}
+                        sectionColor={themeColors.text}
                         fadeDistance={20}
                         fadeStrength={1}
                     />
@@ -161,50 +752,181 @@ const Robot3DViewer: React.FC = () => {
                     <RobotFKModel
                         robot={robot}
                         jointAngles={jointAngles}
-                        opacity={opacity}
                         wireframe={wireframe}
-                        useOriginalTexture={useOriginalTexture}
+                        selectedPartName={selectedPartName}
+                        unselectedOpacity={unselectedOpacity}
+                        focusColor={themeColors.accent}
+                        onPartClick={handlePartClick}
+                        onPartDoubleClick={handlePartDoubleClick}
+                        onPartHover={setHoveredPartName}
+                        hoveredPartName={hoveredPartName}
+                        partsClickable={effectiveControlOn}
+                        actuatedJointNames={actuatedJointNames}
+                        overheatedJointNames={motorOverheat?.trippedJoints}
+                        heatMaterial={heatMapOn ? heatMap.material : undefined}
+                        motorTemperatures={heatMapOn ? motorOverheat?.temperatures : undefined}
                     />
                 )}
 
+                {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
+
+                {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
+
+                <JointRotationGizmo
+                    joint={effectiveControlOn ? gizmoJoint : null}
+                    isControlOn={effectiveControlOn}
+                    joints={joints}
+                    onJointValueChange={onJointValueChange}
+                    controlsRef={controlsRef}
+                    colors={themeColors}
+                />
+
+                <CameraFollowController
+                    robot={robot}
+                    selectedPartName={selectedPartName}
+                    controlsRef={controlsRef}
+                />
+
                 <OrbitControls
                     ref={controlsRef}
+                    makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
+                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate
                     dampingFactor={0.1}
-                    minDistance={0.2}
-                    maxDistance={10}
+                    minDistance={MIN_CAMERA_DISTANCE}
+                    maxDistance={MAX_CAMERA_DISTANCE}
                 />
+
+                <ProjectionSync controlsRef={controlsRef} />
+                <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
+                {!isMobile && settingsHeight > 0 && (
+                    <ViewCube
+                        colors={themeColors}
+                        onSelectView={handleSelectView}
+                        centerRight={OVERLAY_MARGIN_PX + SETTINGS_BOX_WIDTH / 2}
+                        bottomInset={OVERLAY_MARGIN_PX + settingsHeight + VIEW_CUBE_GAP_PX}
+                    />
+                )}
             </Canvas>
 
-            {/* Controls hint — top-left */}
-            <div style={{ ...OVERLAY_BOX, top: 10, gap: 4, pointerEvents: 'none', userSelect: 'none' }}>
-                <span style={{ color: UI_ACCENT_GREEN, fontWeight: 'bold', letterSpacing: 1 }}>CONTROLS:</span>
-                <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9, lineHeight: 1.6 }}>
+            {debugMode && <JointEffortDebug isConnected={isConnected} />}
+
+            {/* Controls hint — bottom-left */}
+            <CollapsibleOverlay title="CONTROLS (HELP)" style={{ userSelect: 'none' }}>
+                <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, lineHeight: 1.6 }}>
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
-            </div>
+            </CollapsibleOverlay>
 
-            {/* Settings — bottom-left */}
-            <div style={{ ...OVERLAY_BOX, bottom: 45, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
-                {/* Opacity & wireframe only affect the green override */}
-                {isGreenMode && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
-                        <input
-                            type="range" min="0.1" max="1" step="0.1" value={opacity}
-                            onChange={e => setOpacity(parseFloat(e.target.value))}
-                            style={{ width: '100%', cursor: 'pointer' }}
-                        />
+            {/* Hovered joint / followed part badge — bottom-center */}
+            {hoveredPartName && hoveredJoint ? (
+                <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)}>
+                    <JointTemperatureReadout jointName={urdfNameOf(hoveredJoint)} />
+                </InfoBadge>
+            ) : selectedPartName && (
+                <InfoBadge
+                    label="FOLLOWING:"
+                    partName={selectedPartName}
+                    jointName={focusedJoint ? urdfNameOf(focusedJoint) : undefined}
+                    onUnfocus={() => setSelectedPartName(null)}
+                    details={focusedJoint && <JointReadingsLine jointName={urdfNameOf(focusedJoint)} isConnected={isConnected} />}
+                />
+            )}
+
+            {/* Settings — bottom-right, under the view cube */}
+            <CollapsibleOverlay
+                title="VIEW SETTINGS"
+                style={{ left: 'auto', right: OVERLAY_MARGIN_PX, width: SETTINGS_BOX_WIDTH }}
+                gap={6}
+                boxRef={settingsRef}
+            >
+                {/* Part selector & transparency of unselected parts */}
+                {availableParts.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUS</span>
+                            <select
+                                value={selectedPartName || ''}
+                                onChange={e => handlePartSelect(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    background: 'var(--color-main)',
+                                    border: '1px solid var(--color-line)',
+                                    color: selectedPartName ? FOCUS_COLOR : UI_TEXT_PRIMARY_ON_DARK,
+                                    fontFamily: 'monospace',
+                                    fontSize: 10,
+                                    padding: '2px 4px',
+                                    borderRadius: 2,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <option value="">(None - Free view)</option>
+                                {availableParts.map(name => (
+                                    <option key={name} value={name}>{name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Transparency of unselected parts slider */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>
+                                    OTHER OPACITY
+                                </span>
+                                <span style={{ color: selectedPartName ? 'var(--color-highlight)' : UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>
+                                    {Math.round(unselectedOpacity * 100)}%
+                                </span>
+                            </div>
+                            <Slider
+                                min={0}
+                                max={1}
+                                step={0.05}
+                                value={unselectedOpacity}
+                                onChange={handleUnselectedOpacityChange}
+                                style={{ margin: 0 }}
+                                tooltip={{ open: false }}
+                            />
+                        </div>
                     </div>
                 )}
-                {isGreenMode && <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />}
-                <SwitchRow label="TEXTURE" value={useOriginalTexture} onChange={setUseOriginalTexture} />
-                <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
-            </div>
+
+                <SwitchRow label="GHOST" tooltip="Show where the robot is heading" value={isGhostVisible} onChange={setGhostVisible} />
+                <GhostOpacitySlider enabled={isGhostVisible} />
+                <SwitchRow label="WIRE" tooltip="Show the robot as a wireframe" value={wireframe} onChange={setWireframe} />
+                <SwitchRow label="GRID" tooltip="Show the floor grid" value={showGrid} onChange={setShowGrid} />
+                <SwitchRow label="ORTHO" tooltip="Orthographic camera: no perspective, sizes stay true at any depth" value={orthographic} onChange={setOrthographic} />
+                {effortSupported && (
+                    <>
+                        <SwitchRow label="HEATMAP" tooltip="Colour each part by the effort its servos produce" value={showHeatMap} onChange={setShowHeatMap} />
+                        <SwitchRow label="ARROWS" tooltip="Show an arrow on each joint for the effort its servo produces" value={showArrows} onChange={setShowArrows} />
+                    </>
+                )}
+                <SwitchRow label="DEBUG" tooltip="Show the raw joint readings, and buttons to simulate an overheated motor" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
+
+                <button
+                    onClick={handleResetCamera}
+                    style={{
+                        width: '100%',
+                        padding: '3px 6px',
+                        background: 'transparent',
+                        border: '1px solid var(--color-line)',
+                        color: UI_TEXT_SECONDARY_MUTED,
+                        cursor: 'pointer',
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        borderRadius: 2,
+                        marginTop: 2,
+                        textAlign: 'center',
+                    }}
+                    title="Reset camera to default position"
+                >
+                    RESET CAMERA
+                </button>
+            </CollapsibleOverlay>
         </div>
     );
 };

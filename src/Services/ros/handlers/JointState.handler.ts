@@ -149,6 +149,7 @@ export class JointStateHandler {
       ros,
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
+      // Raise once meshes no longer share the rosbridge websocket.
       throttle_rate: 33,
       queue_length: 1,
     });

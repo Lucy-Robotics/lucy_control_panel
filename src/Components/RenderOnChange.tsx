@@ -5,6 +5,7 @@
 
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import { measureFrameCost } from '../Utils/frameCost';
 
 const POINTER_EVENTS = ['pointerdown', 'pointermove', 'pointerup', 'wheel'] as const;
 
@@ -13,6 +14,8 @@ export const RenderOnChange: React.FC = () => {
     const canvas = useThree((state) => state.gl.domElement);
 
     useEffect(() => invalidate());
+
+    useEffect(measureFrameCost, []);
 
     useEffect(() => {
         const redraw = () => invalidate();

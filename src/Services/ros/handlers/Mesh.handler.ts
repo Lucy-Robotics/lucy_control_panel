@@ -20,9 +20,8 @@ const MESH_SERVICE_NAME = '/mesh/get';
 const MESH_SERVICE_TYPE = 'lucy_msgs/srv/GetMesh';
 /** Client-side wait; must stay ≥ rosbridge `default_call_service_timeout`. */
 const MESH_SERVICE_TIMEOUT_MS = 60_000;
-/** Passed to rosbridge; a reply lost in DDS fails after this and is retried. */
-const MESH_SERVICE_ROSBRIDGE_TIMEOUT_S = 10.0;
-const MESH_SERVICE_ATTEMPTS = 3;
+/** Passed to rosbridge per attempt: a reply lost in DDS is retried after 3 s, then slow servers get 10 s. */
+const MESH_SERVICE_ROSBRIDGE_TIMEOUTS_S = [3.0, 10.0, 10.0];
 
 export type MeshEncoding = 'utf8' | 'zlib_base64' | string;
 
@@ -75,18 +74,18 @@ export class MeshHandler {
     static async getMesh(path: string, quality?: MeshQuality): Promise<MeshPayload> {
         for (let attempt = 1; ; attempt++) {
             try {
-                return await MeshHandler.request(path, MeshHandler.serverTakesQuality ? quality : undefined);
+                return await MeshHandler.request(path, MeshHandler.serverTakesQuality ? quality : undefined, attempt);
             } catch (e) {
                 if (quality && MeshHandler.serverTakesQuality && SERVER_WITHOUT_QUALITY.test(String(e))) {
                     MeshHandler.serverTakesQuality = false;
                     continue;
                 }
-                if (attempt >= MESH_SERVICE_ATTEMPTS) throw e;
+                if (attempt >= MESH_SERVICE_ROSBRIDGE_TIMEOUTS_S.length) throw e;
             }
         }
     }
 
-    private static request(path: string, quality?: MeshQuality): Promise<MeshPayload> {
+    private static request(path: string, quality: MeshQuality | undefined, attempt: number): Promise<MeshPayload> {
         const ros = RosBridgeService.getInstance().rosConnection as RosWithEmitter | null;
         if (!ros) return Promise.reject(new Error('ROS bridge is not connected.'));
 
@@ -133,7 +132,7 @@ export class MeshHandler {
                 service: MESH_SERVICE_NAME,
                 type: MESH_SERVICE_TYPE,
                 args: quality ? { path, quality } : { path },
-                timeout: MESH_SERVICE_ROSBRIDGE_TIMEOUT_S,
+                timeout: MESH_SERVICE_ROSBRIDGE_TIMEOUTS_S[attempt - 1],
             });
         });
     }

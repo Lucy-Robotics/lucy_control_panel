@@ -283,8 +283,11 @@ export function useRobotModel(): UseRobotModelReturn {
             if (cancelled) return;
             if (!urdf) {
                 // Disconnected / not published yet. Keep any cached model on
-                // screen; otherwise show the waiting state.
+                // screen; otherwise (e.g. forgotten by a robot switch) drop it and wait.
                 if (!globalCache.ready) {
+                    runRef.current++;
+                    loadedUrdfRef.current = null;
+                    showRobot(null);
                     setLoading(true);
                     setLoadingStatus('Waiting for robot description from ROS…');
                 }
@@ -300,7 +303,7 @@ export function useRobotModel(): UseRobotModelReturn {
             window.clearTimeout(timeout);
             unsubscribe();
         };
-    }, [parseAndLoad, reloadToken]);
+    }, [parseAndLoad, reloadToken, showRobot]);
 
     const reload = useCallback(() => {
         // Re-running the hook alone would not touch the rosbridge subscription.

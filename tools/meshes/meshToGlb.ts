@@ -16,7 +16,8 @@ function keepThreeMaterials(object: THREE.Object3D): void {
     object.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         for (const material of [child.material].flat() as THREE.Material[]) {
-            material.userData = { three: material.toJSON(), rootMesh };
+            const three = Object.fromEntries(Object.entries(material.toJSON()).filter(([key]) => key !== 'uuid'));
+            material.userData = { three, rootMesh };
         }
     });
 }

@@ -356,7 +356,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         pos: new THREE.Vector3(),
     }), []);
 
-    useFrame((_state, delta) => {
+    useFrame(({ invalidate }, delta) => {
         const group = groupRef.current;
         if (!joint || !group) return;
         const dragging = isDraggingRef.current;
@@ -366,6 +366,7 @@ export const JointRotationGizmo: React.FC<JointRotationGizmoProps> = ({
         badgeAnchorRef.current?.position.copy(group.position).add(tmp.pos.set(0, radius * 1.3, 0));
 
         fadeRef.current = Math.min(1, fadeRef.current + delta / FADE_IN_S);
+        if (fadeRef.current < 1) invalidate();
         const fade = fadeRef.current;
         mats.ring.color.set(dragging ? colors.ghost : colors.accent);
         mats.knob.color.set(dragging ? colors.ghost : colors.active);

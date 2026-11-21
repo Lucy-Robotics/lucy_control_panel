@@ -12,7 +12,7 @@ export type MeshQualitySetting = 'auto' | MeshQuality;
 const STORAGE_KEY = 'meshQuality';
 
 export function parseMeshQualitySetting(stored: string | null): MeshQualitySetting {
-    return (MESH_QUALITIES as string[]).includes(stored ?? '') ? stored as MeshQuality : 'auto';
+    return (MESH_QUALITIES as readonly string[]).includes(stored ?? '') ? stored as MeshQuality : 'auto';
 }
 
 export function resolveMeshQuality(setting: MeshQualitySetting, renderer: string | null): MeshQuality {

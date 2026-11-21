@@ -30,12 +30,15 @@ import { formatCaughtError } from '../Utils/error.utils';
 import { base64ToUint8Array, decodeStlPayload } from '../Utils/mesh.utils';
 import { parseMeshGlb } from '../Services/meshes/parseMeshGlb';
 import { useMeshQuality } from './useMeshQuality';
+import { lastFrameCostMs } from '../Utils/frameCost';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
 /** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
 const MESH_FETCH_CONCURRENCY_LARGE = 2;
-const LOADING_REDRAWS_PER_SECOND = 20;
+/** Wait this many frame costs between loading redraws, so drawing takes at most a quarter of the time. */
+const LOADING_WAIT_PER_FRAME_COST = 3;
+export const loadingRedrawDelayMs = (frameCostMs: number) => LOADING_WAIT_PER_FRAME_COST * frameCostMs;
 /** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 
@@ -210,7 +213,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
                     } finally {
                         completed++;
-                        progressTimer ??= window.setTimeout(showProgress, 1000 / LOADING_REDRAWS_PER_SECOND);
+                        progressTimer ??= window.setTimeout(showProgress, loadingRedrawDelayMs(lastFrameCostMs()));
                     }
                 });
                 if (/\.(stl|obj)$/i.test(path)) largeCount++;

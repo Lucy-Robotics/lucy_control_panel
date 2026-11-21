@@ -33,6 +33,7 @@ import { decodeStlPayload } from '../Utils/mesh.utils';
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
 /** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
 const MESH_FETCH_CONCURRENCY_LARGE = 2;
+const LOADING_REDRAWS_PER_SECOND = 10;
 /** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 
@@ -139,6 +140,13 @@ export function useRobotModel(): UseRobotModelReturn {
             let mtlFailed = 0;
             let lastError = '';
             let largeCount = 0;
+            let progressTimer: number | undefined;
+            const showProgress = () => {
+                progressTimer = undefined;
+                if (stale()) return;
+                if (total > 0) setProgress(Math.min(0.99, completed / total));
+                setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+            };
 
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
@@ -197,10 +205,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
                     } finally {
                         completed++;
-                        if (!stale()) {
-                            if (total > 0) setProgress(Math.min(0.99, completed / total));
-                            setLoadingStatus(`Loading meshes (${completed}/${total})…`);
-                        }
+                        progressTimer ??= window.setTimeout(showProgress, 1000 / LOADING_REDRAWS_PER_SECOND);
                     }
                 });
                 if (/\.(stl|obj)$/i.test(path)) largeCount++;
@@ -221,6 +226,7 @@ export function useRobotModel(): UseRobotModelReturn {
                 : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks.slice(0, 1), 1);
             await runWithConcurrency(tasks.slice(1), concurrency);
+            window.clearTimeout(progressTimer);
             if (stale()) return;
 
             if (total > 0 && failed === total) {

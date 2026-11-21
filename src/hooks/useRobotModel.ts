@@ -33,7 +33,7 @@ import { decodeStlPayload } from '../Utils/mesh.utils';
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
 /** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
 const MESH_FETCH_CONCURRENCY_LARGE = 2;
-const LOADING_REDRAWS_PER_SECOND = 10;
+const LOADING_REDRAWS_PER_SECOND = 20;
 /** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 

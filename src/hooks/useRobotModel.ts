@@ -41,6 +41,13 @@ const LOADING_WAIT_PER_FRAME_COST = 3;
 export const loadingRedrawDelayMs = (frameCostMs: number) => LOADING_WAIT_PER_FRAME_COST * frameCostMs;
 /** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
+/** Concurrent mesh fetches once the server answers with GLB — a few KB each. */
+const MESH_FETCH_CONCURRENCY_GLB = 16;
+
+export function meshFetchConcurrency(servesGlb: boolean, largeCount: number): number {
+    if (servesGlb) return MESH_FETCH_CONCURRENCY_GLB;
+    return largeCount > 0 ? MESH_FETCH_CONCURRENCY_LARGE : MESH_FETCH_CONCURRENCY_DAE;
+}
 
 // ---------------------------------------------------------------------------
 // Module-level cache — shared across all component instances in a session.
@@ -146,6 +153,7 @@ export function useRobotModel(): UseRobotModelReturn {
             let mtlFailed = 0;
             let lastError = '';
             let largeCount = 0;
+            let servesGlb = false;
             let progressTimer: number | undefined;
             const showProgress = () => {
                 progressTimer = undefined;
@@ -167,6 +175,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         }
                         const payload = await cached;
                         if (payload.encoding === 'glb_base64') {
+                            servesGlb = true;
                             done(await parseMeshGlb(base64ToUint8Array(payload.data).slice().buffer));
                         } else if (lower.endsWith('.dae')) {
                             done(colladaLoader.parse(utf8Text(payload, path), '').scene);
@@ -229,11 +238,8 @@ export function useRobotModel(): UseRobotModelReturn {
             showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            const concurrency = largeCount > 0
-                ? MESH_FETCH_CONCURRENCY_LARGE
-                : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks.slice(0, 1), 1);
-            await runWithConcurrency(tasks.slice(1), concurrency);
+            await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));
             window.clearTimeout(progressTimer);
             if (stale()) return;
 

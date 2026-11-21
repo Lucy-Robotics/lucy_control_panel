@@ -95,6 +95,7 @@ import { CommandRail, COMMAND_RAIL_WIDTH } from '../Components/ControlPage/Comma
 import { ShuffleOutlined } from '../Components/ControlPage/ShuffleIcon.tsx';
 import { HandOutlined } from '../Components/ControlPage/HandIcon.tsx';
 import { phoneTeleopRailItem } from '../Components/ControlPage/phoneTeleopRailItem.tsx';
+import { TeleopCalibrationModal } from '../Components/ControlPage/TeleopCalibrationModal.tsx';
 import { PoseOutlined } from '../Components/ControlPage/PoseIcon.tsx';
 import type { RailGroup } from '../Components/ControlPage/CommandRail.tsx';
 
@@ -897,6 +898,7 @@ export const RobotControlPanel: React.FC = () => {
         <MotorOverheatContext.Provider value={motorOverheat}>
         <JointMoveContext.Provider value={jointMoveStore}>
             <MotorOverheatAlert />
+            <TeleopCalibrationModal calibration={phoneTeleop.calibration} />
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}

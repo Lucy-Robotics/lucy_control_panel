@@ -8,7 +8,6 @@
     "build": "tsc -b && vite build",
     "quickbuild": "vite build",
     "lint": "eslint .",
-    "meshes:glb": "node tools/meshes-to-glb.ts",
     "preview": "vite preview",
     "test": "node --import ./test/ts-loader-register.mjs --experimental-strip-types --test 'test/run-*-tests.ts' 'test/*.test.ts'",
     "coverage": "c8 --reporter=lcov --reporter=text yarn test"
@@ -55,7 +54,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
-    "gltfpack": "^1.3.0",
     "jsdom": "26.1.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",

@@ -5,103 +5,52 @@
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import { after, before, test } from 'node:test';
+import { test } from 'node:test';
 import * as THREE from 'three';
-import { boxTriangles, tempDir, writeFixtures } from './meshFixtures.ts';
 
-const { meshObject } = await import('../tools/meshes/meshObject.ts');
-const { provideDomForLoaders } = await import('../tools/meshes/nodeDom.ts');
-const { meshToGlbs } = await import('../tools/meshes/meshToGlb.ts');
 const { parseMeshGlb } = await import('../src/Services/meshes/parseMeshGlb.ts');
 
-type Phong = THREE.MeshPhongMaterial;
+// Fixtures come from https://github.com/Lucy-Robotics/mesh_tools test fixtures (20x10x30 box at [50,-40,25]).
+const expected = {
+    dae: { single: false, color: 0x00ff00, shininess: 40 },
+    stl: { single: true, color: 0xb0b0b0, shininess: 30 },
+    obj: { single: false, color: 0xff0000, shininess: 80 },
+} as const;
 
-function asFloats(source: THREE.BufferGeometry): THREE.BufferGeometry {
-    const geometry = new THREE.BufferGeometry().setIndex(source.index);
-    for (const name of ['position', 'normal']) {
-        const a = source.getAttribute(name);
-        if (!a) continue;
-        const values = Float32Array.from({ length: a.count * 3 }, (_, i) => [a.getX, a.getY, a.getZ][i % 3].call(a, Math.floor(i / 3)));
-        geometry.setAttribute(name, new THREE.BufferAttribute(values, 3));
-    }
-    return geometry;
-}
+for (const [kind, want] of Object.entries(expected)) {
+    test(`the ${kind} fixture GLB is read back as a flat-shaded box with its original material`, async () => {
+        const file = await fs.readFile(new URL(`./fixtures/meshes/part.${kind}.full.glb`, import.meta.url));
+        const object = await parseMeshGlb(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer);
 
-function geometries(object: THREE.Object3D): THREE.BufferGeometry[] {
-    const found: THREE.BufferGeometry[] = [];
-    object.updateMatrixWorld(true);
-    object.traverse((c) => { if (c instanceof THREE.Mesh) found.push(asFloats(c.geometry).applyMatrix4(c.matrixWorld)); });
-    return found;
-}
+        // A single-mesh source must come back as a bare Mesh so the URDF colour applies.
+        assert.equal(object instanceof THREE.Mesh, want.single);
+        const meshes: THREE.Mesh[] = [];
+        object.traverse((c) => { if (c instanceof THREE.Mesh) meshes.push(c); });
+        assert.equal(meshes.length, 1);
+        const [mesh] = meshes;
 
-function firstMaterial(object: THREE.Object3D): Phong {
-    let found: THREE.Material | undefined;
-    object.traverse((c) => { if (!found && c instanceof THREE.Mesh) found = [c.material].flat()[0]; });
-    assert.ok(found);
-    return found as Phong;
-}
+        const position = mesh.geometry.getAttribute('position');
+        assert.equal((mesh.geometry.index ?? position).count / 3, 12);
+        const box = new THREE.Box3().setFromObject(object);
+        assert.ok(box.min.distanceTo(new THREE.Vector3(50, -40, 25)) < 1e-3, `min ${box.min.toArray()}`);
+        assert.ok(box.max.distanceTo(new THREE.Vector3(70, -30, 55)) < 1e-3, `max ${box.max.toArray()}`);
 
-function triangleCount(object: THREE.Object3D): number {
-    return geometries(object).reduce((sum, g) => sum + (g.index ?? g.getAttribute('position')).count / 3, 0);
-}
-
-function faceNormals(object: THREE.Object3D): string[] {
-    return geometries(object).flatMap((g) => {
-        const flat = g.index ? g.toNonIndexed() : g.clone();
-        flat.computeVertexNormals();
-        const n = flat.getAttribute('normal');
-        return Array.from({ length: n.count / 3 }, (_, i) => {
-            const v = new THREE.Vector3().fromBufferAttribute(n, i * 3);
-            return v.toArray().map((x) => (Math.round(x * 100) / 100 + 0).toFixed(2)).join(',');
-        });
-    }).sort();
-}
-
-function vertexNormalsMatchFaces(object: THREE.Object3D): boolean {
-    return geometries(object).every((g) => {
-        if (!g.getAttribute('normal')) return false;
-        const flat = g.index ? g.toNonIndexed() : g;
-        const p = flat.getAttribute('position'), n = flat.getAttribute('normal');
+        const flat = mesh.geometry.toNonIndexed();
+        const normal = mesh.geometry.getAttribute('normal');
+        assert.ok(normal, 'normals restored');
+        const flatNormal = flat.getAttribute('normal');
         const [a, b, c, face, vn] = [0, 0, 0, 0, 0].map(() => new THREE.Vector3());
+        const world = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld).toNonIndexed();
+        const p = world.getAttribute('position');
         for (let i = 0; i < p.count; i += 3) {
             a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
             face.subVectors(c, b).cross(a.sub(b)).normalize();
-            for (let j = 0; j < 3; j++) if (vn.fromBufferAttribute(n, i + j).dot(face) < 0.999) return false;
+            for (let j = 0; j < 3; j++) assert.ok(vn.fromBufferAttribute(flatNormal, i + j).dot(face) > 0.999, `vertex ${i + j} normal is not its face normal`);
         }
-        return true;
-    });
-}
 
-let dir: string;
-let files: Record<'dae' | 'stl' | 'obj', string>;
-function placedByUrdfLoader<T extends THREE.Object3D>(object: T): T {
-    object.position.set(0, 0, 0);
-    object.quaternion.identity();
-    object.updateMatrixWorld(true);
-    return object;
-}
-
-before(async () => { await provideDomForLoaders(); dir = await tempDir(); files = await writeFixtures(dir, boxTriangles()); });
-after(() => fs.rm(dir, { recursive: true, force: true }));
-
-for (const kind of ['dae', 'stl', 'obj'] as const) {
-    test(`a ${kind} mesh looks the same after a full-quality GLB round trip`, async () => {
-        const original = placedByUrdfLoader(await meshObject(files[kind]));
-        const glb = (await meshToGlbs(files[kind])).get('full')!;
-        const restored = placedByUrdfLoader(await parseMeshGlb(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength) as ArrayBuffer));
-
-        assert.equal(restored instanceof THREE.Mesh, original instanceof THREE.Mesh, 'a single-mesh part stays a mesh so the URDF colour applies');
-
-        assert.equal(triangleCount(restored), triangleCount(original));
-        const [a, b] = [original, restored].map((o) => new THREE.Box3().setFromObject(o));
-        const tolerance = a.getSize(new THREE.Vector3()).length() * 1e-4;
-        assert.ok(a.min.distanceTo(b.min) < tolerance && a.max.distanceTo(b.max) < tolerance, 'bounding box');
-        assert.ok(vertexNormalsMatchFaces(restored), 'restored normals are flat');
-        assert.deepEqual(faceNormals(restored), faceNormals(original));
-
-        const [ma, mb] = [firstMaterial(original), firstMaterial(restored)];
-        assert.equal(mb.type, ma.type);
-        assert.equal(mb.color.getHex(), ma.color.getHex());
-        assert.equal(mb.shininess, ma.shininess);
+        const material = mesh.material as THREE.MeshPhongMaterial;
+        assert.equal(material.type, 'MeshPhongMaterial');
+        assert.equal(material.color.getHex(), want.color);
+        assert.equal(material.shininess, want.shininess);
     });
 }

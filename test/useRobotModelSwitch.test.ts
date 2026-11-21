@@ -6,6 +6,7 @@
 import { act, renderHook, waitFor } from './react-harness.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { MeshHandler } from '../src/Services/ros/handlers/Mesh.handler.ts';
 import { RobotDescriptionHandler } from '../src/Services/ros/handlers/RobotDescription.handler.ts';
 import { forgetRobotModel, useRobotModel } from '../src/hooks/useRobotModel.ts';
 
@@ -69,4 +70,42 @@ test('the same URDF re-delivered after a forget and a disconnect is parsed again
     assert.ok(second);
     assert.notEqual(second, first);
     await hook.unmount();
+});
+
+test('a plain disconnect during a load whose mesh request is held open keeps the half-loaded robot on screen', async () => {
+    const getMesh = MeshHandler.getMesh;
+    MeshHandler.getMesh = () => new Promise(() => {}); // request never answered
+    try {
+        const { hook, emit } = await mount();
+        // reload() clears the "forgotten by a robot switch" mark that mount() set.
+        await act(async () => hook.result.current.reload());
+        await emit(`<robot name="a"><link name="a_base"><visual><geometry><mesh filename="package://x/a.stl"/></geometry></visual></link></robot>`);
+        const robot = hook.result.current.robot;
+        assert.ok(robot);
+        assert.equal(hook.result.current.loading, true);
+
+        await emit(null);
+        assert.equal(hook.result.current.robot, robot);
+        await hook.unmount();
+    } finally {
+        MeshHandler.getMesh = getMesh;
+    }
+});
+
+test('a plain disconnect while the new robot loads after a switch keeps the new robot on screen', async () => {
+    const getMesh = MeshHandler.getMesh;
+    MeshHandler.getMesh = () => new Promise(() => {}); // request never answered
+    try {
+        const { hook, emit } = await mount(); // mount() forgets the model, as a robot switch does
+        await emit(`<robot name="b"><link name="b_base"><visual><geometry><mesh filename="package://x/b.stl"/></geometry></visual></link></robot>`);
+        const robot = hook.result.current.robot;
+        assert.ok(robot);
+        assert.equal(hook.result.current.loading, true);
+
+        await emit(null);
+        assert.equal(hook.result.current.robot, robot);
+        await hook.unmount();
+    } finally {
+        MeshHandler.getMesh = getMesh;
+    }
 });

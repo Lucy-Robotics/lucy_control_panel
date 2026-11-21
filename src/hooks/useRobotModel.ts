@@ -27,7 +27,9 @@ import { MeshHandler } from '../Services/ros/handlers/Mesh.handler';
 import type { MeshPayload } from '../Services/ros/handlers/Mesh.handler';
 import { runWithConcurrency } from '../Utils/concurrency.utils';
 import { formatCaughtError } from '../Utils/error.utils';
-import { decodeStlPayload } from '../Utils/mesh.utils';
+import { base64ToUint8Array, decodeStlPayload } from '../Utils/mesh.utils';
+import { parseMeshGlb } from '../Services/meshes/parseMeshGlb';
+import { useMeshQuality } from './useMeshQuality';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
@@ -43,7 +45,7 @@ const MESH_FETCH_CONCURRENCY_DAE = 8;
 // ---------------------------------------------------------------------------
 type GlobalCache =
     | { ready: false }
-    | { ready: true; urdf: string; robot: URDFRobot };
+    | { ready: true; modelKey: string; robot: URDFRobot };
 
 let globalCache: GlobalCache = { ready: false };
 
@@ -94,7 +96,8 @@ export function useRobotModel(): UseRobotModelReturn {
 
     // The URDF string most recently parsed — guards against re-parsing the same
     // model when the latched topic re-delivers it (e.g. after a reconnect).
-    const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.urdf : null);
+    const quality = useMeshQuality();
+    const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.modelKey : null);
     // Bumped by reload() to force a fresh subscription + parse.
     const [reloadToken, setReloadToken] = useState(0);
     const runRef = useRef(0);
@@ -110,7 +113,7 @@ export function useRobotModel(): UseRobotModelReturn {
         }
     }, []);
 
-    const parseAndLoad = useCallback(async (urdf: string) => {
+    const parseAndLoad = useCallback(async (urdf: string, modelKey: string) => {
         const run = ++runRef.current;
         const stale = () => runRef.current !== run;
         if (!isWebGLAvailable()) {
@@ -156,11 +159,13 @@ export function useRobotModel(): UseRobotModelReturn {
                         const lower = path.toLowerCase();
                         let cached = meshCache.get(path);
                         if (!cached) {
-                            cached = MeshHandler.getMesh(path);
+                            cached = MeshHandler.getMesh(path, quality);
                             meshCache.set(path, cached);
                         }
                         const payload = await cached;
-                        if (lower.endsWith('.dae')) {
+                        if (payload.encoding === 'glb_base64') {
+                            done(await parseMeshGlb(base64ToUint8Array(payload.data).slice().buffer));
+                        } else if (lower.endsWith('.dae')) {
                             done(colladaLoader.parse(utf8Text(payload, path), '').scene);
                         } else if (lower.endsWith('.stl')) {
                             const geometry = stlLoader.parse(await decodeStlPayload(payload));
@@ -217,7 +222,7 @@ export function useRobotModel(): UseRobotModelReturn {
             // they arrive — the robot is a shared scene graph that keeps mutating
             // while meshes load. Mark this URDF as in-flight to block a duplicate
             // parse if the latched topic re-delivers it mid-load.
-            loadedUrdfRef.current = urdf;
+            loadedUrdfRef.current = modelKey;
             showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
@@ -240,7 +245,7 @@ export function useRobotModel(): UseRobotModelReturn {
             // Commit to the session cache only once every mesh loaded, so a partial
             // load is retried by the next mount instead of keeping its holes.
             if (failed === 0 && mtlFailed === 0) {
-                globalCache = { ready: true, urdf, robot: loadedRobot };
+                globalCache = { ready: true, modelKey, robot: loadedRobot };
             } else {
                 console.warn(
                     `[useRobotModel] ${failed} mesh(es) and ${mtlFailed} material file(s) failed to load ` +
@@ -268,7 +273,7 @@ export function useRobotModel(): UseRobotModelReturn {
             setError(err instanceof Error ? err.message : 'Failed to load robot model');
             setLoading(false);
         }
-    }, [showRobot]);
+    }, [showRobot, quality]);
 
     useEffect(() => {
         let cancelled = false;
@@ -297,8 +302,9 @@ export function useRobotModel(): UseRobotModelReturn {
                 return;
             }
             window.clearTimeout(timeout);
-            if (urdf === loadedUrdfRef.current) return; // already parsed this model
-            void parseAndLoad(urdf);
+            const modelKey = `${quality}\n${urdf}`;
+            if (modelKey === loadedUrdfRef.current) return; // already parsed this model
+            void parseAndLoad(urdf, modelKey);
         });
 
         return () => {
@@ -306,7 +312,7 @@ export function useRobotModel(): UseRobotModelReturn {
             window.clearTimeout(timeout);
             unsubscribe();
         };
-    }, [parseAndLoad, reloadToken]);
+    }, [parseAndLoad, reloadToken, quality]);
 
     const reload = useCallback(() => {
         // Re-running the hook alone would not touch the rosbridge subscription.

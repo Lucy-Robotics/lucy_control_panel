@@ -5,6 +5,7 @@
 
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../ros.service.ts';
+import type { MeshQuality } from '../../../Constants/meshQuality.ts';
 
 /**
  * Fetches a mesh referenced by the URDF over the `mesh/get` service on the
@@ -13,6 +14,7 @@ import { RosBridgeService } from '../ros.service.ts';
  * Encodings (see lucy_msgs/srv/GetMesh.srv):
  *   utf8        — Collada/DAE, OBJ and MTL text
  *   zlib_base64 — zlib-compressed binary (STL), then base64
+ *   glb_base64  : meshopt GLB at the requested quality, then base64
  */
 const MESH_SERVICE_NAME = '/mesh/get';
 const MESH_SERVICE_TYPE = 'lucy_msgs/srv/GetMesh';
@@ -64,19 +66,27 @@ function inferEncoding(path: string, encoding: string | undefined): MeshEncoding
     return path.toLowerCase().endsWith('.stl') ? 'zlib_base64' : 'utf8';
 }
 
+const SERVER_WITHOUT_QUALITY = /does not have a field quality/;
+
 export class MeshHandler {
+    private static serverTakesQuality = true;
+
     /** Resolve to mesh payload (data + encoding), or reject on failure/timeout. */
-    static async getMesh(path: string): Promise<MeshPayload> {
+    static async getMesh(path: string, quality?: MeshQuality): Promise<MeshPayload> {
         for (let attempt = 1; ; attempt++) {
             try {
-                return await MeshHandler.request(path);
+                return await MeshHandler.request(path, MeshHandler.serverTakesQuality ? quality : undefined);
             } catch (e) {
+                if (quality && MeshHandler.serverTakesQuality && SERVER_WITHOUT_QUALITY.test(String(e))) {
+                    MeshHandler.serverTakesQuality = false;
+                    continue;
+                }
                 if (attempt >= MESH_SERVICE_ATTEMPTS) throw e;
             }
         }
     }
 
-    private static request(path: string): Promise<MeshPayload> {
+    private static request(path: string, quality?: MeshQuality): Promise<MeshPayload> {
         const ros = RosBridgeService.getInstance().rosConnection as RosWithEmitter | null;
         if (!ros) return Promise.reject(new Error('ROS bridge is not connected.'));
 
@@ -122,7 +132,7 @@ export class MeshHandler {
                 id: callId,
                 service: MESH_SERVICE_NAME,
                 type: MESH_SERVICE_TYPE,
-                args: { path },
+                args: quality ? { path, quality } : { path },
                 timeout: MESH_SERVICE_ROSBRIDGE_TIMEOUT_S,
             });
         });

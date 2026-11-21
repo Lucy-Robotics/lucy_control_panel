@@ -15,6 +15,7 @@ import { JointRotationGizmo } from '../Components/JointRotationGizmo';
 import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
 import { EndEffectorReadout } from '../Components/EndEffectorReadout';
 import { useEndEffector } from '../hooks/useEndEffector';
+import type { Quat } from '../Utils/phoneOrientation';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
@@ -509,6 +510,7 @@ export interface Robot3DViewerProps {
     hudCenter?: React.ReactNode;
     isHandsOn?: boolean;
     teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -520,6 +522,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     onJointValueChange,
     isHandsOn = false,
     teleopTarget = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -774,7 +777,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
-                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} colors={themeColors} />}
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} phoneOrientation={phoneOrientation} colors={themeColors} />}
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 

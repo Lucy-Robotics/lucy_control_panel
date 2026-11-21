@@ -11,48 +11,37 @@ import { after, before, test } from 'node:test';
 import { promisify } from 'node:util';
 import { tempDir, writeFixtures } from './meshFixtures.ts';
 
-const { cachedGlbPath } = await import('../tools/meshes/meshCache.ts');
 const run = promisify(execFile);
+const QUALITIES = ['full', 'balanced', 'light'];
 
-let home: string;
 let meshes: string;
 let files: Record<'dae' | 'stl' | 'obj', string>;
 
 const cli = async () => {
     const args = ['--import', './test/ts-loader-register.mjs', '--experimental-strip-types', 'tools/meshes-to-glb.ts', meshes];
-    return (await run(process.execPath, args, { env: { ...process.env, HOME: home } })).stdout;
+    return (await run(process.execPath, args)).stdout;
 };
-const cacheDir = () => path.join(home, '.cache', 'lucy', 'meshes');
-const cacheFiles = async () => (await fs.readdir(cacheDir()).catch(() => [])).filter((n) => n.endsWith('.glb')).sort();
+const glbs = async (dir: string) => (await fs.readdir(dir)).filter((n) => n.endsWith('.glb')).sort();
+const contents = async (dir: string) => Promise.all((await glbs(dir)).map((n) => fs.readFile(path.join(dir, n))));
 
 before(async () => {
-    home = await tempDir();
-    meshes = path.join(home, 'meshes');
-    await fs.mkdir(path.join(meshes, 'archive'), { recursive: true });
+    meshes = await tempDir();
+    await fs.mkdir(path.join(meshes, 'archive'));
     files = await writeFixtures(meshes);
     await fs.writeFile(path.join(meshes, 'broken.obj'), 'not a mesh');
     await fs.copyFile(files.stl, path.join(meshes, 'archive', 'old.stl'));
 });
-after(() => fs.rm(home, { recursive: true, force: true }));
+after(() => fs.rm(meshes, { recursive: true, force: true }));
 
-test('the converter writes three GLBs per mesh, reports a broken one, and skips archive', async () => {
-    const out = await cli();
-    assert.match(out, /3 converted, 0 already up to date, 1 failed/);
-    const names = await cacheFiles();
-    assert.equal(names.length, 9);
-    for (const file of Object.values(files)) {
-        for (const q of ['full', 'balanced', 'light'] as const) {
-            assert.ok(names.includes(path.basename(cachedGlbPath(await fs.realpath(file), q))));
-        }
-    }
-    const archived = path.basename(cachedGlbPath(await fs.realpath(path.join(meshes, 'archive', 'old.stl')), 'full'));
-    assert.ok(!names.includes(archived));
+test('the converter writes a GLB per quality beside each mesh, reports a broken one, and skips archive', async () => {
+    assert.match(await cli(), /3 converted, 1 failed/);
+    const expected = Object.values(files).flatMap((file) => QUALITIES.map((q) => `${path.basename(file)}.${q}.glb`)).sort();
+    assert.deepEqual(await glbs(meshes), expected);
+    assert.deepEqual(await glbs(path.join(meshes, 'archive')), []);
 });
 
-test('a second run leaves up-to-date GLBs untouched', async () => {
-    const before = await Promise.all((await cacheFiles()).map(async (n) => (await fs.stat(path.join(cacheDir(), n))).mtimeMs));
-    const out = await cli();
-    assert.match(out, /0 converted, 3 already up to date, 1 failed/);
-    const after = await Promise.all((await cacheFiles()).map(async (n) => (await fs.stat(path.join(cacheDir(), n))).mtimeMs));
-    assert.deepEqual(after, before);
+test('converting again gives byte-identical GLBs so git sees no change', async () => {
+    const first = await contents(meshes);
+    await cli();
+    assert.deepEqual(await contents(meshes), first);
 });

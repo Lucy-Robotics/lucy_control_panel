@@ -14,7 +14,7 @@ import {
     nextOverheatState,
     torqueCommands,
 } from '../Utils/motorOverheat.utils';
-import { useThrottledJointReadings } from './useThrottledJointReadings';
+import { sameReadings, useThrottledJointReadings } from './useThrottledJointReadings';
 import { useOverheatMock, withOverheatMock } from '../Services/overheatMock';
 
 const TEMPERATURE_HZ = 2;
@@ -31,7 +31,12 @@ export function useMotorOverheatGuard(
     holdsControl: boolean,
     controllers: ControllerJointConfig[] | null,
 ): MotorOverheat {
-    const realTemperatures = useThrottledJointReadings(subscribeToJointTemperatures, isConnected, TEMPERATURE_HZ);
+    const resendingTorqueRef = useRef(false);
+    const sameUnlessResending = useCallback(
+        (a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>) => !resendingTorqueRef.current && sameReadings(a, b),
+        [],
+    );
+    const realTemperatures = useThrottledJointReadings(subscribeToJointTemperatures, isConnected, TEMPERATURE_HZ, sameUnlessResending);
     const mockTemperatures = useOverheatMock();
     const temperatures = useMemo(() => withOverheatMock(realTemperatures, mockTemperatures), [realTemperatures, mockTemperatures]);
     const [state, setState] = useState(NO_OVERHEAT);
@@ -44,11 +49,13 @@ export function useMotorOverheatGuard(
     useEffect(() => {
         if (!holdsControl || !controllers) {
             wasCuttingRef.current = false;
+            resendingTorqueRef.current = false;
             return;
         }
         const cutting = state.tripped.size > 0;
         if (cutting || wasCuttingRef.current) publishJointTorque(torqueCommands(controllers, state.tripped));
         wasCuttingRef.current = cutting;
+        resendingTorqueRef.current = cutting;
     }, [holdsControl, controllers, state.tripped, temperatures]);
 
     const continueWithOverheat = useCallback(() => {

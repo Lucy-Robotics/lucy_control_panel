@@ -4,6 +4,7 @@
  */
 
 import { useEffect } from 'react';
+import { invalidate } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { EyeLedsHandler } from '../Services/ros/handlers/EyeLeds.handler';
@@ -37,6 +38,7 @@ export function useEyeLeds(robot: URDFRobot | null) {
                 const slot = ledSlotOf(led.name, colors.length);
                 led.view.show(slot === null ? null : ledColorOf(colors, slot));
             }
+            invalidate();
         });
         return () => {
             unsubscribe();

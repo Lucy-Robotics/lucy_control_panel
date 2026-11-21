@@ -33,6 +33,8 @@ import { JointReadingsLine } from '../Components/JointReadingsLine';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
+import { RenderOnChange } from '../Components/RenderOnChange';
+import { MeshQualitySelect } from '../Components/MeshQualitySelect';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
@@ -60,7 +62,7 @@ import { useRobotModel } from '../hooks/useRobotModel';
 import { useEyeLeds } from '../hooks/useEyeLeds';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
-import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
+import { useChangedJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
 import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { hasEffortFeedback } from '../Utils/robotCapabilities';
@@ -397,7 +399,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [robot, selectedPartName, get, controlsRef]);
 
-    useFrame(({ camera }, delta) => {
+    useFrame(({ camera, invalidate }, delta) => {
         const controls = controlsRef.current;
         if (!controls || !selectedPartName || !robot) return;
 
@@ -421,6 +423,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
                 camera.updateProjectionMatrix();
             }
             controls.update();
+            invalidate();
 
             if (rawT >= 1) {
                 isTransitioningRef.current = false;
@@ -561,7 +564,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const heatMapOn = showHeatMap && effortSupported;
     const arrowsOn = showArrows && effortSupported;
     const showEffort = heatMapOn || arrowsOn;
-    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
+    const efforts = useChangedJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const heatMap = useMemo(createEffortHeatMap, []);
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
@@ -732,6 +735,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 </div>
             )}
             <Canvas
+                frameloop="demand"
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
                 onPointerMissed={handlePointerMissed}
             >
@@ -820,6 +824,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
 
                 <ProjectionSync controlsRef={controlsRef} />
+                <RenderOnChange />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
                 {!isMobile && settingsHeight > 0 && (
                     <ViewCube
@@ -927,6 +932,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </>
                 )}
                 <SwitchRow label="DEBUG" tooltip="Show the raw joint readings, and buttons to simulate an overheated motor" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
+                <MeshQualitySelect />
 
                 <button
                     onClick={handleResetCamera}

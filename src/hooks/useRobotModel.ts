@@ -27,14 +27,27 @@ import { MeshHandler } from '../Services/ros/handlers/Mesh.handler';
 import type { MeshPayload } from '../Services/ros/handlers/Mesh.handler';
 import { runWithConcurrency } from '../Utils/concurrency.utils';
 import { formatCaughtError } from '../Utils/error.utils';
-import { decodeStlPayload } from '../Utils/mesh.utils';
+import { base64ToUint8Array, decodeStlPayload } from '../Utils/mesh.utils';
+import { parseMeshGlb } from '../Services/meshes/parseMeshGlb';
+import { useMeshQuality } from './useMeshQuality';
+import { lastFrameCostMs } from '../Utils/frameCost';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
 /** Concurrent mesh fetches for STL/OBJ — keep low; multi-MB responses share one websocket. */
 const MESH_FETCH_CONCURRENCY_LARGE = 2;
+/** Wait this many frame costs between loading redraws, so drawing takes at most a quarter of the time. */
+const LOADING_WAIT_PER_FRAME_COST = 3;
+export const loadingRedrawDelayMs = (frameCostMs: number) => LOADING_WAIT_PER_FRAME_COST * frameCostMs;
 /** Concurrent mesh fetches for DAE — small text payloads; allow more parallelism. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
+/** Concurrent mesh fetches once the server answers with GLB — a few KB each. */
+const MESH_FETCH_CONCURRENCY_GLB = 16;
+
+export function meshFetchConcurrency(servesGlb: boolean, largeCount: number): number {
+    if (servesGlb) return MESH_FETCH_CONCURRENCY_GLB;
+    return largeCount > 0 ? MESH_FETCH_CONCURRENCY_LARGE : MESH_FETCH_CONCURRENCY_DAE;
+}
 
 // ---------------------------------------------------------------------------
 // Module-level cache — shared across all component instances in a session.
@@ -42,7 +55,7 @@ const MESH_FETCH_CONCURRENCY_DAE = 8;
 // ---------------------------------------------------------------------------
 type GlobalCache =
     | { ready: false; forgotten?: boolean }
-    | { ready: true; urdf: string; robot: URDFRobot };
+    | { ready: true; modelKey: string; robot: URDFRobot };
 
 let globalCache: GlobalCache = { ready: false };
 
@@ -93,7 +106,8 @@ export function useRobotModel(): UseRobotModelReturn {
 
     // The URDF string most recently parsed — guards against re-parsing the same
     // model when the latched topic re-delivers it (e.g. after a reconnect).
-    const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.urdf : null);
+    const quality = useMeshQuality();
+    const loadedUrdfRef = useRef<string | null>(globalCache.ready ? globalCache.modelKey : null);
     // Bumped by reload() to force a fresh subscription + parse.
     const [reloadToken, setReloadToken] = useState(0);
     const runRef = useRef(0);
@@ -109,7 +123,7 @@ export function useRobotModel(): UseRobotModelReturn {
         }
     }, []);
 
-    const parseAndLoad = useCallback(async (urdf: string) => {
+    const parseAndLoad = useCallback(async (urdf: string, modelKey: string) => {
         const run = ++runRef.current;
         const stale = () => runRef.current !== run;
         if (!globalCache.ready) globalCache = { ready: false };
@@ -140,6 +154,14 @@ export function useRobotModel(): UseRobotModelReturn {
             let mtlFailed = 0;
             let lastError = '';
             let largeCount = 0;
+            let servesGlb = false;
+            let progressTimer: number | undefined;
+            const showProgress = () => {
+                progressTimer = undefined;
+                if (stale()) return;
+                if (total > 0) setProgress(Math.min(0.99, completed / total));
+                setLoadingStatus(`Loading meshes (${completed}/${total})…`);
+            };
 
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
@@ -149,11 +171,14 @@ export function useRobotModel(): UseRobotModelReturn {
                         const lower = path.toLowerCase();
                         let cached = meshCache.get(path);
                         if (!cached) {
-                            cached = MeshHandler.getMesh(path);
+                            cached = MeshHandler.getMesh(path, quality);
                             meshCache.set(path, cached);
                         }
                         const payload = await cached;
-                        if (lower.endsWith('.dae')) {
+                        if (payload.encoding === 'glb_base64') {
+                            servesGlb = true;
+                            done(await parseMeshGlb(base64ToUint8Array(payload.data).slice().buffer));
+                        } else if (lower.endsWith('.dae')) {
                             done(colladaLoader.parse(utf8Text(payload, path), '').scene);
                         } else if (lower.endsWith('.stl')) {
                             const geometry = stlLoader.parse(await decodeStlPayload(payload));
@@ -198,10 +223,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
                     } finally {
                         completed++;
-                        if (!stale()) {
-                            if (total > 0) setProgress(Math.min(0.99, completed / total));
-                            setLoadingStatus(`Loading meshes (${completed}/${total})…`);
-                        }
+                        progressTimer ??= window.setTimeout(showProgress, loadingRedrawDelayMs(lastFrameCostMs()));
                     }
                 });
                 if (/\.(stl|obj)$/i.test(path)) largeCount++;
@@ -213,15 +235,13 @@ export function useRobotModel(): UseRobotModelReturn {
             // they arrive — the robot is a shared scene graph that keeps mutating
             // while meshes load. Mark this URDF as in-flight to block a duplicate
             // parse if the latched topic re-delivers it mid-load.
-            loadedUrdfRef.current = urdf;
+            loadedUrdfRef.current = modelKey;
             showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            const concurrency = largeCount > 0
-                ? MESH_FETCH_CONCURRENCY_LARGE
-                : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks.slice(0, 1), 1);
-            await runWithConcurrency(tasks.slice(1), concurrency);
+            await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));
+            window.clearTimeout(progressTimer);
             if (stale()) return;
 
             if (total > 0 && failed === total) {
@@ -235,7 +255,7 @@ export function useRobotModel(): UseRobotModelReturn {
             // Commit to the session cache only once every mesh loaded, so a partial
             // load is retried by the next mount instead of keeping its holes.
             if (failed === 0 && mtlFailed === 0) {
-                globalCache = { ready: true, urdf, robot: loadedRobot };
+                globalCache = { ready: true, modelKey, robot: loadedRobot };
             } else {
                 console.warn(
                     `[useRobotModel] ${failed} mesh(es) and ${mtlFailed} material file(s) failed to load ` +
@@ -263,7 +283,7 @@ export function useRobotModel(): UseRobotModelReturn {
             setError(err instanceof Error ? err.message : 'Failed to load robot model');
             setLoading(false);
         }
-    }, [showRobot]);
+    }, [showRobot, quality]);
 
     useEffect(() => {
         let cancelled = false;
@@ -298,8 +318,9 @@ export function useRobotModel(): UseRobotModelReturn {
                 return;
             }
             window.clearTimeout(timeout);
-            if (urdf === loadedUrdfRef.current) return; // already parsed this model
-            void parseAndLoad(urdf);
+            const modelKey = `${quality}\n${urdf}`;
+            if (modelKey === loadedUrdfRef.current) return; // already parsed this model
+            void parseAndLoad(urdf, modelKey);
         });
 
         return () => {
@@ -307,7 +328,7 @@ export function useRobotModel(): UseRobotModelReturn {
             window.clearTimeout(timeout);
             unsubscribe();
         };
-    }, [parseAndLoad, reloadToken, showRobot]);
+    }, [parseAndLoad, reloadToken, quality, showRobot]);
 
     const reload = useCallback(() => {
         // Re-running the hook alone would not touch the rosbridge subscription.

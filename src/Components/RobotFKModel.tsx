@@ -149,7 +149,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         });
     }, [robot, wireframe, selectedPartName, partNameOf, overheatedJointNames, heatMaterial, focusColor, unselectedOpacity, motorMaterialByMesh]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ invalidate }, delta) => {
         if (jointAngles.size === 0) return;
         const displayed = displayedAnglesRef.current;
         const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
@@ -175,6 +175,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
         if (Object.keys(values).length > 0) {
             robot.setJointValues(values);
+            invalidate();
         }
     });
 

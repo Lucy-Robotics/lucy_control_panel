@@ -32,12 +32,11 @@ export const REVEAL: 'tree' | 'sweep' | 'none' = reducedMotion
 /** Fired by useRobotModel once a plan is ready, to wake the on-demand frame loop. */
 export const revealEvents = new EventTarget();
 
-const TREE_TOTAL_MS = 2000;
+const TREE_TOTAL_MS = 1000;
 const GLOW_MS = 300;
 const SWEEP_MS = 1500;
 /** A long frame (shader compile, GPU upload) only advances the animation this much, so it never skips ahead. */
 const MAX_FRAME_STEP_MS = 50;
-const GLOW_COLOR = 0x4fd1ff;
 
 export type RevealPlan = { objects: THREE.Object3D[]; play?: (t: number) => boolean; finish?: () => void; elapsed?: number; done?: boolean };
 
@@ -47,14 +46,14 @@ function linkDepth(o: THREE.Object3D): number {
     return depth;
 }
 
-function glowMaterial(): THREE.MeshBasicMaterial {
+function glowMaterial(color: THREE.Color): THREE.MeshBasicMaterial {
     return new THREE.MeshBasicMaterial({
-        color: GLOW_COLOR, transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+        color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
         depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });
 }
 
-function treeReveal(plan: RevealPlan): Pick<RevealPlan, 'play' | 'finish'> {
+function treeReveal(plan: RevealPlan, color: THREE.Color): Pick<RevealPlan, 'play' | 'finish'> {
     const depths = plan.objects.map(linkDepth);
     const min = Math.min(...depths);
     const step = TREE_TOTAL_MS / Math.max(1, Math.max(...depths) - min);
@@ -74,7 +73,7 @@ function treeReveal(plan: RevealPlan): Pick<RevealPlan, 'play' | 'finish'> {
                 if (!it.shown) {
                     it.shown = true;
                     it.o.visible = true;
-                    it.mat = glowMaterial();
+                    it.mat = glowMaterial(color);
                     const meshes: THREE.Mesh[] = [];
                     it.o.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c as THREE.Mesh); });
                     for (const m of meshes) {
@@ -109,7 +108,7 @@ function discTexture(): THREE.CanvasTexture {
     return new THREE.CanvasTexture(c);
 }
 
-function sweepReveal(plan: RevealPlan, robot: URDFRobot, scene: THREE.Scene): Pick<RevealPlan, 'play' | 'finish'> {
+function sweepReveal(plan: RevealPlan, robot: URDFRobot, scene: THREE.Scene, color: THREE.Color): Pick<RevealPlan, 'play' | 'finish'> {
     robot.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(robot);
     const size = box.getSize(new THREE.Vector3());
@@ -117,7 +116,7 @@ function sweepReveal(plan: RevealPlan, robot: URDFRobot, scene: THREE.Scene): Pi
     // Whole meshes appear as the disc passes their lowest point: no clipping plane, so no shader recompiles.
     const items = plan.objects.map(o => ({ o, bottom: new THREE.Box3().setFromObject(o).min.y }));
     const mat = new THREE.MeshBasicMaterial({
-        map: discTexture(), color: GLOW_COLOR, transparent: true, blending: THREE.AdditiveBlending,
+        map: discTexture(), color, transparent: true, blending: THREE.AdditiveBlending,
         depthWrite: false, side: THREE.DoubleSide,
     });
     const disc = new THREE.Mesh(new THREE.CircleGeometry(Math.max(size.x, size.z) * 0.75, 64), mat);
@@ -149,7 +148,13 @@ function sweepReveal(plan: RevealPlan, robot: URDFRobot, scene: THREE.Scene): Pi
     };
 }
 
-export function useRobotReveal(robot: URDFRobot): void {
+/** The panel accent (`--color-highlight`) when the viewer passes no focus colour. */
+function accentColor(focusColor?: string): THREE.Color {
+    const css = getComputedStyle(document.documentElement).getPropertyValue('--color-highlight').trim();
+    return new THREE.Color(focusColor || css || '#00ff41');
+}
+
+export function useRobotReveal(robot: URDFRobot, focusColor?: string): void {
     const { gl, scene, camera, invalidate } = useThree();
 
     useEffect(() => {
@@ -174,7 +179,8 @@ export function useRobotReveal(robot: URDFRobot): void {
             plan.objects.forEach(o => { o.visible = true; });
             gl.compile(scene, camera);
             plan.objects.forEach(o => { o.visible = false; });
-            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene) : treeReveal(plan));
+            const color = accentColor(focusColor);
+            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene, color) : treeReveal(plan, color));
             plan.elapsed = 0;
             // TEMP debug: lets a test (or the console) watch the reveal.
             (window as unknown as { __lucyReveal?: RevealPlan }).__lucyReveal = plan;

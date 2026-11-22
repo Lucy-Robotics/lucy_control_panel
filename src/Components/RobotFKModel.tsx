@@ -199,7 +199,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
     const { handlePointerMove, handlePointerOut, gizmoUnderPointer } = useRobotHover(gl.domElement, robot, partNameOf, onPartHover, partsClickable);
     useHoverGlow(robot, hoveredPartName, partNameOf, focusColor, gizmoUnderPointer);
-    useRobotReveal(robot);
+    useRobotReveal(robot, focusColor);
 
     // urdf-loader emits geometry in URDF/ROS Z-up space.
     // Rx(-π/2) converts to Three.js Y-up — matching robot_viewer's world rotation.

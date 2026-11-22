@@ -44,6 +44,9 @@ export const loadingRedrawDelayMs = (frameCostMs: number) => LOADING_WAIT_PER_FR
 const MESH_FETCH_CONCURRENCY_DAE = 8;
 /** Concurrent mesh fetches once the server answers with GLB — a few KB each. */
 const MESH_FETCH_CONCURRENCY_GLB = 16;
+/** TEMP batch mode: meshes per mesh/get call, and calls in flight; small chunks let the progress bar move. */
+const BATCH_CHUNK = 16;
+const BATCH_IN_FLIGHT = 4;
 
 export function meshFetchConcurrency(servesGlb: boolean, largeCount: number): number {
     if (servesGlb) return MESH_FETCH_CONCURRENCY_GLB;
@@ -252,10 +255,21 @@ export function useRobotModel(): UseRobotModelReturn {
             setLoadingStatus(`Loading meshes (0/${total})…`);
             const loadStart = performance.now();
             if (MESH_TRANSPORT === 'batch') {
-                const all = MeshHandler.getMeshBatch([...meshPaths], quality);
-                for (const p of meshPaths) {
-                    meshCache.set(p, all.then(m => m[p]?.success ? m[p] : Promise.reject(new Error(m[p]?.message ?? `missing ${p}`))));
+                type BatchReply = Awaited<ReturnType<typeof MeshHandler.getMeshBatch>>;
+                const paths = [...meshPaths];
+                const jobs: Array<() => Promise<void>> = [];
+                for (let i = 0; i < paths.length; i += BATCH_CHUNK) {
+                    const chunk = paths.slice(i, i + BATCH_CHUNK);
+                    let run!: () => Promise<void>;
+                    const reply = new Promise<BatchReply>((resolve, reject) => {
+                        run = () => MeshHandler.getMeshBatch(chunk, quality).then(resolve, reject);
+                    });
+                    jobs.push(run);
+                    for (const p of chunk) {
+                        meshCache.set(p, reply.then(m => m[p]?.success ? m[p] : Promise.reject(new Error(m[p]?.message ?? `missing ${p}`))));
+                    }
                 }
+                void runWithConcurrency(jobs, BATCH_IN_FLIGHT);
             }
             await runWithConcurrency(tasks.slice(0, 1), 1);
             await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));

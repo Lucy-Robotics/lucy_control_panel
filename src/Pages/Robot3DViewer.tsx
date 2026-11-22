@@ -284,24 +284,42 @@ const InfoBadge: React.FC<{
     </div>
 );
 
-const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
+const LoadingBar: React.FC<{ progress: number; status: string }> = ({ progress, status }) => {
     const indeterminate = progress <= 0;
+    const percent = Math.round(progress * 100);
     return (
-        <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-            background: 'var(--color-secondary)', overflow: 'hidden', zIndex: 3,
-        }}>
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    background: 'var(--color-highlight-fill, var(--color-highlight))',
-                    ...(indeterminate
-                        ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
-                        : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
-                }}
-            />
+        <div
+            role="progressbar"
+            aria-label="Loading robot model"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={indeterminate ? undefined : percent}
+            style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                width: 'min(320px, 70%)', zIndex: 3, pointerEvents: 'none',
+            }}
+        >
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8,
+                fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-highlight)',
+            }}>
+                <span>{status.replace(/…$/, '') || 'Loading robot model'}</span>
+                {!indeterminate && <span>{percent}%</span>}
+            </div>
+            <div style={{ position: 'relative', height: 4, background: 'var(--color-secondary)', overflow: 'hidden' }}>
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        background: 'var(--color-highlight)',
+                        boxShadow: '0 0 8px var(--color-highlight)',
+                        ...(indeterminate
+                            ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
+                            : { left: 0, width: `${percent}%`, transition: 'width 0.25s ease-out' }),
+                    }}
+                />
+            </div>
             <style>{'@keyframes urdfLoadSlide { 0% { left: -40%; } 100% { left: 100%; } }'}</style>
         </div>
     );
@@ -526,7 +544,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     isHandsOn = false,
     phoneOrientation = null,
 }) => {
-    const { robot, loading, progress, error, reload } = useRobotModel();
+    const { robot, loading, loadingStatus, progress, error, reload } = useRobotModel();
     useEyeLeds(robot);
     const { isConnected } = useRosConnection();
     const endEffector = useEndEffector(isConnected);
@@ -726,7 +744,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerEnter={() => { isPointerInsideRef.current = true; }}
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
-            {loading && <LoadingBar progress={progress} />}
+            {loading && <LoadingBar progress={progress} status={loadingStatus} />}
             {(hudLeft || hudRight || hudCenter) && (
                 <div className="viewer-hud">
                     <div className="viewer-hud-slot">{hudLeft}</div>

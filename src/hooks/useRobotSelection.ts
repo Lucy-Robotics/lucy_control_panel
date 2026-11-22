@@ -51,8 +51,9 @@ export function useRobotSelection(isConnected: boolean, stackStatus: StackStatus
     }, [isConnected]);
 
     useEffect(() => {
-        if (stackStatus?.ready && stackStatus.robot === switchingTo) setSwitchingTo(null);
-    }, [stackStatus, switchingTo]);
+        // The status file can name the new robot before the old core stops: wait for the running core to be it.
+        if (stackStatus?.ready && stackStatus.robot === switchingTo && robots?.active === switchingTo) setSwitchingTo(null);
+    }, [stackStatus, switchingTo, robots]);
 
     useEffect(() => {
         if (!switchingTo) return;

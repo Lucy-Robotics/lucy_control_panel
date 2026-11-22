@@ -41,7 +41,7 @@ const MESH_FETCH_CONCURRENCY_DAE = 8;
 // Keyed by the URDF source so a republished model triggers a reload.
 // ---------------------------------------------------------------------------
 type GlobalCache =
-    | { ready: false }
+    | { ready: false; forgotten?: boolean }
     | { ready: true; urdf: string; robot: URDFRobot };
 
 let globalCache: GlobalCache = { ready: false };
@@ -65,7 +65,7 @@ function disposeRobot(robot: URDFRobot): void {
 }
 
 export function forgetRobotModel(): void {
-    globalCache = { ready: false };
+    globalCache = { ready: false, forgotten: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +112,7 @@ export function useRobotModel(): UseRobotModelReturn {
     const parseAndLoad = useCallback(async (urdf: string) => {
         const run = ++runRef.current;
         const stale = () => runRef.current !== run;
+        if (!globalCache.ready) globalCache = { ready: false };
         if (!isWebGLAvailable()) {
             setError('WebGL is not supported in this browser.');
             setLoading(false);
@@ -282,8 +283,14 @@ export function useRobotModel(): UseRobotModelReturn {
         const unsubscribe = RobotDescriptionHandler.getInstance().subscribe((urdf) => {
             if (cancelled) return;
             if (!urdf) {
-                // Disconnected / not published yet. Keep any cached model on
-                // screen; otherwise show the waiting state.
+                // Disconnected / not published yet. Keep the robot on screen (a load in
+                // progress resumes on reconnect) unless a robot switch forgot it.
+                if (!globalCache.ready && globalCache.forgotten) {
+                    globalCache = { ready: false };
+                    runRef.current++;
+                    loadedUrdfRef.current = null;
+                    showRobot(null);
+                }
                 if (!globalCache.ready) {
                     setLoading(true);
                     setLoadingStatus('Waiting for robot description from ROS…');
@@ -300,7 +307,7 @@ export function useRobotModel(): UseRobotModelReturn {
             window.clearTimeout(timeout);
             unsubscribe();
         };
-    }, [parseAndLoad, reloadToken]);
+    }, [parseAndLoad, reloadToken, showRobot]);
 
     const reload = useCallback(() => {
         // Re-running the hook alone would not touch the rosbridge subscription.

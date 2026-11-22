@@ -54,14 +54,25 @@ test('selecting a robot asks the backend for it and starts the switch', async ()
 });
 
 test('only the new robot being ready ends the switch', async () => {
-    const { hook, select } = await renderSelection();
+    const { ros, hook, select } = await renderSelection();
     await select('marty_urdf');
 
     await hook.rerender({ isConnected: true, status: readyOn('inmoov_urdf') });
     assert.equal(hook.result.current.switchingTo, 'marty_urdf');
 
+    await ros.receive(ROBOTS_TOPIC, { ...TWO_ROBOTS, active: 'marty_urdf' });
     await hook.rerender({ isConnected: true, status: readyOn('marty_urdf') });
     assert.equal(hook.result.current.switchingTo, null);
+    await hook.unmount();
+});
+
+test('a ready status relayed by the old core before it stops keeps the switch going', async () => {
+    const { ros, hook, select } = await renderSelection();
+    await ros.receive(ROBOTS_TOPIC, TWO_ROBOTS);
+    await select('marty_urdf');
+
+    await hook.rerender({ isConnected: true, status: readyOn('marty_urdf') });
+    assert.equal(hook.result.current.switchingTo, 'marty_urdf');
     await hook.unmount();
 });
 

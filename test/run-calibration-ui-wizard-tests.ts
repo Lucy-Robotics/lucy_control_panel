@@ -81,6 +81,10 @@ try {
     check('Joints phase shows the joint being recorded', jointsMarkup.includes('shoulder_pan'));
     check('Joints phase offers accepting a too-small span anyway', jointsMarkup.includes('Accept anyway'));
     check('Joints phase renders the range meter while recording', jointsMarkup.includes('role="meter"'));
+    check(
+        'Joints phase shows the Enter key on the accept button',
+        /<button[^>]*>Accept and continue<span[^>]*data-testid="enter-key-hint"/.test(jointsMarkup),
+    );
 
     const reviewMarkup = renderWizard({
         ...emptyStatus,

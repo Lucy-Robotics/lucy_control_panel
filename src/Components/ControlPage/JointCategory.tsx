@@ -21,6 +21,7 @@ interface JointCategoryProps {
     onResetJoint?: (name: string) => void;
     showDegrees: boolean;
     disabled?: boolean;
+    leading?: React.ReactNode;
 }
 
 export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
@@ -31,6 +32,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     onResetJoint,
     showDegrees,
     disabled = false,
+    leading,
 }) => {
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
@@ -117,6 +119,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 }}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                    {leading}
                     {joints.map((joint) => (
                         <JointControl
                             key={joint.name}

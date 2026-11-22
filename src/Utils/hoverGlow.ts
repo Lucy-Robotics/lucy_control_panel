@@ -9,6 +9,13 @@ import type { PartNameOf } from './robotParts';
 
 const ignoreRaycast = () => null;
 
+function shown(object: THREE.Object3D): boolean {
+    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+        if (!node.visible) return false;
+    }
+    return true;
+}
+
 export interface HoverGlow {
     follow: () => void;
     detach: () => void;
@@ -24,7 +31,7 @@ export function attachHoverGlow(
     const hovered: THREE.Mesh[] = [];
     robot.traverse((child) => {
         const mesh = child as THREE.Mesh;
-        if (mesh.isMesh && partNameOf(mesh) === partName) hovered.push(mesh);
+        if (mesh.isMesh && shown(mesh) && partNameOf(mesh) === partName) hovered.push(mesh);
     });
     const glows = hovered.map((mesh) => {
         const shell = new THREE.Mesh(mesh.geometry, material);

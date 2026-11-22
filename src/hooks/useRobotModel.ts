@@ -23,7 +23,7 @@ import { isWebGLAvailable, ColladaLoader, STLLoader, OBJLoader, MTLLoader } from
 import URDFLoader from 'urdf-loader';
 import type { URDFRobot } from 'urdf-loader';
 import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
-import { MeshHandler } from '../Services/ros/handlers/Mesh.handler';
+import { MeshHandler, MESH_TRANSPORT } from '../Services/ros/handlers/Mesh.handler';
 import type { MeshPayload } from '../Services/ros/handlers/Mesh.handler';
 import { runWithConcurrency } from '../Utils/concurrency.utils';
 import { formatCaughtError } from '../Utils/error.utils';
@@ -163,21 +163,25 @@ export function useRobotModel(): UseRobotModelReturn {
                 setLoadingStatus(`Loading meshes (${completed}/${total})…`);
             };
 
+            const meshPaths = new Set<string>();
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
+                meshPaths.add(path);
                 tasks.push(async () => {
                     if (stale()) return;
                     try {
                         const lower = path.toLowerCase();
                         let cached = meshCache.get(path);
                         if (!cached) {
-                            cached = MeshHandler.getMesh(path, quality);
+                            cached = MESH_TRANSPORT === 'http'
+                                ? MeshHandler.getMeshHttp(path, quality)
+                                : MeshHandler.getMesh(path, quality);
                             meshCache.set(path, cached);
                         }
                         const payload = await cached;
                         if (payload.encoding === 'glb_base64') {
                             servesGlb = true;
-                            done(await parseMeshGlb(base64ToUint8Array(payload.data).slice().buffer));
+                            done(await parseMeshGlb(payload.bytes ?? base64ToUint8Array(payload.data).slice().buffer));
                         } else if (lower.endsWith('.dae')) {
                             done(colladaLoader.parse(utf8Text(payload, path), '').scene);
                         } else if (lower.endsWith('.stl')) {
@@ -239,10 +243,18 @@ export function useRobotModel(): UseRobotModelReturn {
             showRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
+            const loadStart = performance.now();
+            if (MESH_TRANSPORT === 'batch') {
+                const all = MeshHandler.getMeshBatch([...meshPaths], quality);
+                for (const p of meshPaths) {
+                    meshCache.set(p, all.then(m => m[p]?.success ? m[p] : Promise.reject(new Error(m[p]?.message ?? `missing ${p}`))));
+                }
+            }
             await runWithConcurrency(tasks.slice(0, 1), 1);
             await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));
             window.clearTimeout(progressTimer);
             if (stale()) return;
+            console.info(`[useRobotModel] ${total} meshes over '${MESH_TRANSPORT}' in ${Math.round(performance.now() - loadStart)} ms`);
 
             if (total > 0 && failed === total) {
                 throw new Error(

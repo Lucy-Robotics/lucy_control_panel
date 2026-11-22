@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
+import path from "path";
+import type { IncomingMessage, ServerResponse } from "http";
 
 const ROSLIB_THIS = "var ROSLIB = this.ROSLIB ||";
 
@@ -13,6 +15,32 @@ function roslibGlobalThis(): Plugin {
       if (!code.includes(ROSLIB_THIS)) this.error(`roslib no longer starts with "${ROSLIB_THIS}"`);
       return { code: code.replace(ROSLIB_THIS, "var ROSLIB = globalThis.ROSLIB ||"), map: null };
     },
+  };
+}
+
+// TEMP (tmp/mesh-load-bench): serve the committed GLBs as cached static files,
+// only *.glb inside the workspace's src/*_urdf trees.
+function meshFiles(): Plugin {
+  const srcRoot = fs.realpathSync(path.resolve(process.cwd(), ".."));
+  const handler = (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    if (!req.url?.startsWith("/mesh-files/")) return next();
+    let file = "";
+    try {
+      file = fs.realpathSync(decodeURIComponent(req.url.slice("/mesh-files".length).split("?")[0]));
+    } catch { /* missing: 404 below */ }
+    const rel = path.relative(srcRoot, file);
+    if (!file || rel.startsWith("..") || !/^[^/]+_urdf\//.test(rel) || !file.endsWith(".glb")) {
+      res.statusCode = 404;
+      return res.end();
+    }
+    res.setHeader("Content-Type", "model/gltf-binary");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    fs.createReadStream(file).pipe(res);
+  };
+  return {
+    name: "mesh-files",
+    configureServer: (s) => { s.middlewares.use(handler); },
+    configurePreviewServer: (s) => { s.middlewares.use(handler); },
   };
 }
 
@@ -51,7 +79,7 @@ export default defineConfig(({ mode }) => {
   const port = parseInt(env.VITE_PORT || "4004");
 
   return {
-    plugins: [react(), roslibGlobalThis()],
+    plugins: [react(), roslibGlobalThis(), meshFiles()],
     server: {
       https,
       host: "127.0.0.1",

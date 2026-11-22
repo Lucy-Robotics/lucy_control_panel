@@ -28,7 +28,14 @@ export type MeshEncoding = 'utf8' | 'zlib_base64' | string;
 export type MeshPayload = {
     data: string;
     encoding: MeshEncoding;
+    /** Raw GLB bytes when fetched over HTTP (no base64). */
+    bytes?: ArrayBuffer;
 };
+
+type BatchEntry = MeshPayload & { success: boolean; message: string };
+
+/** TEMP (tmp/mesh-load-bench): `?meshes=ros|batch|http` picks how meshes are fetched. */
+export const MESH_TRANSPORT = new URLSearchParams(window.location.search).get('meshes') ?? 'ros';
 
 /** roslib's public types omit EventEmitter helpers used for service calls. */
 type RosWithEmitter = ROSLIB.Ros & {
@@ -83,6 +90,19 @@ export class MeshHandler {
                 if (attempt >= MESH_SERVICE_ROSBRIDGE_TIMEOUTS_S.length) throw e;
             }
         }
+    }
+
+    /** TEMP: the committed GLB as a cached static file; falls back to mesh/get when none. */
+    static async getMeshHttp(path: string, quality: MeshQuality): Promise<MeshPayload> {
+        const response = await fetch(`/mesh-files${path.replace(/^file:\/\//, '')}.${quality}.glb`);
+        if (!response.ok) return MeshHandler.getMesh(path, quality);
+        return { data: '', encoding: 'glb_base64', bytes: await response.arrayBuffer() };
+    }
+
+    /** TEMP: every mesh in one mesh/get call (JSON list in `path`). */
+    static async getMeshBatch(paths: string[], quality: MeshQuality): Promise<Record<string, BatchEntry>> {
+        const payload = await MeshHandler.request(JSON.stringify(paths), quality, MESH_SERVICE_ROSBRIDGE_TIMEOUTS_S.length);
+        return JSON.parse(payload.data) as Record<string, BatchEntry>;
     }
 
     private static request(path: string, quality: MeshQuality | undefined, attempt: number): Promise<MeshPayload> {

@@ -30,6 +30,7 @@ import { formatCaughtError } from '../Utils/error.utils';
 import { base64ToUint8Array, decodeStlPayload } from '../Utils/mesh.utils';
 import { parseMeshGlb } from '../Services/meshes/parseMeshGlb';
 import { useMeshQuality } from './useMeshQuality';
+import { REVEAL, revealEvents } from './useRobotReveal';
 import { lastFrameCostMs } from '../Utils/frameCost';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
@@ -164,9 +165,15 @@ export function useRobotModel(): UseRobotModelReturn {
             };
 
             const meshPaths = new Set<string>();
+            const revealObjects: THREE.Object3D[] = [];
             const loader = new URDFLoader();
-            loader.loadMeshCb = (path, _manager, done) => {
+            loader.loadMeshCb = (path, _manager, attach) => {
                 meshPaths.add(path);
+                // TEMP: hide each mesh until useRobotReveal plays the reveal.
+                const done: typeof attach = (obj, err) => {
+                    if (obj && REVEAL !== 'none') { obj.visible = false; revealObjects.push(obj); }
+                    attach(obj, err);
+                };
                 tasks.push(async () => {
                     if (stale()) return;
                     try {
@@ -284,6 +291,10 @@ export function useRobotModel(): UseRobotModelReturn {
                 `[useRobotModel] Done — ${linkCount} links, ${jointCount} joints ` +
                 `(${actuated} actuated), ${total - failed}/${total} meshes`,
             );
+            if (REVEAL !== 'none') {
+                loadedRobot.userData.reveal = { objects: revealObjects };
+                revealEvents.dispatchEvent(new Event('ready'));
+            }
             setLoadingStatus('Done');
             setProgress(1);
             setLoading(false);

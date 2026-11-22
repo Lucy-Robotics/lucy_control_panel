@@ -35,7 +35,7 @@ export type MeshPayload = {
 type BatchEntry = MeshPayload & { success: boolean; message: string };
 
 /** TEMP (tmp/mesh-load-bench): `?meshes=ros|batch|http` picks how meshes are fetched. */
-export const MESH_TRANSPORT = new URLSearchParams(window.location.search).get('meshes') ?? 'ros';
+export const MESH_TRANSPORT = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('meshes')) || 'ros';
 
 /** roslib's public types omit EventEmitter helpers used for service calls. */
 type RosWithEmitter = ROSLIB.Ros & {

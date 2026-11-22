@@ -19,6 +19,7 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { useRobotReveal } from '../hooks/useRobotReveal';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import {
@@ -198,6 +199,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
     const { handlePointerMove, handlePointerOut, gizmoUnderPointer } = useRobotHover(gl.domElement, robot, partNameOf, onPartHover, partsClickable);
     useHoverGlow(robot, hoveredPartName, partNameOf, focusColor, gizmoUnderPointer);
+    useRobotReveal(robot);
 
     // urdf-loader emits geometry in URDF/ROS Z-up space.
     // Rx(-π/2) converts to Three.js Y-up — matching robot_viewer's world rotation.

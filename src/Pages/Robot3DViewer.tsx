@@ -295,7 +295,7 @@ const LoadingBar: React.FC<{ progress: number; status: string }> = ({ progress, 
             aria-valuemax={100}
             aria-valuenow={indeterminate ? undefined : percent}
             style={{
-                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                position: 'absolute', bottom: 72, left: '50%', transform: 'translateX(-50%)',
                 width: 'min(320px, 70%)', zIndex: 3, pointerEvents: 'none',
             }}
         >

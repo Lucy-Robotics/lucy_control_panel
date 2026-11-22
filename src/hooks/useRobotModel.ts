@@ -30,7 +30,7 @@ import { formatCaughtError } from '../Utils/error.utils';
 import { base64ToUint8Array, decodeStlPayload } from '../Utils/mesh.utils';
 import { parseMeshGlb } from '../Services/meshes/parseMeshGlb';
 import { useMeshQuality } from './useMeshQuality';
-import { REVEAL, revealEvents } from './useRobotReveal';
+import { REVEAL, revealEvents, revealPlans, type RevealPlan } from './useRobotReveal';
 import { lastFrameCostMs } from '../Utils/frameCost';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
@@ -47,6 +47,29 @@ const MESH_FETCH_CONCURRENCY_GLB = 16;
 /** TEMP batch mode: meshes per mesh/get call, and calls in flight; small chunks let the progress bar move. */
 const BATCH_CHUNK = 16;
 const BATCH_IN_FLIGHT = 4;
+
+/** TEMP: each visual mesh's link depth in the URDF tree (root = 0), so batch chunks can go base-first. */
+function meshDepths(urdf: string): { depths: Map<string, number>; perDepth: number[] } {
+    const doc = new DOMParser().parseFromString(urdf, 'text/xml');
+    const parentOf = new Map<string, string>();
+    for (const joint of doc.querySelectorAll('robot > joint')) {
+        const child = joint.querySelector('child')?.getAttribute('link');
+        const parent = joint.querySelector('parent')?.getAttribute('link');
+        if (child && parent) parentOf.set(child, parent);
+    }
+    const depths = new Map<string, number>();
+    const perDepth: number[] = [];
+    for (const link of doc.querySelectorAll('robot > link')) {
+        let depth = 0;
+        for (let p = parentOf.get(link.getAttribute('name') ?? ''); p !== undefined && depth < parentOf.size; p = parentOf.get(p)) depth++;
+        for (const mesh of link.querySelectorAll('visual mesh')) {
+            perDepth[depth] = (perDepth[depth] ?? 0) + 1;
+            const file = mesh.getAttribute('filename');
+            if (file && !depths.has(file)) depths.set(file, depth);
+        }
+    }
+    return { depths, perDepth };
+}
 
 export function meshFetchConcurrency(servesGlb: boolean, largeCount: number): number {
     if (servesGlb) return MESH_FETCH_CONCURRENCY_GLB;
@@ -174,7 +197,11 @@ export function useRobotModel(): UseRobotModelReturn {
                 meshPaths.add(path);
                 // TEMP: hide each mesh until useRobotReveal plays the reveal.
                 const done: typeof attach = (obj, err) => {
-                    if (obj && REVEAL !== 'none') { obj.visible = false; revealObjects.push(obj); }
+                    if (obj && REVEAL !== 'none') {
+                        obj.visible = false;
+                        revealObjects.push(obj);
+                        if (revealObjects.length === 1) revealEvents.dispatchEvent(new Event('ready'));
+                    }
                     attach(obj, err);
                 };
                 tasks.push(async () => {
@@ -254,9 +281,14 @@ export function useRobotModel(): UseRobotModelReturn {
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
             const loadStart = performance.now();
+            const { depths: depthOf, perDepth } = meshDepths(urdf);
+            // Tree reveal plays while meshes arrive; the sweep needs them all first (it measures the robot).
+            const revealPlan: RevealPlan = { objects: revealObjects, maxDepth: Math.max(0, perDepth.length - 1), expected: perDepth };
+            if (REVEAL === 'tree') revealPlans.set(loadedRobot, revealPlan);
             if (MESH_TRANSPORT === 'batch') {
                 type BatchReply = Awaited<ReturnType<typeof MeshHandler.getMeshBatch>>;
-                const paths = [...meshPaths];
+                const paths = [...meshPaths].sort((a, b) => (depthOf.get(a) ?? 1e9) - (depthOf.get(b) ?? 1e9));
+                console.info(`[useRobotModel] batch order: ${paths.filter(p => !depthOf.has(p)).length}/${paths.length} paths without a URDF depth`);
                 const jobs: Array<() => Promise<void>> = [];
                 for (let i = 0; i < paths.length; i += BATCH_CHUNK) {
                     const chunk = paths.slice(i, i + BATCH_CHUNK);
@@ -271,8 +303,14 @@ export function useRobotModel(): UseRobotModelReturn {
                 }
                 void runWithConcurrency(jobs, BATCH_IN_FLIGHT);
             }
-            await runWithConcurrency(tasks.slice(0, 1), 1);
-            await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));
+            if (MESH_TRANSPORT === 'batch') {
+                // Tasks only wait on chunk replies here; running them all lets base meshes attach as soon as they land.
+                await runWithConcurrency(tasks, tasks.length);
+            } else {
+                await runWithConcurrency(tasks.slice(0, 1), 1);
+                await runWithConcurrency(tasks.slice(1), meshFetchConcurrency(servesGlb, largeCount));
+            }
+            revealPlan.loaded = true;
             window.clearTimeout(progressTimer);
             if (stale()) return;
             console.info(`[useRobotModel] ${total} meshes over '${MESH_TRANSPORT}' in ${Math.round(performance.now() - loadStart)} ms`);
@@ -305,8 +343,8 @@ export function useRobotModel(): UseRobotModelReturn {
                 `[useRobotModel] Done — ${linkCount} links, ${jointCount} joints ` +
                 `(${actuated} actuated), ${total - failed}/${total} meshes`,
             );
-            if (REVEAL !== 'none') {
-                loadedRobot.userData.reveal = { objects: revealObjects };
+            if (REVEAL === 'sweep') {
+                revealPlans.set(loadedRobot, revealPlan);
                 revealEvents.dispatchEvent(new Event('ready'));
             }
             setLoadingStatus('Done');

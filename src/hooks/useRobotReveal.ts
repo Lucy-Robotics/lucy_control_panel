@@ -9,7 +9,7 @@
  *   ?reveal=sweep — a glowing disc rises from the feet, showing each mesh as it passes its bottom
  *   ?reveal=none  — no animation (default for ?meshes=ros, which streams meshes in)
  *
- * useRobotModel hides each loaded mesh and stores a RevealPlan on robot.userData.reveal;
+ * useRobotModel hides each loaded mesh and registers a RevealPlan in revealPlans;
  * this hook plays it. Materials are never touched: the glow is an additive overlay
  * child, so selection/heat/hover material swaps keep working.
  */
@@ -19,15 +19,21 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { URDFRobot } from 'urdf-loader';
 import { MESH_TRANSPORT } from '../Services/ros/handlers/Mesh.handler';
+import { lastFrameCostMs } from '../Utils/frameCost';
 
 const browser = typeof window !== 'undefined';
 const reducedMotion = browser && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 const requested = browser ? new URLSearchParams(window.location.search).get('reveal') : null;
+/** TEMP debug: ?glow=0 skips the overlays, to measure their cost. */
+const GLOW_ON = !browser || new URLSearchParams(window.location.search).get('glow') !== '0';
 export const REVEAL: 'tree' | 'sweep' | 'none' = reducedMotion
     ? 'none'
     : requested === 'tree' || requested === 'sweep' || requested === 'none'
         ? requested
         : MESH_TRANSPORT === 'ros' ? 'none' : 'tree';
+
+/** Plans live here, not in robot.userData: Object3D.clone() JSON-copies userData, so the ghost clone would serialise every mesh. */
+export const revealPlans = new WeakMap<THREE.Object3D, RevealPlan>();
 
 /** Fired by useRobotModel once a plan is ready, to wake the on-demand frame loop. */
 export const revealEvents = new EventTarget();
@@ -38,7 +44,10 @@ const SWEEP_MS = 1500;
 /** A long frame (shader compile, GPU upload) only advances the animation this much, so it never skips ahead. */
 const MAX_FRAME_STEP_MS = 50;
 
-export type RevealPlan = { objects: THREE.Object3D[]; play?: (t: number) => boolean; finish?: () => void; elapsed?: number; done?: boolean };
+export type RevealPlan = {
+    /** Grows as meshes arrive; `loaded` once the last one is in. `expected[d]` = visual meshes at URDF depth d. */
+    loaded?: boolean; maxDepth?: number; expected?: number[];
+    wallStart?: number; frames?: number; costs?: number[]; gaps?: number[]; last?: number; objects: THREE.Object3D[]; play?: (t: number) => boolean; finish?: () => void; elapsed?: number; done?: boolean };
 
 function linkDepth(o: THREE.Object3D): number {
     let depth = 0;
@@ -53,44 +62,85 @@ function glowMaterial(color: THREE.Color): THREE.MeshBasicMaterial {
     });
 }
 
-function treeReveal(plan: RevealPlan, color: THREE.Color): Pick<RevealPlan, 'play' | 'finish'> {
-    const depths = plan.objects.map(linkDepth);
-    const min = Math.min(...depths);
-    const step = TREE_TOTAL_MS / Math.max(1, Math.max(...depths) - min);
-    type Item = { o: THREE.Object3D; at: number; overlays: THREE.Mesh[]; mat: THREE.MeshBasicMaterial | null; shown: boolean };
-    const items: Item[] = plan.objects.map((o, i) => ({ o, at: (depths[i] - min) * step, overlays: [], mat: null, shown: false }));
-    const clearGlow = (it: Item) => {
-        it.overlays.forEach(g => g.removeFromParent());
-        it.overlays = [];
-        it.mat?.dispose();
-        it.mat = null;
+function treeReveal(
+    plan: RevealPlan, color: THREE.Color, gl: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene,
+): Pick<RevealPlan, 'play' | 'finish'> {
+    // One layer per URDF depth, strictly in order, at least `step` apart. A layer waits until
+    // all its meshes have arrived and their shaders compiled off-thread, so no frame stalls.
+    const step = TREE_TOTAL_MS / Math.max(1, plan.maxDepth ?? 1);
+    type Layer = { objects: THREE.Object3D[]; compiling: number; mat: THREE.MeshBasicMaterial | null; overlays: THREE.Mesh[]; shownAt: number | null; glowing: boolean };
+    const layers: Layer[] = [];
+    const layerAt = (d: number) => (layers[d] ??= { objects: [], compiling: 0, mat: null, overlays: [], shownAt: null, glowing: false });
+    let seen = 0;
+    let cursor = 0;
+    let lastShownAt = -Infinity;
+    const show = (l: Layer, t: number) => {
+        l.objects.forEach(o => { o.visible = true; });
+        l.shownAt = t;
+        if (!GLOW_ON) return;
+        l.mat = glowMaterial(color);
+        l.mat.opacity = 0.9;
+        l.glowing = true;
+        for (const o of l.objects) {
+            const meshes: THREE.Mesh[] = [];
+            o.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c as THREE.Mesh); });
+            for (const m of meshes) {
+                const g = new THREE.Mesh(m.geometry, l.mat);
+                g.raycast = () => {};
+                m.add(g);
+                l.overlays.push(g);
+            }
+        }
     };
     return {
         play: (t) => {
-            let running = false;
-            for (const it of items) {
-                if (t < it.at) { running = true; continue; }
-                if (!it.shown) {
-                    it.shown = true;
-                    it.o.visible = true;
-                    it.mat = glowMaterial(color);
-                    const meshes: THREE.Mesh[] = [];
-                    it.o.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c as THREE.Mesh); });
-                    for (const m of meshes) {
-                        const g = new THREE.Mesh(m.geometry, it.mat);
-                        g.raycast = () => {};
-                        m.add(g);
-                        it.overlays.push(g);
-                    }
+            while (seen < plan.objects.length) {
+                const o = plan.objects[seen++];
+                const l = layerAt(Math.max(0, linkDepth(o) - 1));
+                l.objects.push(o);
+                l.compiling++;
+                // KHR_parallel_shader_compile: drawing an uncompiled mesh would block the frame.
+                gl.compileAsync(o, camera, scene).finally(() => {
+                    l.compiling--;
+                    if (l.shownAt !== null) o.visible = true; // straggler for a layer already shown
+                });
+            }
+            const last = Math.max(plan.maxDepth ?? 0, layers.length - 1);
+            while (cursor <= last && t - lastShownAt >= step) {
+                const l = layers[cursor];
+                const expected = plan.expected?.[cursor] ?? 0;
+                if (!l) {
+                    if (expected > 0 && !plan.loaded) break;
+                    cursor++; // no meshes at this depth: skip without spending a step
+                    continue;
                 }
-                if (!it.mat) continue;
-                const k = (t - it.at) / GLOW_MS;
-                if (k >= 1) clearGlow(it);
-                else { it.mat.opacity = 0.9 * (1 - k); running = true; }
+                if ((l.objects.length < expected && !plan.loaded) || l.compiling > 0) break;
+                show(l, t);
+                lastShownAt = t;
+                cursor++;
+            }
+            let running = cursor <= last || !plan.loaded;
+            for (const l of layers) {
+                if (!l?.glowing || !l.mat) continue;
+                const k = (t - l.shownAt!) / GLOW_MS;
+                if (k >= 1) {
+                    l.glowing = false;
+                    l.overlays.forEach(g => { g.visible = false; });
+                } else {
+                    l.mat.opacity = 0.9 * (1 - k);
+                    running = true;
+                }
             }
             return running;
         },
-        finish: () => items.forEach(it => { it.o.visible = true; clearGlow(it); }),
+        finish: () => {
+            plan.objects.forEach(o => { o.visible = true; });
+            for (const l of layers) {
+                if (!l) continue;
+                l.overlays.forEach(g => g.removeFromParent());
+                l.mat?.dispose();
+            }
+        },
     };
 }
 
@@ -148,6 +198,8 @@ function sweepReveal(plan: RevealPlan, robot: URDFRobot, scene: THREE.Scene, col
     };
 }
 
+const median = (xs: number[] = []) => Math.round([...xs].sort((a, b) => a - b)[xs.length >> 1] ?? 0);
+
 /** The panel accent (`--color-highlight`) when the viewer passes no focus colour. */
 function accentColor(focusColor?: string): THREE.Color {
     const css = getComputedStyle(document.documentElement).getPropertyValue('--color-highlight').trim();
@@ -162,7 +214,7 @@ export function useRobotReveal(robot: URDFRobot, focusColor?: string): void {
         revealEvents.addEventListener('ready', wake);
         return () => {
             revealEvents.removeEventListener('ready', wake);
-            const plan = robot.userData.reveal as RevealPlan | undefined;
+            const plan = revealPlans.get(robot);
             if (plan && !plan.done) {
                 plan.done = true;
                 if (plan.finish) plan.finish();
@@ -172,15 +224,13 @@ export function useRobotReveal(robot: URDFRobot, focusColor?: string): void {
     }, [robot, invalidate]);
 
     useFrame((_state, delta) => {
-        const plan = robot.userData.reveal as RevealPlan | undefined;
+        const plan = revealPlans.get(robot);
         if (!plan || plan.done) return;
         if (!plan.play) {
-            // Compile every hidden mesh's shaders now, so showing them later doesn't stall a frame.
-            plan.objects.forEach(o => { o.visible = true; });
-            gl.compile(scene, camera);
-            plan.objects.forEach(o => { o.visible = false; });
             const color = accentColor(focusColor);
-            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene, color) : treeReveal(plan, color));
+            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene, color) : treeReveal(plan, color, gl, camera, scene));
+            plan.wallStart = performance.now();
+            plan.frames = 0;
             plan.elapsed = 0;
             // TEMP debug: lets a test (or the console) watch the reveal.
             (window as unknown as { __lucyReveal?: RevealPlan }).__lucyReveal = plan;
@@ -189,7 +239,15 @@ export function useRobotReveal(robot: URDFRobot, focusColor?: string): void {
             return;
         }
         plan.elapsed! += Math.min(delta * 1000, MAX_FRAME_STEP_MS);
+        plan.frames! += 1;
+        const now = performance.now();
+        (plan.costs ??= []).push(lastFrameCostMs());
+        if (plan.last) {
+            (plan.gaps ??= []).push(now - plan.last);
+            if (now - plan.last > 200) console.info(`[useRobotReveal] ${Math.round(now - plan.last)} ms freeze at anim ${Math.round(plan.elapsed!)} ms, ${plan.objects.filter(o => o.visible).length}/${plan.objects.length} shown, loaded=${!!plan.loaded}`);
+        }
+        plan.last = now;
         if (plan.play!(plan.elapsed!)) invalidate();
-        else { plan.done = true; plan.finish?.(); invalidate(); console.info(`[useRobotReveal] done after ${Math.round(plan.elapsed!)} ms of animation`); }
+        else { plan.done = true; plan.finish?.(); invalidate(); console.info(`[useRobotReveal] done after ${Math.round(plan.elapsed!)} ms of animation, ${Math.round(performance.now() - plan.wallStart!)} ms wall, ${plan.frames} frames, median cost ${median(plan.costs)} ms, median gap ${median(plan.gaps)} ms, max gap ${Math.round(Math.max(...(plan.gaps ?? [0])))} ms`); }
     });
 }

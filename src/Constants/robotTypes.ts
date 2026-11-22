@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 export interface JointLimit {
   lower: number;
   upper: number;
@@ -42,9 +47,9 @@ export interface JointControlState {
   inverted?: boolean;
   restValue?: number;
   /**
-   Tells JointControl whether the numeric fields are already actuator
-   * degrees (show verbatim as °, take input as-is) or URDF radians
-   * (convert to ° for display, convert input back)
+   * Legacy: when true, JointControl treats numeric fields as actuator degrees.
+   * Current pipeline stores servo radians end-to-end; leave unset/false so
+   * deg↔rad conversion happens only at the display boundary.
    */
   valueInActuatorDegrees?: boolean;
 }

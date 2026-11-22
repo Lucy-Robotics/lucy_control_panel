@@ -1,0 +1,17 @@
+/* Let the Calibrate tab fill the page so its actions sit at the bottom. */
+.lucy-config-tabs {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.lucy-config-tabs > .ant-tabs-content-holder {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.lucy-config-tabs--fill > .ant-tabs-content-holder > .ant-tabs-content,
+.lucy-config-tabs--fill > .ant-tabs-content-holder > .ant-tabs-content > .ant-tabs-tabpane-active {
+    height: 100%;
+}

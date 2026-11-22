@@ -1,8 +1,14 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../ros.service.ts';
 
 const HEARTBEAT_TOPIC = '/lucy/client_heartbeat';
 const ACTIVE_CLIENT_TOPIC = '/lucy/active_client';
+const GOODBYE_TOPIC = '/lucy/client_goodbye';
 const CONTROL_SERVICE = '/lucy/control';
 const HEARTBEAT_PERIOD_MS = 1000;
 
@@ -10,6 +16,7 @@ const HEARTBEAT_PERIOD_MS = 1000;
 const CLIENT_ID = `cp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
 type ControllerChangedCallback = (activeClientId: string) => void;
+type ControlRefusedCallback = (reason: string) => void;
 
 /**
  * Presence + "who has control" across every client (web, CLI, etc.) via the
@@ -20,12 +27,19 @@ export class ControlModeHandler {
 
   private activeTopic: ROSLIB.Topic | null = null;
   private heartbeatTopic: ROSLIB.Topic | null = null;
+  private goodbyeTopic: ROSLIB.Topic | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private unsubscribeStatus: (() => void) | null = null;
   private controllerChangedCallbacks: Set<ControllerChangedCallback> = new Set();
+  private controlRefusedCallbacks: Set<ControlRefusedCallback> = new Set();
   private _activeClientId: string = '';
 
+  private readonly sayGoodbye = () => {
+    this.goodbyeTopic?.publish(new ROSLIB.Message({ data: CLIENT_ID }));
+  };
+
   private constructor() {
+    window.addEventListener('pagehide', this.sayGoodbye);
     this.unsubscribeStatus = RosBridgeService.getInstance().onStatusChange((status) => {
       if (status === 'connected') {
         this.init();
@@ -82,6 +96,13 @@ export class ControlModeHandler {
     const beat = () => this.heartbeatTopic?.publish(new ROSLIB.Message({ data: CLIENT_ID }));
     beat(); // register immediately rather than after the first interval
     this.heartbeatTimer = setInterval(beat, HEARTBEAT_PERIOD_MS);
+
+    this.goodbyeTopic = new ROSLIB.Topic({
+      ros,
+      name: GOODBYE_TOPIC,
+      messageType: 'std_msgs/msg/String',
+    });
+    this.goodbyeTopic.advertise();
   }
 
   private teardown() {
@@ -90,6 +111,7 @@ export class ControlModeHandler {
       this.heartbeatTimer = null;
     }
     this.heartbeatTopic = null;
+    this.goodbyeTopic = null;
     this.activeTopic?.unsubscribe();
     this.activeTopic = null;
   }
@@ -124,6 +146,11 @@ export class ControlModeHandler {
     return () => this.controllerChangedCallbacks.delete(cb);
   }
 
+  onControlRefused(cb: ControlRefusedCallback): () => void {
+    this.controlRefusedCallbacks.add(cb);
+    return () => this.controlRefusedCallbacks.delete(cb);
+  }
+
   private callControl(acquire: boolean) {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) return;
@@ -135,13 +162,19 @@ export class ControlModeHandler {
     // The resulting controller arrives on ACTIVE_CLIENT_TOPIC.
     service.callService(
       new ROSLIB.ServiceRequest({ client_id: CLIENT_ID, acquire }),
-      () => {},
-      () => {},
+      (response: unknown) => {
+        const { success, message: reason } = response as { success?: boolean; message?: string };
+        if (acquire && success === false) {
+          this.controlRefusedCallbacks.forEach((cb) => cb(reason ?? 'unknown reason'));
+        }
+      },
+      () => { },
     );
   }
 
   static cleanup() {
     if (ControlModeHandler._instance) {
+      window.removeEventListener('pagehide', ControlModeHandler._instance.sayGoodbye);
       ControlModeHandler._instance.teardown();
       ControlModeHandler._instance.unsubscribeStatus?.();
       ControlModeHandler._instance = null;

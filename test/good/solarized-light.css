@@ -1,0 +1,21 @@
+/*
+ * Lucy Control Panel - Solarized Light Theme
+ * Security Status: VALID / SAFE
+ * Purpose: Solarized daytime palette with contrast styling
+ */
+
+:root {
+  --color-main: #fdf6e3;
+  --color-main-surface: #eee8d5;
+  --color-main-elevated: #e0d9c4;
+  --color-secondary: #93a1a1;
+  --color-secondary-border: #839496;
+  --color-highlight: #b58900;
+  --color-text-primary: #073642;
+  --color-text-secondary: #586e75;
+}
+
+.ant-modal-content {
+  background-color: var(--color-main-surface) !important;
+  color: var(--color-text-primary) !important;
+}

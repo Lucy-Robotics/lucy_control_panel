@@ -1,0 +1,37 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { effortHeat, effortRatio } from './jointEffort.utils.ts';
+
+const MIN_VISIBLE_LOAD = 0.05;
+const HEAT_STOPS = [
+    { heat: 0, rgb: [30, 80, 255] },
+    { heat: 0.25, rgb: [0, 220, 255] },
+    { heat: 0.5, rgb: [0, 217, 51] },
+    { heat: 0.75, rgb: [255, 230, 0] },
+    { heat: 1, rgb: [220, 0, 0] },
+];
+
+export function isEffortVisible(load: number): boolean {
+    return effortRatio(load) >= MIN_VISIBLE_LOAD;
+}
+
+export function effortArcRad(load: number): number {
+    return effortHeat(load) * 2 * Math.PI;
+}
+
+export function effortSweepSign(load: number): 1 | -1 {
+    return load > 0 ? -1 : 1;
+}
+
+export function effortColor(load: number): string {
+    const heat = effortHeat(load);
+    const upper = HEAT_STOPS.findIndex((stop) => heat <= stop.heat);
+    const to = HEAT_STOPS[upper];
+    const from = HEAT_STOPS[Math.max(upper - 1, 0)];
+    const blend = to === from ? 0 : (heat - from.heat) / (to.heat - from.heat);
+    const [red, green, blue] = from.rgb.map((channel, i) => Math.round(channel + (to.rgb[i] - channel) * blend));
+    return `rgb(${red}, ${green}, ${blue})`;
+}

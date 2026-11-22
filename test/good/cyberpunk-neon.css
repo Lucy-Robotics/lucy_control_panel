@@ -1,0 +1,40 @@
+/*
+ * Lucy Control Panel - Cyberpunk Neon Theme
+ * Security Status: VALID / SAFE
+ * Purpose: Legitimate theme customizing CSS variables and safe styles
+ */
+
+:root {
+  --color-main: #0a0e17;
+  --color-main-surface: #111927;
+  --color-main-elevated: #1a2333;
+  --color-secondary: #00f0ff;
+  --color-secondary-border: #00f0ff;
+  --color-highlight: #ff007f;
+  --color-text-primary: #e0f8ff;
+  --color-text-secondary: #7096b0;
+  --ui-accent-green: #00ff66;
+}
+
+/* Card aesthetics */
+.ant-card {
+  border: 1px solid var(--color-secondary) !important;
+  background: rgba(17, 25, 39, 0.85) !important;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.15) !important;
+}
+
+/* Glowing buttons */
+.ant-btn-primary {
+  background: var(--color-highlight) !important;
+  border-color: var(--color-highlight) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.4) !important;
+  font-weight: bold !important;
+}
+
+/* Monospace telemetry telemetry badges */
+.lucy-telemetry-badge {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--color-secondary);
+  border: 1px solid var(--color-secondary);
+  padding: 2px 6px;
+}

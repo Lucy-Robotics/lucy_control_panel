@@ -39,7 +39,7 @@ Publishes the current joint positions to `ros2_control`.
 
 - Iterates over `controllerConfigs`; for each controller, collects only the joints that belong to it (by name).
 - Publishes one `trajectory_msgs/JointTrajectory` per controller with a single waypoint.
-- Uses `time_from_start = 0.2 s` — some controllers reject points with `t = 0`.
+- Uses `time_from_start = 0.2 s` - some controllers reject points with `t = 0`.
 - Positions are in **URDF radians**. Sliders work in servo degrees or radians; conversion happens at the page layer (`servoDegToJointRad` / `jointRadToServoDeg`) before reaching this handler. URDF clamping is enforced downstream by `LucySystemHardware`, not in the LCP.
 - Silently skips joints not present in the `joints` array.
 
@@ -118,7 +118,7 @@ publishJointStates(joints)
 
 ## Design notes
 
-- **Singleton pattern** — avoids duplicate topic publishers when the handler is accessed from multiple components.
-- **Clock subscription** — `trajectory_msgs` headers must carry simulation time when `use_sim_time:=true`; falling back to wall clock transparently supports the real-robot case.
-- **Joint ordering** — `JointTrajectoryController` requires positions in the same order as `joint_names` in the YAML config. The handler enforces this by iterating `cfg.joints` (from config), not the incoming `joints` array.
-- **`time_from_start = 0.2 s`** — a known workaround: some versions of `ros2_control`'s `JointTrajectoryController` silently drop the first point when its timestamp is exactly zero.
+- **Singleton pattern** - avoids duplicate topic publishers when the handler is accessed from multiple components.
+- **Clock subscription** - `trajectory_msgs` headers must carry simulation time when `use_sim_time:=true`; falling back to wall clock transparently supports the real-robot case.
+- **Joint ordering** - `JointTrajectoryController` requires positions in the same order as `joint_names` in the YAML config. The handler enforces this by iterating `cfg.joints` (from config), not the incoming `joints` array.
+- **`time_from_start = 0.2 s`** - a known workaround: some versions of `ros2_control`'s `JointTrajectoryController` silently drop the first point when its timestamp is exactly zero.

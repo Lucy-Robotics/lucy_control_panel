@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * ROS transport only: streams `ConfigurePipeline` action feedback/results from
  * `lucy_config_pipeline` through rosbridge.
@@ -74,8 +79,8 @@ export function normalizeConfigurePipelineResult(raw: unknown): ConfigurePipelin
         root && typeof root.values === 'object' && root.values !== null
             ? asRecord(root.values) ?? {}
             : root && 'result' in root
-              ? asRecord(root.result) ?? {}
-              : root ?? {};
+                ? asRecord(root.result) ?? {}
+                : root ?? {};
     const errs = Array.isArray(o.errors) ? o.errors.filter((x): x is string => typeof x === 'string') : [];
     const flashed = Array.isArray(o.boards_flashed)
         ? o.boards_flashed.filter((x): x is string => typeof x === 'string')
@@ -107,7 +112,7 @@ function tapRosbridgeJson(
 ): () => void {
     const sock = (ros as unknown as { socket?: WebSocket }).socket;
     if (!sock) {
-        return () => {};
+        return () => { };
     }
     const ws = sock as WebSocketWithPrev;
     const prev = ws.onmessage;
@@ -149,14 +154,14 @@ export function startConfigurePipeline(
     if (!ros) {
         return {
             promise: Promise.reject(new Error('ROS bridge is not connected.')),
-            abort: () => {},
+            abort: () => { },
         };
     }
 
     if (configurePipelineRunLock) {
         return {
             promise: Promise.reject(new Error('ConfigurePipeline is already running.')),
-            abort: () => {},
+            abort: () => { },
         };
     }
 
@@ -189,7 +194,7 @@ export function startConfigurePipeline(
         configurePipelineRunLock = false;
     };
 
-    let abortFn: () => void = () => {};
+    let abortFn: () => void = () => { };
     configurePipelineRunLock = true;
 
     const promise = new Promise<ConfigurePipelineResultNormalized>((resolve, reject) => {

@@ -12,6 +12,10 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
+import type { Quat } from '../Utils/phoneOrientation';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
@@ -505,6 +509,8 @@ export interface Robot3DViewerProps {
     hudRight?: React.ReactNode;
     hudCenter?: React.ReactNode;
     isHandsOn?: boolean;
+    teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -515,9 +521,12 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudCenter,
     onJointValueChange,
     isHandsOn = false,
+    teleopTarget = null,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
     const motorOverheat = useContext(MotorOverheatContext);
@@ -768,6 +777,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     />
                 )}
 
+                {robot && <EndEffectorMarkers robot={robot} target={teleopTarget} phoneOrientation={phoneOrientation} colors={themeColors} />}
+
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
@@ -821,6 +832,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </CollapsibleOverlay>
+
+            {endEffector && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
 
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (

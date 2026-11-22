@@ -12,11 +12,15 @@ import { HardwareConfigHandler } from '../../Services/ros/handlers/HardwareConfi
 import { RosBridgeService } from '../../Services/ros/ros.service.ts';
 import { useActiveHardwareRos } from '../../contexts/ActiveHardwareRosContext.tsx';
 import { calibrationTeaser } from './calibration/calibrationTeaser.ts';
+import { CalibrationPending } from './calibration/CalibrationPending.tsx';
 import { CalibrationTeaserPage } from './calibration/CalibrationTeaserPage.tsx';
 import { CalibrationWizard } from './calibration/CalibrationWizard.tsx';
 import { isSimulatedArm } from './calibration/simulatedArm.ts';
 import { useCalibrationSession } from './calibration/useCalibrationSession.ts';
+import { useElapsed } from './calibration/useElapsed.ts';
 import ConfigurationPage from './ConfigurationPage.tsx';
+
+const SUPPORT_ANSWER_TIMEOUT_MS = 5000;
 
 /** The robot package wired on the config services, or '' until they answer. */
 function useRobotPackage(): string {
@@ -44,11 +48,19 @@ const ConfigurationTabs = () => {
     const screenPadding = getScreenPadding(Grid.useBreakpoint());
     const { servoControlAvailable } = useActiveHardwareRos();
 
-    if (session.supported === null) return <ConfigurationPage />;
+    const pending = session.supported === null;
+    const noAnswer = useElapsed(pending, SUPPORT_ANSWER_TIMEOUT_MS);
+
+    if (pending && noAnswer) return <ConfigurationPage />;
 
     const withoutRealHardware = !servoControlAvailable || isSimulatedArm(session.status);
-    const teaser = calibrationTeaser(robotPackage, session.supported, withoutRealHardware);
-    const wizard = <CalibrationWizard session={session} />;
+    const teaser =
+        session.supported === null ? null : calibrationTeaser(robotPackage, session.supported, withoutRealHardware);
+    let calibrate = <CalibrationWizard session={session} />;
+    if (pending) calibrate = <CalibrationPending />;
+    else if (teaser) {
+        calibrate = <CalibrationTeaserPage teaser={teaser} onManualConfiguration={() => setTab('yaml')} />;
+    }
 
     return (
         <Tabs
@@ -63,11 +75,7 @@ const ConfigurationTabs = () => {
                 {
                     key: 'calibrate',
                     label: 'Calibrate',
-                    children: teaser ? (
-                        <CalibrationTeaserPage teaser={teaser} onManualConfiguration={() => setTab('yaml')} />
-                    ) : (
-                        wizard
-                    ),
+                    children: calibrate,
                 },
                 { key: 'yaml', label: 'Manual Configuration', children: <ConfigurationPage /> },
             ]}

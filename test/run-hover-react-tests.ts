@@ -51,7 +51,7 @@ function so101BaseAndShoulder() {
     const rotation = revolute('Rotation', shoulder);
     shoulder.add(revolute('Pitch', upperArm));
     robot.add(rotation);
-    Object.assign(robot, { joints: { Rotation: rotation, Pitch: shoulder.children[0] } });
+    Object.assign(robot, { joints: { Rotation: rotation, Pitch: shoulder.children[0] }, links: { shoulder, upper_arm: upperArm } });
     return { robot, shoulder, upperArm };
 }
 
@@ -105,6 +105,38 @@ const meshCount = (root: THREE.Object3D) => {
         assert.ok(shell.matrix.equals(upperArmMesh.matrixWorld), 'the glow follows the part as the joint moves');
         glow.detach();
         assert.equal(scene.children.length, 1, 'leaving the part removes its glow');
+    }
+
+    {
+        const { URDFMimicJoint } = await import('urdf-loader/src/URDFClasses.js');
+        const link = (name: string) => Object.assign(new URDFLink(), { name, urdfName: name });
+        const joint = (name: string, jointType: string, child: URDFLink, Cls = URDFJoint) => {
+            const node = Object.assign(new Cls(), { name, urdfName: name, jointType, axis: new THREE.Vector3(0, 0, 1) });
+            node.add(child);
+            return node;
+        };
+        const [jaw, mirror, tip, other] = [link('jaw'), link('jaw_mirror'), link('mirror_tip'), link('other')];
+        const meshes = [jaw, mirror, tip, other].map((l, i) => {
+            const v = visual(`meshes/${l.name}.stl`, GREY + i);
+            l.add(v.visual);
+            return v.mesh;
+        });
+        const jawJoint = joint('Jaw', 'revolute', jaw);
+        const mimic = joint('JawMimic', 'revolute', mirror, URDFMimicJoint);
+        Object.assign(mimic, { mimicJoint: 'Jaw' });
+        jawJoint.mimicJoints.push(mimic);
+        mirror.add(joint('MirrorTip', 'fixed', tip));
+        const robot = new URDFRobot();
+        const otherJoint = joint('Other', 'revolute', other);
+        robot.add(link('base'), jawJoint, mimic, otherJoint);
+        Object.assign(robot, { joints: { Jaw: jawJoint, JawMimic: mimic, Other: otherJoint }, links: { jaw, jaw_mirror: mirror, mirror_tip: tip, other } });
+        const glowing = (partName: string) => {
+            const scene = new THREE.Scene();
+            attachHoverGlow(scene, robot, partName, robotPartNames(robot), new THREE.MeshBasicMaterial());
+            return meshes.map((mesh) => scene.children.some((c) => (c as THREE.Mesh).geometry === mesh.geometry));
+        };
+        assert.deepEqual(glowing('jaw'), [true, true, true, false], 'hovering a joint also glows the joints that mimic it, with their sub-parts');
+        assert.deepEqual(glowing('other'), [false, false, false, true], 'hovering an unrelated joint does not glow the mimic joints');
     }
 
     {

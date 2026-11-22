@@ -10,7 +10,16 @@ type Subscribe<T> = (callback: (readings: T) => void) => () => void;
 
 const NO_READINGS: JointReadings = new Map();
 
-export function useThrottledReadings<T>(subscribe: Subscribe<T>, isConnected: boolean, empty: T, hz = 10): T {
+export const sameReadings = (a: JointReadings, b: JointReadings) =>
+    a.size === b.size && [...a].every(([name, value]) => b.get(name) === value);
+
+export function useThrottledReadings<T>(
+    subscribe: Subscribe<T>,
+    isConnected: boolean,
+    empty: T,
+    hz = 10,
+    same: (a: T, b: T) => boolean = Object.is,
+): T {
     const [readings, setReadings] = useState<T>(empty);
 
     useEffect(() => {
@@ -22,17 +31,25 @@ export function useThrottledReadings<T>(subscribe: Subscribe<T>, isConnected: bo
         const unsubscribe = subscribe((next) => { latest = next; });
         const interval = setInterval(() => {
             if (latest === null) return;
-            setReadings(latest);
+            const next = latest;
             latest = null;
+            setReadings((shown) => (same(shown, next) ? shown : next));
         }, 1000 / hz);
         return () => {
             clearInterval(interval);
             unsubscribe();
         };
-    }, [subscribe, isConnected, empty, hz]);
+    }, [subscribe, isConnected, empty, hz, same]);
 
     return readings;
 }
 
-export const useThrottledJointReadings = (subscribe: Subscribe<JointReadings>, isConnected: boolean, hz = 10) =>
-    useThrottledReadings(subscribe, isConnected, NO_READINGS, hz);
+export const useThrottledJointReadings = (
+    subscribe: Subscribe<JointReadings>,
+    isConnected: boolean,
+    hz = 10,
+    same: (a: JointReadings, b: JointReadings) => boolean = Object.is,
+) => useThrottledReadings(subscribe, isConnected, NO_READINGS, hz, same);
+
+export const useChangedJointReadings = (subscribe: Subscribe<JointReadings>, isConnected: boolean, hz = 10) =>
+    useThrottledReadings(subscribe, isConnected, NO_READINGS, hz, sameReadings);

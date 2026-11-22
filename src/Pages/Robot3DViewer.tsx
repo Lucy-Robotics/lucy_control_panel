@@ -12,21 +12,29 @@ import type { URDFRobot } from 'urdf-loader';
 import { Grid as AntGrid, Slider, Tooltip, Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { JointRotationGizmo } from '../Components/JointRotationGizmo';
+import { EndEffectorMarkers } from '../Components/EndEffectorMarkers';
+import { RobotGhost } from '../Components/RobotGhost';
+import type { Quat } from '../Utils/phoneOrientation';
+import { isEditableTarget } from '../Utils/isEditableTarget';
+import { EndEffectorReadout } from '../Components/EndEffectorReadout';
+import { useEndEffector } from '../hooks/useEndEffector';
+import { useGhostRobot } from '../hooks/useGhostRobot';
+import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
+import { useEndEffectorVisible } from '../hooks/useEndEffectorVisible';
+import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
+import { useGhostOpacity } from '../hooks/useGhostOpacity';
+import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
+import { useTargetPose } from '../hooks/useTargetPose';
 import { JointEffortGauges } from '../Components/JointEffortGauges';
 import { JointTemperatureReadout } from '../Components/JointTemperatureReadout';
 import { JointEffortDebug } from '../Components/JointEffortDebug';
 import { overheatMock } from '../Services/overheatMock';
 import { JointReadingsLine } from '../Components/JointReadingsLine';
-import { RobotGhost } from '../Components/RobotGhost';
-import { useGhostRobot } from '../hooks/useGhostRobot';
-import { setGhostVisible, useGhostVisible } from '../hooks/useGhostVisible';
-import { useTeleopGhostVisible } from '../hooks/useTeleopGhostVisible';
-import { useGhostOpacity } from '../hooks/useGhostOpacity';
-import { GhostOpacitySlider } from '../Components/GhostOpacitySlider';
-import { useTargetPose } from '../hooks/useTargetPose';
 import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
+import { RenderOnChange } from '../Components/RenderOnChange';
+import { MeshQualitySelect } from '../Components/MeshQualitySelect';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
@@ -51,9 +59,10 @@ import {
 } from '../Utils/camera.utils';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
+import { useEyeLeds } from '../hooks/useEyeLeds';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
-import { useThrottledJointReadings } from '../hooks/useThrottledJointReadings';
+import { useChangedJointReadings } from '../hooks/useThrottledJointReadings';
 import { subscribeToJointLoads } from '../Services/ros/handlers/DynamicJointState.handler';
 import { createEffortHeatMap } from '../Utils/effortHeatMap';
 import { hasEffortFeedback } from '../Utils/robotCapabilities';
@@ -85,7 +94,7 @@ const getInitialUnselectedOpacity = (): number => {
 };
 
 const OVERLAY_MARGIN_PX = 10;
-const SETTINGS_BOX_WIDTH = 165;
+const SETTINGS_BOX_WIDTH = 145;
 const VIEW_CUBE_GAP_PX = 6;
 const FOCUS_COLOR = 'var(--color-highlight)';
 const MOUSE_HINTS = [
@@ -105,10 +114,6 @@ const savedCamera: { position: Vec3; target: Vec3; zoom?: number } = {
     target: [...DEFAULT_CAMERA.target],
 };
 let framedRobot: URDFRobot | null = null;
-
-const isEditableTarget = (target: EventTarget | null): boolean =>
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -394,7 +399,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [robot, selectedPartName, get, controlsRef]);
 
-    useFrame(({ camera }, delta) => {
+    useFrame(({ camera, invalidate }, delta) => {
         const controls = controlsRef.current;
         if (!controls || !selectedPartName || !robot) return;
 
@@ -418,6 +423,7 @@ const CameraFollowController: React.FC<CameraFollowControllerProps> = ({
                 camera.updateProjectionMatrix();
             }
             controls.update();
+            invalidate();
 
             if (rawT >= 1) {
                 isTransitioningRef.current = false;
@@ -501,10 +507,12 @@ export interface Robot3DViewerProps {
     isControlOn?: boolean;
     joints?: JointControlState[];
     onJointValueChange?: (name: string, value: number) => void;
+    teleopTarget?: Vec3 | null;
+    phoneOrientation?: Quat | null;
+    isHandsOn?: boolean;
     hudLeft?: React.ReactNode;
     hudRight?: React.ReactNode;
     hudCenter?: React.ReactNode;
-    isHandsOn?: boolean;
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
@@ -514,18 +522,23 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     hudRight,
     hudCenter,
     onJointValueChange,
+    teleopTarget = null,
     isHandsOn = false,
+    phoneOrientation = null,
 }) => {
     const { robot, loading, progress, error, reload } = useRobotModel();
+    useEyeLeds(robot);
     const { isConnected } = useRosConnection();
+    const endEffector = useEndEffector(isConnected);
     const jointAngles = useThrottledJointAngles(isConnected);
     const themeColors = useThemeColors3D();
-    const motorOverheat = useContext(MotorOverheatContext);
     const ghost = useGhostRobot(loading ? null : robot, themeColors.ghost, useGhostOpacity());
     const targetPose = useTargetPose(isConnected);
     const isGhostVisible = useGhostVisible();
     const isTeleopGhostVisible = useTeleopGhostVisible();
     const showGhost = isHandsOn ? isTeleopGhostVisible : isGhostVisible;
+    const isEndEffectorVisible = useEndEffectorVisible();
+    const motorOverheat = useContext(MotorOverheatContext);
     const isMobile = !AntGrid.useBreakpoint().md;
 
     const [hasRosControl, setHasRosControl] = useState<boolean>(() => {
@@ -551,7 +564,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
     const heatMapOn = showHeatMap && effortSupported;
     const arrowsOn = showArrows && effortSupported;
     const showEffort = heatMapOn || arrowsOn;
-    const efforts = useThrottledJointReadings(subscribeToJointLoads, isConnected && showEffort);
+    const efforts = useChangedJointReadings(subscribeToJointLoads, isConnected && showEffort);
     const heatMap = useMemo(createEffortHeatMap, []);
     useEffect(() => () => heatMap.material.dispose(), [heatMap]);
     const [orthographic, setOrthographic] = usePersistentBoolean(STORAGE_KEY_ORTHOGRAPHIC);
@@ -571,14 +584,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
         return getLinkBoundingBox(link);
     }, [robot, selectedPartName]);
 
-    const loadedOnMountRef = useRef(robot !== null && !loading);
-    const userMovedCameraRef = useRef(false);
     useEffect(() => {
-        if (!robot || loading || framedRobot === robot) return;
+        if (!robot || framedRobot === robot) return;
         framedRobot = robot;
-        if (userMovedCameraRef.current) return;
-        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), loadedOnMountRef.current);
-    }, [robot, loading, handleSelectView]);
+        handleSelectView(DEFAULT_VIEW_DIRECTION.clone(), true);
+    }, [robot, handleSelectView]);
 
     const [unselectedOpacity, setUnselectedOpacity] = useState<number>(getInitialUnselectedOpacity);
 
@@ -717,12 +727,15 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
             onPointerLeave={() => { isPointerInsideRef.current = false; }}
         >
             {loading && <LoadingBar progress={progress} />}
-            <div className="viewer-hud">
-                <div className="viewer-hud-slot">{hudLeft}</div>
-                <div className="viewer-hud-slot">{hudCenter}</div>
-                <div className="viewer-hud-slot">{hudRight}</div>
-            </div>
+            {(hudLeft || hudRight || hudCenter) && (
+                <div className="viewer-hud">
+                    <div className="viewer-hud-slot">{hudLeft}</div>
+                    <div className="viewer-hud-slot">{hudCenter}</div>
+                    <div className="viewer-hud-slot">{hudRight}</div>
+                </div>
+            )}
             <Canvas
+                frameloop="demand"
                 style={{ width: '100%', height: '100%', background: 'var(--color-main)', flex: 1 }}
                 onPointerMissed={handlePointerMissed}
             >
@@ -770,6 +783,16 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
                 {robot && ghost && showGhost && <RobotGhost ghost={ghost} robot={robot} pose={targetPose} />}
 
+                {robot && isEndEffectorVisible && (
+                    <EndEffectorMarkers
+                        robot={robot}
+                        ghost={targetPose ? ghost : null}
+                        target={teleopTarget}
+                        phoneOrientation={phoneOrientation}
+                        colors={themeColors}
+                    />
+                )}
+
                 {robot && showEffort && <JointEffortGauges robot={robot} efforts={efforts} heatSources={heatMap.sources} showArrows={arrowsOn} />}
 
                 <JointRotationGizmo
@@ -792,7 +815,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     makeDefault
                     target={initialCamera.target}
                     onChange={handleControlsChange}
-                    onStart={() => { userMovedCameraRef.current = true; }}
                     enablePan
                     enableZoom
                     enableRotate
@@ -802,6 +824,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 />
 
                 <ProjectionSync controlsRef={controlsRef} />
+                <RenderOnChange />
                 <CameraViewTween request={viewRequest} controlsRef={controlsRef} getFramingBox={getFramingBox} />
                 {!isMobile && settingsHeight > 0 && (
                     <ViewCube
@@ -822,6 +845,8 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 </div>
             </CollapsibleOverlay>
 
+            {endEffector && isEndEffectorVisible && <EndEffectorReadout position={endEffector} target={teleopTarget} />}
+
             {/* Hovered joint / followed part badge — bottom-center */}
             {hoveredPartName && hoveredJoint ? (
                 <InfoBadge label="HOVER:" partName={hoveredPartName} jointName={urdfNameOf(hoveredJoint)}>
@@ -839,7 +864,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
 
             {/* Settings — bottom-right, under the view cube */}
             <CollapsibleOverlay
-                title="VIEW SETTINGS"
+                title="3D SETTINGS"
                 style={{ left: 'auto', right: OVERLAY_MARGIN_PX, width: SETTINGS_BOX_WIDTH }}
                 gap={6}
                 boxRef={settingsRef}
@@ -848,7 +873,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                 {availableParts.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUS</span>
+                            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>PART FOCUSED</span>
                             <select
                                 value={selectedPartName || ''}
                                 onChange={e => handlePartSelect(e.target.value)}
@@ -864,7 +889,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                     cursor: 'pointer',
                                 }}
                             >
-                                <option value="">(None - Free view)</option>
+                                <option value="">None - Free view</option>
                                 {availableParts.map(name => (
                                     <option key={name} value={name}>{name}</option>
                                 ))}
@@ -887,6 +912,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                                 step={0.05}
                                 value={unselectedOpacity}
                                 onChange={handleUnselectedOpacityChange}
+                                disabled={!selectedPartName}
                                 style={{ margin: 0 }}
                                 tooltip={{ open: false }}
                             />
@@ -906,6 +932,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </>
                 )}
                 <SwitchRow label="DEBUG" tooltip="Show the raw joint readings, and buttons to simulate an overheated motor" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
+                <MeshQualitySelect />
 
                 <button
                     onClick={handleResetCamera}

@@ -14,6 +14,7 @@ import React, {
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { HardwareConfigHandler } from '../Services/ros/handlers/HardwareConfig.handler';
+import { callOnceServiceIsUp } from '../Utils/serviceStartup';
 import { Diagnostics } from '../Services/diagnostics.service';
 import { parseHardwareConfigYaml } from '../Utils/hardwareConfigYaml';
 import { parseMotorSpecs, type MotorSpecs } from '../Utils/motorSpecs';
@@ -49,6 +50,8 @@ interface ActiveHardwareRosContextValue {
     productionMode: boolean;
     /** False on mock hardware (no robot, no simulator): there is no servo to drive, so URDF only. */
     servoControlAvailable: boolean;
+    /** True without a robot or simulator, false when one runs, null until the URDF arrives. */
+    mockHardware: boolean | null;
     activeHardwareLoading: boolean;
     activeHardwareError: string | null;
     /** Increments on each successful `config/get` active fetch — editors may gate hydration on this. */
@@ -114,7 +117,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
         setActiveHardwareLoading(true);
         setActiveHardwareError(null);
         try {
-            const res = await HardwareConfigHandler.getConfig('');
+            const res = await callOnceServiceIsUp(() => HardwareConfigHandler.getConfig(''));
             if (!res.success) {
                 const msg = res.message || 'Failed to load active hardware config';
                 Diagnostics.record('connection', 'hardware', 'error', msg);
@@ -183,6 +186,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             controllerConfigsFromActive: controllerConfigs,
             productionMode,
             servoControlAvailable,
+            mockHardware,
             activeHardwareLoading,
             activeHardwareError,
             activeHardwareFetchEpoch: epoch,
@@ -200,6 +204,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             controllerConfigs,
             productionMode,
             servoControlAvailable,
+            mockHardware,
             activeHardwareLoading,
             activeHardwareError,
             epoch,

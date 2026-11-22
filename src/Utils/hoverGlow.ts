@@ -6,8 +6,17 @@
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import type { PartNameOf } from './robotParts';
+import { mimicsPart } from './mimicParts';
+import { jointTaggedPart } from './jointTaggedVisuals';
 
 const ignoreRaycast = () => null;
+
+function shown(object: THREE.Object3D): boolean {
+    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+        if (!node.visible) return false;
+    }
+    return true;
+}
 
 export interface HoverGlow {
     follow: () => void;
@@ -22,9 +31,11 @@ export function attachHoverGlow(
     material: THREE.Material,
 ): HoverGlow {
     const hovered: THREE.Mesh[] = [];
+    const isMimic = mimicsPart(robot, partName);
+    const taggedElsewhere = (mesh: THREE.Mesh) => ![null, partName].includes(jointTaggedPart(mesh, robot));
     robot.traverse((child) => {
         const mesh = child as THREE.Mesh;
-        if (mesh.isMesh && partNameOf(mesh) === partName) hovered.push(mesh);
+        if (mesh.isMesh && shown(mesh) && (partNameOf(mesh) === partName || (isMimic(mesh) && !taggedElsewhere(mesh)))) hovered.push(mesh);
     });
     const glows = hovered.map((mesh) => {
         const shell = new THREE.Mesh(mesh.geometry, material);

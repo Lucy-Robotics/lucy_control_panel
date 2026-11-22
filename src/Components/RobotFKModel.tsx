@@ -31,6 +31,7 @@ import {
 import { motorMeshesOf } from '../Utils/motorMeshes';
 import { robotPartNames } from '../Utils/robotParts';
 import { useMotorTemperatureMaterials } from '../hooks/useMotorTemperatureMaterials';
+import { isEyeLed } from '../Utils/eyeLedGlow';
 import { useHoverGlow } from '../hooks/useHoverGlow';
 import { useRobotHover } from '../hooks/useRobotHover';
 import { applyStyle, type PartStyle } from '../Utils/robotMaterialStyle';
@@ -110,7 +111,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
-            if (!mesh.isMesh) return;
+            if (!mesh.isMesh || isEyeLed(mesh)) return;
 
             if (!originals.has(mesh)) {
                 originals.set(mesh, mesh.material);
@@ -148,7 +149,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         });
     }, [robot, wireframe, selectedPartName, partNameOf, overheatedJointNames, heatMaterial, focusColor, unselectedOpacity, motorMaterialByMesh]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ invalidate }, delta) => {
         if (jointAngles.size === 0) return;
         const displayed = displayedAnglesRef.current;
         const alpha = 1 - Math.exp(-delta * ANGLE_SMOOTHING_RATE);
@@ -174,6 +175,7 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
 
         if (Object.keys(values).length > 0) {
             robot.setJointValues(values);
+            invalidate();
         }
     });
 

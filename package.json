@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --import ./test/ts-loader-register.mjs --experimental-strip-types --test 'test/run-*-tests.ts' 'test/*.test.ts'",
-    "coverage": "c8 --reporter=lcov --reporter=text yarn test"
+    "coverage": "c8 --reporter=lcov --reporter=text --reporter=cobertura yarn test"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

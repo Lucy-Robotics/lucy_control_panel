@@ -1587,6 +1587,8 @@ h6 {
   --fill: color-mix(in srgb, var(--tone) 14%, var(--color-surface-1));
   color: var(--tone);
   cursor: pointer;
+  /* Firefox drops the frame's right edge at half-pixel widths without its own layer */
+  will-change: transform;
 }
 
 .control-toggle:hover {

@@ -175,6 +175,7 @@ export function useRobotModel(): UseRobotModelReturn {
             const mtlLoader = new MTLLoader();
             const meshCache = new Map<string, Promise<MeshPayload>>(); // dedupe shared meshes
             const tasks: Array<() => Promise<void>> = [];
+            const taskPaths: string[] = [];
             let total = 0;
             let completed = 0;
             let failed = 0;
@@ -204,6 +205,7 @@ export function useRobotModel(): UseRobotModelReturn {
                     }
                     attach(obj, err);
                 };
+                taskPaths.push(path);
                 tasks.push(async () => {
                     if (stale()) return;
                     try {
@@ -303,8 +305,12 @@ export function useRobotModel(): UseRobotModelReturn {
                 }
                 void runWithConcurrency(jobs, BATCH_IN_FLIGHT);
             }
-            if (MESH_TRANSPORT === 'batch') {
-                // Tasks only wait on chunk replies here; running them all lets base meshes attach as soon as they land.
+            // Fetch base-first so the tree reveal can play while meshes arrive.
+            const byDepth = tasks.map((_, i) => i).sort((a, b) => (depthOf.get(taskPaths[a]) ?? 1e9) - (depthOf.get(taskPaths[b]) ?? 1e9));
+            const ordered = byDepth.map(i => tasks[i]);
+            tasks.splice(0, tasks.length, ...ordered);
+            if (MESH_TRANSPORT === 'batch' || MESH_TRANSPORT === 'http') {
+                // Batch tasks only wait on chunk replies and http multiplexes over HTTP/2: running them all lets base meshes attach as soon as they land.
                 await runWithConcurrency(tasks, tasks.length);
             } else {
                 await runWithConcurrency(tasks.slice(0, 1), 1);

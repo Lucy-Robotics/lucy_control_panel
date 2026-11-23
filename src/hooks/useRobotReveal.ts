@@ -5,13 +5,13 @@
 
 /**
  * TEMP (tmp/mesh-load-bench): animates a freshly loaded model.
- *   ?reveal=tree  — links pop in from the base along the URDF tree, siblings together, each with a glow flash
+ *   ?reveal=tree  — links fade in from the base down the URDF tree, one depth at a time
  *   ?reveal=sweep — a glowing disc rises from the feet, showing each mesh as it passes its bottom
  *   ?reveal=none  — no animation (default for ?meshes=ros, which streams meshes in)
  *
  * useRobotModel hides each loaded mesh and registers a RevealPlan in revealPlans;
- * this hook plays it. Materials are never touched: the glow is an additive overlay
- * child, so selection/heat/hover material swaps keep working.
+ * this hook plays it. The tree fade swaps in transparent material clones
+ * only for its 300 ms, and only restores a mesh whose material it still owns.
  */
 
 import { useEffect } from 'react';
@@ -24,8 +24,6 @@ import { lastFrameCostMs } from '../Utils/frameCost';
 const browser = typeof window !== 'undefined';
 const reducedMotion = browser && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 const requested = browser ? new URLSearchParams(window.location.search).get('reveal') : null;
-/** TEMP debug: ?glow=0 skips the overlays, to measure their cost. */
-const GLOW_ON = !browser || new URLSearchParams(window.location.search).get('glow') !== '0';
 export const REVEAL: 'tree' | 'sweep' | 'none' = reducedMotion
     ? 'none'
     : requested === 'tree' || requested === 'sweep' || requested === 'none'
@@ -39,7 +37,7 @@ export const revealPlans = new WeakMap<THREE.Object3D, RevealPlan>();
 export const revealEvents = new EventTarget();
 
 const TREE_TOTAL_MS = 650;
-const GLOW_MS = 250;
+const FADE_MS = 300;
 const SWEEP_MS = 1100;
 /** A long frame (shader compile, GPU upload) only advances the animation this much, so it never skips ahead. */
 const MAX_FRAME_STEP_MS = 50;
@@ -55,46 +53,32 @@ function linkDepth(o: THREE.Object3D): number {
     return depth;
 }
 
-function glowMaterial(color: THREE.Color): THREE.MeshBasicMaterial {
-    return new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
-        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-    });
-}
-
 function treeReveal(
-    plan: RevealPlan, color: THREE.Color, gl: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene,
+    plan: RevealPlan, gl: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene,
 ): Pick<RevealPlan, 'play' | 'finish'> {
-    // One layer per URDF depth, strictly in order, at least `step` apart. A layer waits until
-    // all its meshes have arrived and their shaders compiled off-thread, so no frame stalls.
+    // One layer per URDF depth, strictly in order, on an ease-out schedule. A layer waits until all
+    // its meshes have arrived and their shaders compiled off-thread, so no frame stalls.
     // Ease-out schedule: layer i is due at T·(1 − √(1 − i/n)), so early layers come fast and the last ones settle.
     const n = Math.max(1, plan.maxDepth ?? 1);
     const due = (i: number) => TREE_TOTAL_MS * (1 - Math.sqrt(1 - Math.min(1, Math.max(0, i) / n)));
     const step = (i: number) => due(i) - due(i - 1);
-    type Layer = { objects: THREE.Object3D[]; compiling: number; mat: THREE.MeshBasicMaterial | null; overlays: THREE.Mesh[]; shownAt: number | null; glowing: boolean };
+    // Each mesh fades in through a transparent clone of its material; the original comes back when the fade ends.
+    // Both variants are compiled before the layer shows ('opaque' is a program key in three r177).
+    type Fade = { m: THREE.Mesh; orig: THREE.Material | THREE.Material[]; clone: THREE.Material[] };
+    type Layer = { objects: THREE.Object3D[]; compiling: number; fades: Fade[]; shownAt: number | null; fading: boolean };
     const layers: Layer[] = [];
-    const layerAt = (d: number) => (layers[d] ??= { objects: [], compiling: 0, mat: null, overlays: [], shownAt: null, glowing: false });
+    const layerAt = (d: number) => (layers[d] ??= { objects: [], compiling: 0, fades: [], shownAt: null, fading: false });
+    const restore = (f: Fade) => {
+        if (f.m.material === f.clone || (Array.isArray(f.m.material) && f.m.material[0] === f.clone[0])) f.m.material = f.orig;
+        f.clone.forEach(c => c.dispose());
+    };
+    const setOpacity = (f: Fade, k: number) => {
+        const origs = Array.isArray(f.orig) ? f.orig : [f.orig];
+        f.clone.forEach((c, i) => { c.opacity = origs[i].opacity * k; });
+    };
     let seen = 0;
     let cursor = 0;
     let lastShownAt = -Infinity;
-    const show = (l: Layer, t: number) => {
-        l.objects.forEach(o => { o.visible = true; });
-        l.shownAt = t;
-        if (!GLOW_ON) return;
-        l.mat = glowMaterial(color);
-        l.mat.opacity = 0.9;
-        l.glowing = true;
-        for (const o of l.objects) {
-            const meshes: THREE.Mesh[] = [];
-            o.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c as THREE.Mesh); });
-            for (const m of meshes) {
-                const g = new THREE.Mesh(m.geometry, l.mat);
-                g.raycast = () => {};
-                m.add(g);
-                l.overlays.push(g);
-            }
-        }
-    };
     return {
         play: (t) => {
             while (seen < plan.objects.length) {
@@ -103,9 +87,20 @@ function treeReveal(
                 l.objects.push(o);
                 l.compiling++;
                 // KHR_parallel_shader_compile: drawing an uncompiled mesh would block the frame.
-                gl.compileAsync(o, camera, scene).finally(() => {
+                gl.compileAsync(o, camera, scene).then(() => {
+                    if (l.shownAt !== null) return; // straggler for a layer already shown: no fade
+                    o.traverse(c => {
+                        const m = c as THREE.Mesh;
+                        if (!m.isMesh) return;
+                        const origs = Array.isArray(m.material) ? m.material : [m.material];
+                        const clone = origs.map(x => Object.assign(x.clone(), { transparent: true, opacity: 0 }));
+                        l.fades.push({ m, orig: m.material, clone });
+                        m.material = Array.isArray(m.material) ? clone : clone[0];
+                    });
+                    return gl.compileAsync(o, camera, scene);
+                }).finally(() => {
                     l.compiling--;
-                    if (l.shownAt !== null) o.visible = true; // straggler for a layer already shown
+                    if (l.shownAt !== null) o.visible = true;
                 });
             }
             const last = Math.max(plan.maxDepth ?? 0, layers.length - 1);
@@ -118,19 +113,21 @@ function treeReveal(
                     continue;
                 }
                 if ((l.objects.length < expected && !plan.loaded) || l.compiling > 0) break;
-                show(l, t);
-                lastShownAt = t;
+                l.objects.forEach(o => { o.visible = true; });
+                l.shownAt = lastShownAt = t;
+                l.fading = true;
                 cursor++;
             }
             let running = cursor <= last || !plan.loaded;
             for (const l of layers) {
-                if (!l?.glowing || !l.mat) continue;
-                const k = (t - l.shownAt!) / GLOW_MS;
+                if (!l?.fading) continue;
+                const k = (t - l.shownAt!) / FADE_MS;
                 if (k >= 1) {
-                    l.glowing = false;
-                    l.overlays.forEach(g => { g.visible = false; });
+                    l.fading = false;
+                    l.fades.forEach(restore);
+                    l.fades = [];
                 } else {
-                    l.mat.opacity = 0.9 * (1 - k) ** 2; // ease-out fade
+                    l.fades.forEach(f => setOpacity(f, 1 - (1 - k) ** 2)); // ease-out
                     running = true;
                 }
             }
@@ -139,9 +136,8 @@ function treeReveal(
         finish: () => {
             plan.objects.forEach(o => { o.visible = true; });
             for (const l of layers) {
-                if (!l) continue;
-                l.overlays.forEach(g => g.removeFromParent());
-                l.mat?.dispose();
+                l?.fades.forEach(restore);
+                if (l) l.fades = [];
             }
         },
     };
@@ -231,7 +227,7 @@ export function useRobotReveal(robot: URDFRobot, focusColor?: string): void {
         if (!plan || plan.done) return;
         if (!plan.play) {
             const color = accentColor(focusColor);
-            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene, color) : treeReveal(plan, color, gl, camera, scene));
+            Object.assign(plan, REVEAL === 'sweep' ? sweepReveal(plan, robot, scene, color) : treeReveal(plan, gl, camera, scene));
             plan.wallStart = performance.now();
             plan.frames = 0;
             plan.elapsed = 0;

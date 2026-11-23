@@ -94,7 +94,10 @@ export class MeshHandler {
 
     /** TEMP: the committed GLB as a cached static file; falls back to mesh/get when none. */
     static async getMeshHttp(path: string, quality: MeshQuality): Promise<MeshPayload> {
-        const response = await fetch(`/mesh-files${path.replace(/^file:\/\//, '')}.${quality}.glb`);
+        // Package-relative URL (…/inmoov_urdf/meshes/x.stl → /mesh-files/inmoov_urdf/meshes/x.stl.full.glb): no server paths in requests.
+        const rel = path.match(/\/([^/]+_urdf\/.+)$/)?.[1];
+        if (!rel) return MeshHandler.getMesh(path, quality);
+        const response = await fetch(`/mesh-files/${rel}.${quality}.glb`);
         if (!response.ok) return MeshHandler.getMesh(path, quality);
         return { data: '', encoding: 'glb_base64', bytes: await response.arrayBuffer() };
     }

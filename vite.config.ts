@@ -26,7 +26,7 @@ function meshFiles(): Plugin {
     if (!req.url?.startsWith("/mesh-files/")) return next();
     let file = "";
     try {
-      file = fs.realpathSync(decodeURIComponent(req.url.slice("/mesh-files".length).split("?")[0]));
+      file = fs.realpathSync(path.join(srcRoot, decodeURIComponent(req.url.slice("/mesh-files/".length).split("?")[0])));
     } catch { /* missing: 404 below */ }
     const rel = path.relative(srcRoot, file);
     if (!file || rel.startsWith("..") || !/^[^/]+_urdf\//.test(rel) || !file.endsWith(".glb")) {

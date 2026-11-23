@@ -1,0 +1,8 @@
+/*
+ * Copyright 2025-2026 Lucy Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+export const MESH_QUALITIES = ['full', 'balanced', 'light'] as const;
+
+export type MeshQuality = (typeof MESH_QUALITIES)[number];

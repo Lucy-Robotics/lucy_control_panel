@@ -28,6 +28,7 @@ import { ViewCube } from '../Components/ViewCube';
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { CameraViewTween, type ViewRequest } from '../Components/CameraViewTween';
 import { RenderOnChange } from '../Components/RenderOnChange';
+import { MeshQualitySelect } from '../Components/MeshQualitySelect';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean';
 import { useThemeColors3D } from '../hooks/useThemeColors3D';
 import { MotorOverheatContext } from '../contexts/MotorOverheatContext';
@@ -910,6 +911,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({
                     </>
                 )}
                 <SwitchRow label="DEBUG" tooltip="Show the raw joint readings, and buttons to simulate an overheated motor" value={debugMode} onChange={(on) => { setDebugMode(on); if (!on) overheatMock.clear(); }} />
+                <MeshQualitySelect />
 
                 <button
                     onClick={handleResetCamera}

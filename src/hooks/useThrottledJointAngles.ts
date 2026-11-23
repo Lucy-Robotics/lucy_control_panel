@@ -33,9 +33,10 @@ export function useThrottledJointAngles(isConnected: boolean, hz = 10): Map<stri
         }
         return JointStateHandler.getInstance().subscribeToJointStates((positions) => {
             for (const { name, value } of positions) {
+                if (latestRef.current.get(name) === value) continue;
                 latestRef.current.set(name, value);
+                dirtyRef.current = true;
             }
-            dirtyRef.current = true;
 
             // Log joint names received from ROS once per connection (debug only).
             if (!loggedOnceRef.current) {

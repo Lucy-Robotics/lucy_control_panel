@@ -8,10 +8,10 @@ import { subscribeToJointVoltages } from '../Services/ros/handlers/DynamicJointS
 import { servoPowerOf, type ServoPower } from '../Utils/servoPower.utils';
 import { motorValuesByJoint } from '../Utils/motorSpecs';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
-import { useThrottledJointReadings } from './useThrottledJointReadings';
+import { useChangedJointReadings } from './useThrottledJointReadings';
 
 export function useServoPower(isConnected: boolean): ServoPower {
-    const voltages = useThrottledJointReadings(subscribeToJointVoltages, isConnected, 2);
+    const voltages = useChangedJointReadings(subscribeToJointVoltages, isConnected, 2);
     const { activeHardwareDoc, motorSpecs } = useActiveHardwareRos();
     const minVolts = useMemo(() => motorValuesByJoint(activeHardwareDoc, motorSpecs, 'min_volts'), [activeHardwareDoc, motorSpecs]);
     return useMemo(() => servoPowerOf(voltages, minVolts), [voltages, minVolts]);

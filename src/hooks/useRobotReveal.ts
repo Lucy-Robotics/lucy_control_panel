@@ -38,9 +38,9 @@ export const revealPlans = new WeakMap<THREE.Object3D, RevealPlan>();
 /** Fired by useRobotModel once a plan is ready, to wake the on-demand frame loop. */
 export const revealEvents = new EventTarget();
 
-const TREE_TOTAL_MS = 1000;
-const GLOW_MS = 300;
-const SWEEP_MS = 1500;
+const TREE_TOTAL_MS = 650;
+const GLOW_MS = 250;
+const SWEEP_MS = 1100;
 /** A long frame (shader compile, GPU upload) only advances the animation this much, so it never skips ahead. */
 const MAX_FRAME_STEP_MS = 50;
 
@@ -67,7 +67,10 @@ function treeReveal(
 ): Pick<RevealPlan, 'play' | 'finish'> {
     // One layer per URDF depth, strictly in order, at least `step` apart. A layer waits until
     // all its meshes have arrived and their shaders compiled off-thread, so no frame stalls.
-    const step = TREE_TOTAL_MS / Math.max(1, plan.maxDepth ?? 1);
+    // Ease-out schedule: layer i is due at T·(1 − √(1 − i/n)), so early layers come fast and the last ones settle.
+    const n = Math.max(1, plan.maxDepth ?? 1);
+    const due = (i: number) => TREE_TOTAL_MS * (1 - Math.sqrt(1 - Math.min(1, Math.max(0, i) / n)));
+    const step = (i: number) => due(i) - due(i - 1);
     type Layer = { objects: THREE.Object3D[]; compiling: number; mat: THREE.MeshBasicMaterial | null; overlays: THREE.Mesh[]; shownAt: number | null; glowing: boolean };
     const layers: Layer[] = [];
     const layerAt = (d: number) => (layers[d] ??= { objects: [], compiling: 0, mat: null, overlays: [], shownAt: null, glowing: false });
@@ -106,7 +109,7 @@ function treeReveal(
                 });
             }
             const last = Math.max(plan.maxDepth ?? 0, layers.length - 1);
-            while (cursor <= last && t - lastShownAt >= step) {
+            while (cursor <= last && t - lastShownAt >= step(cursor)) {
                 const l = layers[cursor];
                 const expected = plan.expected?.[cursor] ?? 0;
                 if (!l) {
@@ -127,7 +130,7 @@ function treeReveal(
                     l.glowing = false;
                     l.overlays.forEach(g => { g.visible = false; });
                 } else {
-                    l.mat.opacity = 0.9 * (1 - k);
+                    l.mat.opacity = 0.9 * (1 - k) ** 2; // ease-out fade
                     running = true;
                 }
             }

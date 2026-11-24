@@ -15,7 +15,7 @@ import './LucyLoader.css';
 const { Text } = Typography;
 
 export interface LucyLoaderProps {
-    /** Big title shown under the spinner (defaults to "LUCY"). */
+    /** Big title shown under the spinner (defaults to "lucy"). */
     title?: string;
     /** Status line below the title (e.g. "Connecting to ROS bridge"). */
     label?: string;
@@ -35,7 +35,7 @@ export interface LucyLoaderProps {
  * the ROS bridge or the active hardware config.
  */
 export const LucyLoader: React.FC<LucyLoaderProps> = ({
-    title = 'LUCY',
+    title = 'lucy',
     label,
     connectButton,
     detail,

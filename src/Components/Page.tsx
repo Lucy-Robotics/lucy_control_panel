@@ -94,7 +94,7 @@ export const Page: React.FC<PageProps> = ({
                     src="/logo.png"
                     alt="Lucy"
                     style={{
-                      height: isMobile ? 14 : 18,
+                      height: isMobile ? 12 : 16,
                       width: 'auto',
                       objectFit: 'contain',
                       display: 'block',
@@ -102,7 +102,7 @@ export const Page: React.FC<PageProps> = ({
                     }}
                   />
                   <CustomTitle
-                    title="LUCY"
+                    title="lucy"
                     prefix=""
                     separator="//"
                     subtitle="CONTROL PANEL"

@@ -89,7 +89,7 @@ export const Page: React.FC<PageProps> = ({
               minHeight: 32,
             }}>
               {title && (
-                <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 3 }}>
                   <img
                     src="/logo.png"
                     alt="Lucy"

@@ -81,7 +81,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
                         <CustomTitle
-                            title="LUCY"
+                            title="lucy"
                             separator="//"
                             subtitle="CONTROL PANEL"
                             level="graphical"

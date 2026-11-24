@@ -89,12 +89,12 @@ export const Page: React.FC<PageProps> = ({
               minHeight: 32,
             }}>
               {title && (
-                <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 3 }}>
                   <img
                     src="/logo.png"
                     alt="Lucy"
                     style={{
-                      height: isMobile ? 22 : 28,
+                      height: isMobile ? 12 : 16,
                       width: 'auto',
                       objectFit: 'contain',
                       display: 'block',
@@ -102,7 +102,7 @@ export const Page: React.FC<PageProps> = ({
                     }}
                   />
                   <CustomTitle
-                    title="LUCY"
+                    title="lucy"
                     prefix=""
                     separator="//"
                     subtitle="CONTROL PANEL"

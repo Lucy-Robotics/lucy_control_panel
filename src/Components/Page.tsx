@@ -94,7 +94,7 @@ export const Page: React.FC<PageProps> = ({
                     src="/logo.png"
                     alt="Lucy"
                     style={{
-                      height: isMobile ? 22 : 28,
+                      height: isMobile ? 14 : 18,
                       width: 'auto',
                       objectFit: 'contain',
                       display: 'block',

@@ -57,7 +57,7 @@ const JointEffortGauge: React.FC<{
         capGeometry.dispose();
     }, [material, headGeometry, capGeometry]);
 
-    useFrame((_state, delta) => {
+    useFrame(({ invalidate }, delta) => {
         const group = groupRef.current;
         const shaft = shaftRef.current;
         const head = headRef.current;
@@ -72,6 +72,7 @@ const JointEffortGauge: React.FC<{
         if (previous !== null && Math.abs(next - previous) < MIN_LOAD_STEP) return;
 
         shownLoadRef.current = next;
+        invalidate();
         const shaftArc = Math.max(effortArcRad(next) - HEAD_ARC_RAD, MIN_SHAFT_ARC_RAD);
         const headCenter = shaftArc + HEAD_ARC_RAD / 2;
         shaft.geometry.dispose();

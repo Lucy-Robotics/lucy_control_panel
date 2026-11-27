@@ -81,7 +81,7 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         return () => orbit.removeEventListener('start', cancel);
     }, [controls, controlsRef]);
 
-    useFrame(({ camera }, delta) => {
+    useFrame(({ camera, invalidate }, delta) => {
         const tween = tweenRef.current;
         const orbit = controlsRef.current;
         if (!tween || !orbit) return;
@@ -99,6 +99,7 @@ export const CameraViewTween: React.FC<CameraViewTweenProps> = ({ request, contr
         orbit.update();
 
         if (tween.t >= 1) tweenRef.current = null;
+        else invalidate();
     });
 
     return null;
